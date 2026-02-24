@@ -38,7 +38,7 @@ const VisualizarFalhas = () => {
 
   useEffect(() => {
     buscarFalhas();
-    const interval = setInterval(buscarFalhas, 5000); // Frequência de 5s para maior precisão
+    const interval = setInterval(buscarFalhas, 5000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -79,12 +79,24 @@ const VisualizarFalhas = () => {
 
   const countFalhasSetor = (s) => falhas.filter(f => f.setor === s).length;
   const temFalhaNaTrave = (s, t) => falhas.some(f => f.setor === s && f.trave === t.toString());
+
+  // LÓGICA ATUALIZADA PARA DETECTAR MÚLTIPLOS PONTOS
   const getFalhaNoPonto = (s, t, p) => {
-    return falhas.find(f => f.setor === s && f.trave === t.toString() && (f.ponto === p.toString() || f.ponto === "1-15 (Inteira)"));
+    return falhas.find(f => {
+      const mesmoSetorETrave = f.setor === s && f.trave === t.toString();
+      const pontoString = f.ponto || "";
+      
+      // Verifica se o ponto atual está incluso na string do banco
+      const pontoMatch = pontoString === "1-15 (Inteira)" || 
+                         pontoString.includes(`Ponto ${p}`) || 
+                         pontoString === p.toString();
+
+      return mesmoSetorETrave && pontoMatch;
+    });
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row font-sans relative selection:bg-lenovoRed selection:text-white">
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row font-sans relative selection:bg-red-600 selection:text-white">
       
       {/* MODAL MULTI-ETAPA */}
       {modalData && (
@@ -123,10 +135,10 @@ const VisualizarFalhas = () => {
                     <span className="text-2xl font-black text-white leading-tight italic">"{modalData.falha}"</span>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-white/[0.02] rounded-2xl border border-white/5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    <span className="flex items-center gap-2"><User size={14} className="text-lenovoRed"/> {modalData.usuario}</span>
-                    <span className="flex items-center gap-2"><Clock size={14} className="text-lenovoRed"/> {new Date(modalData.created_at).toLocaleTimeString()}</span>
+                    <span className="flex items-center gap-2"><User size={14} className="text-red-600"/> {modalData.usuario}</span>
+                    <span className="flex items-center gap-2"><Clock size={14} className="text-red-600"/> {new Date(modalData.created_at).toLocaleTimeString()}</span>
                   </div>
-                  <button onClick={() => setEtapaFechamento(true)} className="w-full p-5 bg-white text-black font-black rounded-2xl hover:bg-lenovoRed hover:text-white transition-all uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2 group">
+                  <button onClick={() => setEtapaFechamento(true)} className="w-full p-5 bg-white text-black font-black rounded-2xl hover:bg-red-600 hover:text-white transition-all uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2 group">
                     Iniciar Reparo <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
@@ -149,14 +161,14 @@ const VisualizarFalhas = () => {
       {/* Sidebar */}
       <aside className="w-full md:w-64 border-r border-white/10 p-6 flex flex-col bg-black">
         <div className="flex items-center gap-3 mb-10 group cursor-pointer" onClick={() => navigate('/dashboard')}>
-          <div className="w-10 h-10 bg-lenovoRed rounded-lg flex items-center justify-center font-bold text-xl shadow-[0_0_20px_rgba(226,35,26,0.3)] group-hover:scale-110 transition-transform">L</div>
+          <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center font-bold text-xl shadow-[0_0_20px_rgba(226,35,26,0.3)] group-hover:scale-110 transition-transform">L</div>
           <h1 className="text-xl font-black tracking-tighter italic">LENOVO <span className="text-gray-600 font-light">PRO</span></h1>
         </div>
         <nav className="flex-1 space-y-2">
           <button onClick={() => navigate('/dashboard')} className="w-full flex items-center gap-3 p-4 text-gray-500 hover:text-white hover:bg-white/5 rounded-2xl transition-all font-bold text-sm">
             <LayoutDashboard size={20} /> Dashboard
           </button>
-          <div className="flex items-center gap-3 p-4 bg-lenovoRed/10 rounded-2xl text-lenovoRed font-black border border-lenovoRed/20 shadow-inner text-sm italic">
+          <div className="flex items-center gap-3 p-4 bg-red-600/10 rounded-2xl text-red-600 font-black border border-red-600/20 shadow-inner text-sm italic">
             <Eye size={20} /> MAPA DE FALHAS
           </div>
         </nav>
@@ -209,7 +221,7 @@ const VisualizarFalhas = () => {
                         {numFalhas > 0 && <p className="text-[10px] font-black text-red-500 tracking-[0.2em] uppercase">{numFalhas} ocorrência(s) detectada(s)</p>}
                       </div>
                     </div>
-                    {isSetorAberto ? <ChevronDown className="text-lenovoRed" /> : <ChevronRight className="text-gray-800" />}
+                    {isSetorAberto ? <ChevronDown className="text-red-600" /> : <ChevronRight className="text-gray-800" />}
                   </button>
 
                   {isSetorAberto && (
@@ -222,12 +234,12 @@ const VisualizarFalhas = () => {
                         return (
                           <div key={tNum} className="group">
                             <button onClick={() => setTraveAberta(isTraveAberta ? null : tNum)} className={`w-full p-5 flex justify-between items-center text-xs font-black transition-all rounded-[1.5rem] border ${traveComErro ? 'bg-red-600/10 border-red-600/40 text-red-500 shadow-xl' : 'bg-white/[0.02] border-white/5 text-gray-500 hover:border-white/10'}`}>
-                              <span className="flex items-center gap-3"><Hash size={16} className={traveComErro ? "text-red-500" : "text-lenovoRed"}/> TRAVE {String(tNum).padStart(2, '0')}</span>
+                              <span className="flex items-center gap-3"><Hash size={16} className={traveComErro ? "text-red-500" : "text-red-600"}/> TRAVE {String(tNum).padStart(2, '0')}</span>
                               {traveComErro ? <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] animate-bounce">AÇÃO NECESSÁRIA</span> : <ChevronRight size={14} className="opacity-20"/>}
                             </button>
 
                             {isTraveAberta && (
-                              <div className="mt-4 p-6 bg-black/40 rounded-[2rem] grid grid-cols-5 sm:grid-cols-8 md:grid-cols-15 gap-4 border border-white/5 ring-1 ring-inset ring-white/[0.02] animate-in zoom-in-95">
+                              <div className="mt-4 p-6 bg-black/40 rounded-[2rem] grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-4 border border-white/5 ring-1 ring-inset ring-white/[0.02] animate-in zoom-in-95">
                                 {[...Array(15)].map((_, j) => {
                                   const pNum = j + 1;
                                   const falhaNoPonto = getFalhaNoPonto(setor, tNum, pNum);
