@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, HardDrive, Hash, LogOut, ChevronRight, 
   ChevronDown, Eye, X, ShieldAlert, ArrowRight, 
-  Loader2, Briefcase, CheckCircle2, AlertTriangle
+  Loader2, Briefcase, CheckCircle2, AlertTriangle, Box, Zap 
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -43,6 +43,35 @@ const VisualizarFalhas = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // --- LÓGICA DO CARRINHO (CORREÇÃO PARA O SEU REGISTRAR.JSX) ---
+  const calcularCarrinhoSetor = (nomeSetor) => {
+    const falhasDoSetor = falhas.filter(f => String(f.setor).trim() === String(nomeSetor).trim());
+    const contagem = {};
+
+    falhasDoSetor.forEach(f => {
+      if (f.falha) {
+        // CORREÇÃO: Separa APENAS por vírgula ou pelo sinal de "+" 
+        // Isso impede que o "Y" de "Energia Y" quebre a palavra
+        const partes = f.falha.split(/[,+]/);
+        
+        partes.forEach(p => {
+          let item = p.trim();
+          if (item) {
+            // Normaliza o nome para o Carrinho:
+            // "Rede (RJ45)" vira "Rede" para ficar visualmente limpo, mas conta como 1.
+            if (item.includes("Rede")) item = "Rede";
+            if (item.includes("VGA")) item = "VGA";
+            if (item.includes("Energia")) item = "Energia Y";
+
+            contagem[item] = (contagem[item] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    return Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+  };
+
   const handleFinalizarChamado = async () => {
     if (!solucaoTexto.trim()) return alert("Descreva o que foi feito.");
     setEnviando(true);
@@ -69,7 +98,7 @@ const VisualizarFalhas = () => {
   };
 
   const abrirModalLote = (s, t) => {
-    const chamadosDaTrave = falhas.filter(f => f.setor === s && String(f.trave) === String(t));
+    const chamadosDaTrave = falhas.filter(f => String(f.setor) === String(s) && String(f.trave) === String(t));
     setModalData({
       ids: chamadosDaTrave.map(f => f.id),
       setor: s,
@@ -90,10 +119,10 @@ const VisualizarFalhas = () => {
 
   const getDadosPonto = (s, t, p) => {
     const chamadosNoPonto = falhas.filter(f => {
-      if (f.setor !== s || String(f.trave) !== String(t)) return false;
+      if (String(f.setor) !== String(s) || String(f.trave) !== String(t)) return false;
       const pStr = String(f.ponto || "");
       if (pStr.includes("Inteira")) return true;
-      const regex = new RegExp(`(^|,|\\s)${p}($|,|\\s)`);
+      const regex = new RegExp(`(^|,|\\s|Ponto )${p}($|,|\\s)`);
       return regex.test(pStr);
     });
     if (chamadosNoPonto.length === 0) return null;
@@ -111,18 +140,14 @@ const VisualizarFalhas = () => {
     return chamadosNoPonto[0];
   };
 
-  // --- NOVA LÓGICA DE CONTAGEM POR TRAVES ÚNICAS ---
   const countTravesComFalha = (s) => {
-    const falhasDoSetor = falhas.filter(f => f.setor === s);
-    // Cria um Set para armazenar apenas números de traves únicos
+    const falhasDoSetor = falhas.filter(f => String(f.setor) === String(s));
     const travesUnicas = new Set(falhasDoSetor.map(f => String(f.trave)));
     return travesUnicas.size;
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row font-sans relative">
-      
-      {/* Estilos do Tooltip Moderno */}
       <style>{`
         .ponto-container { position: relative; display: inline-block; }
         .tooltip-moderno {
@@ -163,7 +188,7 @@ const VisualizarFalhas = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-black uppercase italic tracking-tighter">
-                    {etapaFechamento ? 'Concluir' : (modoLote || modalData.agrupado ? 'Múltiplas Falhas' : 'Ocorrência')}
+                    {etapaFechamento ? 'Concluir' : 'Ocorrência'}
                   </h3>
                   <p className="text-gray-500 text-[10px] font-bold uppercase">Trave {modalData.trave} - Ponto {modalData.ponto}</p>
                 </div>
@@ -178,10 +203,7 @@ const VisualizarFalhas = () => {
                     <span className="text-[10px] text-red-500 uppercase font-black block mb-2">Relato(s)</span>
                     <span className="text-2xl font-black text-white italic">"{modalData.falha}"</span>
                   </div>
-                  <button onClick={() => {
-                    if(modalData.agrupado) setModoLote(true);
-                    setEtapaFechamento(true);
-                  }} className="w-full p-5 bg-white text-black font-black rounded-2xl flex items-center justify-center gap-2 uppercase text-xs">
+                  <button onClick={() => setEtapaFechamento(true)} className="w-full p-5 bg-white text-black font-black rounded-2xl flex items-center justify-center gap-2 uppercase text-xs">
                     Iniciar Fechamento <ArrowRight size={18} />
                   </button>
                 </div>
@@ -219,8 +241,14 @@ const VisualizarFalhas = () => {
       <main className="flex-1 p-6 md:p-10 overflow-y-auto">
         <header className="mb-10 flex justify-between items-end">
           <h2 className="text-4xl font-black uppercase italic">Live Monitor</h2>
-          <div className="px-4 py-2 bg-red-600/10 rounded-xl border border-red-600/20">
-            <span className="text-[10px] font-black text-red-500 uppercase">{falhas.length} Falhas Ativas</span>
+          <div className="px-5 py-2.5 bg-red-600/10 rounded-2xl border border-red-600/20 flex items-center gap-3 shadow-lg">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600"></span>
+            </div>
+            <span className="text-[11px] font-black text-red-500 uppercase tracking-tighter">
+              {falhas.length} Chamados Abertos
+            </span>
           </div>
         </header>
 
@@ -228,6 +256,7 @@ const VisualizarFalhas = () => {
           {setores.map(setor => {
             const numTravesAfetadas = countTravesComFalha(setor);
             const isSetorAberto = setorAberto === setor;
+            const itensCarrinho = isSetorAberto ? calcularCarrinhoSetor(setor) : [];
 
             return (
               <div key={setor} className={`border rounded-[2rem] overflow-hidden transition-all ${numTravesAfetadas > 0 ? 'border-red-600/30' : 'border-white/5 bg-[#0A0A0A]'}`}>
@@ -240,7 +269,7 @@ const VisualizarFalhas = () => {
                       <span className="font-black text-2xl uppercase italic">{setor}</span>
                       {numTravesAfetadas > 0 && (
                         <p className="text-[10px] font-black text-red-500 uppercase">
-                          {numTravesAfetadas} {numTravesAfetadas === 1 ? 'trave com falha' : 'traves com falhas'}
+                          {numTravesAfetadas} traves com problemas
                         </p>
                       )}
                     </div>
@@ -249,66 +278,75 @@ const VisualizarFalhas = () => {
                 </button>
 
                 {isSetorAberto && (
-                  <div className="p-8 pt-2 space-y-4">
-                    {[...Array(23)].map((_, i) => {
-                      const tNum = i + 1;
-                      const chamadosDaTrave = falhas.filter(f => f.setor === setor && String(f.trave) === String(tNum));
-                      const isTraveAberta = traveAberta === tNum;
-
-                      return (
-                        <div key={tNum} className="space-y-2">
-                          <div className={`flex items-center gap-2 p-2 rounded-2xl border transition-all ${chamadosDaTrave.length > 0 ? 'bg-red-600/10 border-red-600/40 shadow-[0_0_15px_rgba(220,38,38,0.1)]' : 'bg-white/[0.02] border-white/5'}`}>
-                            <button onClick={() => setTraveAberta(isTraveAberta ? null : tNum)} className="flex-1 p-3 flex justify-between items-center text-xs font-black">
-                              <span className="flex items-center gap-3 uppercase"><Hash size={16} className="text-red-600"/> Trave {tNum}</span>
-                              {chamadosDaTrave.length > 0 && (
-                                <div className="flex items-center gap-2 text-red-500">
-                                  <AlertTriangle size={14} className="animate-bounce" />
-                                  <span className="animate-pulse">{chamadosDaTrave.length} FALHAS</span>
-                                </div>
-                              )}
-                            </button>
-                            
-                            {chamadosDaTrave.length > 0 && (
-                              <button 
-                                onClick={() => abrirModalLote(setor, tNum)}
-                                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-600 transition-all font-black text-[10px] uppercase"
-                              >
-                                <CheckCircle2 size={14} /> Resolver Tudo
+                  <div className="p-8 pt-2 space-y-6">
+                    {itensCarrinho.length > 0 && (
+                      <div className="bg-gradient-to-br from-[#0D0D0D] to-[#050505] border border-red-600/20 p-6 rounded-[2rem] shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                          <Box size={80} className="text-red-600 rotate-12" />
+                        </div>
+                        <div className="flex items-center gap-3 mb-5 relative z-10">
+                          <div className="bg-red-600 p-2 rounded-xl shadow-lg shadow-red-600/20">
+                            <Zap size={18} className="text-white fill-current" />
+                          </div>
+                          <div>
+                            <h4 className="text-[11px] font-black uppercase text-red-500 tracking-widest leading-none">Logística de Insumos</h4>
+                            <p className="text-lg font-black uppercase italic tracking-tighter text-white">Carrinho de Manutenção</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-3 relative z-10">
+                          {itensCarrinho.map(([peca, qtd]) => (
+                            <div key={peca} className="bg-white/5 border border-white/5 px-4 py-2.5 rounded-2xl flex items-center gap-3 hover:bg-white/10 transition-colors group/item">
+                              <span className="text-lg font-black text-red-500">{qtd}x</span>
+                              <span className="text-[10px] font-black uppercase text-gray-400 group-hover/item:text-white">{peca}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      {[...Array(23)].map((_, i) => {
+                        const tNum = i + 1;
+                        const chamadosDaTrave = falhas.filter(f => String(f.setor) === String(setor) && String(f.trave) === String(tNum));
+                        const isTraveAberta = traveAberta === tNum;
+                        return (
+                          <div key={tNum} className="space-y-2">
+                            <div className={`flex items-center gap-2 p-2 rounded-2xl border transition-all ${chamadosDaTrave.length > 0 ? 'bg-red-600/10 border-red-600/40' : 'bg-white/[0.02] border-white/5'}`}>
+                              <button onClick={() => setTraveAberta(isTraveAberta ? null : tNum)} className="flex-1 p-3 flex justify-between items-center text-xs font-black">
+                                <span className="flex items-center gap-3 uppercase"><Hash size={16} className="text-red-600"/> Trave {tNum}</span>
+                                {chamadosDaTrave.length > 0 && (
+                                  <div className="flex items-center gap-2 text-red-500">
+                                    <AlertTriangle size={14} className="animate-bounce" />
+                                    <span>{chamadosDaTrave.length} PENDENTE(S)</span>
+                                  </div>
+                                )}
                               </button>
+                              {chamadosDaTrave.length > 0 && (
+                                <button onClick={() => abrirModalLote(setor, tNum)} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-600 transition-all font-black text-[10px] uppercase">
+                                  <CheckCircle2 size={14} /> Resolver Trave
+                                </button>
+                              )}
+                            </div>
+                            {isTraveAberta && (
+                              <div className="p-6 bg-black/40 rounded-[2rem] grid grid-cols-5 sm:grid-cols-10 gap-4 border border-white/5 animate-in slide-in-from-top-2">
+                                {[...Array(15)].map((_, j) => {
+                                  const pNum = j + 1;
+                                  const dadosPonto = getDadosPonto(setor, tNum, pNum);
+                                  return (
+                                    <div key={pNum} className="ponto-container">
+                                      {dadosPonto && <div className="tooltip-moderno">{dadosPonto.falha}</div>}
+                                      <button onClick={() => { if (dadosPonto) { setModalData(dadosPonto); setModoLote(false); } }} 
+                                        className={`aspect-square w-full rounded-2xl flex items-center justify-center text-xs font-black border transition-all hover:scale-110 active:scale-95 ${dadosPonto ? 'bg-red-600 border-red-400 text-white animate-pulse shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 'bg-white/[0.02] border-white/5 text-gray-800'}`}>
+                                        {pNum}
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
-
-                          {isTraveAberta && (
-                            <div className="p-6 bg-black/40 rounded-[2rem] grid grid-cols-5 sm:grid-cols-10 gap-4 border border-white/5 animate-in slide-in-from-top-2">
-                              {[...Array(15)].map((_, j) => {
-                                const pNum = j + 1;
-                                const dadosPonto = getDadosPonto(setor, tNum, pNum);
-                                return (
-                                  <div key={pNum} className="ponto-container">
-                                    {dadosPonto && (
-                                      <div className="tooltip-moderno">
-                                        {dadosPonto.falha}
-                                      </div>
-                                    )}
-                                    <button 
-                                      onClick={() => {
-                                        if (dadosPonto) {
-                                          setModalData(dadosPonto);
-                                          setModoLote(false);
-                                        }
-                                      }} 
-                                      className={`aspect-square w-full rounded-2xl flex items-center justify-center text-xs font-black border transition-all hover:scale-110 active:scale-95 ${dadosPonto ? 'bg-red-600 border-red-400 text-white animate-pulse shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 'bg-white/[0.02] border-white/5 text-gray-800'}`}
-                                    >
-                                      {pNum}
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
