@@ -1,18 +1,20 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  LayoutDashboard, HardDrive, Hash, LogOut, ChevronRight, 
+  LayoutDashboard, HardDrive, Hash, ChevronRight, 
   ChevronDown, Eye, X, ShieldAlert, ArrowRight, 
-  Loader2, Briefcase, CheckCircle2, AlertTriangle, Box, Zap 
+  Briefcase, CheckCircle2, AlertTriangle, Box, Zap 
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
+
+// Constantes movidas para fora para não serem recriadas a cada render
+const SETORES = ["Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05", "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"];
 
 const VisualizarFalhas = () => {
   const navigate = useNavigate();
   const [falhas, setFalhas] = useState([]);
   const [setorAberto, setSetorAberto] = useState(null);
   const [traveAberta, setTraveAberta] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [modalData, setModalData] = useState(null);
   const [etapaFechamento, setEtapaFechamento] = useState(false);
   const [solucaoTexto, setSolucaoTexto] = useState('');
@@ -20,9 +22,9 @@ const VisualizarFalhas = () => {
   const [modoLote, setModoLote] = useState(false);
 
   const user = JSON.parse(localStorage.getItem('lenovo_user')) || { username: 'Técnico' };
-  const setores = ["Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05", "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"];
 
-  const buscarFalhas = async () => {
+  // --- BUSCA DE DADOS ---
+  const buscarFalhas = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('registros_falhas')
@@ -32,44 +34,96 @@ const VisualizarFalhas = () => {
       setFalhas(data || []);
     } catch (err) {
       console.error("Erro na busca:", err.message);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     buscarFalhas();
     const interval = setInterval(buscarFalhas, 5000); 
     return () => clearInterval(interval);
-  }, []);
+  }, [buscarFalhas]);
 
-  // --- LÓGICA DO CARRINHO (CORREÇÃO PARA O SEU REGISTRAR.JSX) ---
+  // --- LÓGICA AUXILIAR (Extraída para reduzir complexidade) ---
   const calcularCarrinhoSetor = (nomeSetor) => {
     const falhasDoSetor = falhas.filter(f => String(f.setor).trim() === String(nomeSetor).trim());
     const contagem = {};
 
     falhasDoSetor.forEach(f => {
       if (f.falha) {
-        // CORREÇÃO: Separa APENAS por vírgula ou pelo sinal de "+" 
-        // Isso impede que o "Y" de "Energia Y" quebre a palavra
         const partes = f.falha.split(/[,+]/);
-        
         partes.forEach(p => {
           let item = p.trim();
           if (item) {
-            // Normaliza o nome para o Carrinho:
-            // "Rede (RJ45)" vira "Rede" para ficar visualmente limpo, mas conta como 1.
             if (item.includes("Rede")) item = "Rede";
             if (item.includes("VGA")) item = "VGA";
             if (item.includes("Energia")) item = "Energia Y";
-
             contagem[item] = (contagem[item] || 0) + 1;
           }
         });
       }
     });
-
     return Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+  };
+
+  const getDadosPonto = (s, t, p) => {
+    const chamadosNoPonto = falhas.filter(f => {
+      if (String(f.setor) !== String(s) || String(f.trave) !== String(t)) return false;
+      const pStr = String(f.ponto || "");
+      if (pStr.includes("Inteira")) return true;
+      const regex = new RegExp(`(^|,|\\s|Ponto )${p}($|,|\\s)`);
+      return regex.test(pStr);
+    });
+
+    if (chamadosNoPonto.length === 0) return null;
+    if (chamadosNoPonto.length > 1) {
+      return {
+        id: chamadosNoPonto[0].id,
+        ids: chamadosNoPonto.map(f => f.id),
+        setor: s,
+        trave: t,
+        ponto: p,
+        falha: chamadosNoPonto.map(f => f.falha).join(' + '),
+        agrupado: true
+      };
+    }
+    return chamadosNoPonto[0];
+  };
+
+  // --- HANDLERS DE EVENTOS (Correção JS-0417) ---
+  const handleSetorClick = (setor) => {
+    setSetorAberto(prev => prev === setor ? null : setor);
+    setTraveAberta(null);
+  };
+
+  const handleTraveToggle = (tNum) => {
+    setTraveAberta(prev => prev === tNum ? null : tNum);
+  };
+
+  const handlePontoClick = (dados) => {
+    if (dados) {
+      setModalData(dados);
+      setModoLote(false);
+    }
+  };
+
+  const handleAbrirModalLote = (s, t) => {
+    const chamadosDaTrave = falhas.filter(f => String(f.setor) === String(s) && String(f.trave) === String(t));
+    setModalData({
+      ids: chamadosDaTrave.map(f => f.id),
+      setor: s,
+      trave: t,
+      ponto: "Múltiplos Pontos",
+      falha: "Manutenção Coletiva na Trave",
+      usuario: "Equipe Técnica"
+    });
+    setModoLote(true);
+  };
+
+  const fecharModal = () => {
+    setModalData(null);
+    setEtapaFechamento(false);
+    setSolucaoTexto('');
+    setModoLote(false);
   };
 
   const handleFinalizarChamado = async () => {
@@ -97,87 +151,22 @@ const VisualizarFalhas = () => {
     }
   };
 
-  const abrirModalLote = (s, t) => {
-    const chamadosDaTrave = falhas.filter(f => String(f.setor) === String(s) && String(f.trave) === String(t));
-    setModalData({
-      ids: chamadosDaTrave.map(f => f.id),
-      setor: s,
-      trave: t,
-      ponto: "Múltiplos Pontos",
-      falha: "Manutenção Coletiva na Trave",
-      usuario: "Equipe Técnica"
-    });
-    setModoLote(true);
-  };
-
-  const fecharModal = () => {
-    setModalData(null);
-    setEtapaFechamento(false);
-    setSolucaoTexto('');
-    setModoLote(false);
-  };
-
-  const getDadosPonto = (s, t, p) => {
-    const chamadosNoPonto = falhas.filter(f => {
-      if (String(f.setor) !== String(s) || String(f.trave) !== String(t)) return false;
-      const pStr = String(f.ponto || "");
-      if (pStr.includes("Inteira")) return true;
-      const regex = new RegExp(`(^|,|\\s|Ponto )${p}($|,|\\s)`);
-      return regex.test(pStr);
-    });
-    if (chamadosNoPonto.length === 0) return null;
-    if (chamadosNoPonto.length > 1) {
-      return {
-        id: chamadosNoPonto[0].id,
-        ids: chamadosNoPonto.map(f => f.id),
-        setor: s,
-        trave: t,
-        ponto: p,
-        falha: chamadosNoPonto.map(f => f.falha).join(' + '),
-        agrupado: true
-      };
-    }
-    return chamadosNoPonto[0];
-  };
-
-  const countTravesComFalha = (s) => {
-    const falhasDoSetor = falhas.filter(f => String(f.setor) === String(s));
-    const travesUnicas = new Set(falhasDoSetor.map(f => String(f.trave)));
-    return travesUnicas.size;
-  };
-
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row font-sans relative">
       <style>{`
         .ponto-container { position: relative; display: inline-block; }
         .tooltip-moderno {
-          visibility: hidden;
-          background-color: #0A0A0A;
-          color: #fff;
-          text-align: center;
-          padding: 8px 12px;
-          border-radius: 12px;
-          border: 1px solid rgba(220, 38, 38, 0.5);
-          position: absolute;
-          z-index: 50;
-          bottom: 125%;
-          left: 50%;
-          transform: translateX(-50%);
-          opacity: 0;
-          transition: opacity 0.3s;
-          white-space: nowrap;
-          font-size: 10px;
-          font-weight: 900;
-          text-transform: uppercase;
-          pointer-events: none;
+          visibility: hidden; background-color: #0A0A0A; color: #fff; text-align: center;
+          padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(220, 38, 38, 0.5);
+          position: absolute; z-index: 50; bottom: 125%; left: 50%; transform: translateX(-50%);
+          opacity: 0; transition: opacity 0.3s; white-space: nowrap; font-size: 10px;
+          font-weight: 900; text-transform: uppercase; pointer-events: none;
           box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
-        .ponto-container:hover .tooltip-moderno {
-          visibility: visible;
-          opacity: 1;
-        }
+        .ponto-container:hover .tooltip-moderno { visibility: visible; opacity: 1; }
       `}</style>
 
+      {/* MODAL */}
       {modalData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm">
           <div className="bg-[#0A0A0A] border border-white/10 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl">
@@ -223,6 +212,7 @@ const VisualizarFalhas = () => {
         </div>
       )}
 
+      {/* SIDEBAR */}
       <aside className="w-full md:w-64 border-r border-white/10 p-6 flex flex-col bg-black">
         <div className="flex items-center gap-3 mb-10 cursor-pointer" onClick={() => navigate('/dashboard')}>
           <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center font-bold text-xl">L</div>
@@ -238,6 +228,7 @@ const VisualizarFalhas = () => {
         </nav>
       </aside>
 
+      {/* MAIN CONTENT */}
       <main className="flex-1 p-6 md:p-10 overflow-y-auto">
         <header className="mb-10 flex justify-between items-end">
           <h2 className="text-4xl font-black uppercase italic">Live Monitor</h2>
@@ -253,14 +244,15 @@ const VisualizarFalhas = () => {
         </header>
 
         <div className="space-y-4">
-          {setores.map(setor => {
-            const numTravesAfetadas = countTravesComFalha(setor);
+          {SETORES.map(setor => {
+            const falhasDoSetor = falhas.filter(f => String(f.setor) === String(setor));
+            const numTravesAfetadas = new Set(falhasDoSetor.map(f => String(f.trave))).size;
             const isSetorAberto = setorAberto === setor;
             const itensCarrinho = isSetorAberto ? calcularCarrinhoSetor(setor) : [];
 
             return (
               <div key={setor} className={`border rounded-[2rem] overflow-hidden transition-all ${numTravesAfetadas > 0 ? 'border-red-600/30' : 'border-white/5 bg-[#0A0A0A]'}`}>
-                <button onClick={() => {setSetorAberto(isSetorAberto ? null : setor); setTraveAberta(null);}} className="w-full p-6 flex items-center justify-between">
+                <button onClick={() => handleSetorClick(setor)} className="w-full p-6 flex items-center justify-between">
                   <div className="flex items-center gap-5">
                     <div className={`p-4 rounded-2xl ${numTravesAfetadas > 0 ? 'bg-red-600 animate-pulse' : 'bg-white/5'}`}>
                       <HardDrive size={24} />
@@ -268,9 +260,7 @@ const VisualizarFalhas = () => {
                     <div className="text-left">
                       <span className="font-black text-2xl uppercase italic">{setor}</span>
                       {numTravesAfetadas > 0 && (
-                        <p className="text-[10px] font-black text-red-500 uppercase">
-                          {numTravesAfetadas} traves com problemas
-                        </p>
+                        <p className="text-[10px] font-black text-red-500 uppercase">{numTravesAfetadas} traves com problemas</p>
                       )}
                     </div>
                   </div>
@@ -279,9 +269,10 @@ const VisualizarFalhas = () => {
 
                 {isSetorAberto && (
                   <div className="p-8 pt-2 space-y-6">
+                    {/* CARRINHO DE INSUMOS */}
                     {itensCarrinho.length > 0 && (
                       <div className="bg-gradient-to-br from-[#0D0D0D] to-[#050505] border border-red-600/20 p-6 rounded-[2rem] shadow-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
                           <Box size={80} className="text-red-600 rotate-12" />
                         </div>
                         <div className="flex items-center gap-3 mb-5 relative z-10">
@@ -303,6 +294,8 @@ const VisualizarFalhas = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* LISTA DE TRAVES */}
                     <div className="space-y-4">
                       {[...Array(23)].map((_, i) => {
                         const tNum = i + 1;
@@ -311,7 +304,7 @@ const VisualizarFalhas = () => {
                         return (
                           <div key={tNum} className="space-y-2">
                             <div className={`flex items-center gap-2 p-2 rounded-2xl border transition-all ${chamadosDaTrave.length > 0 ? 'bg-red-600/10 border-red-600/40' : 'bg-white/[0.02] border-white/5'}`}>
-                              <button onClick={() => setTraveAberta(isTraveAberta ? null : tNum)} className="flex-1 p-3 flex justify-between items-center text-xs font-black">
+                              <button onClick={() => handleTraveToggle(tNum)} className="flex-1 p-3 flex justify-between items-center text-xs font-black">
                                 <span className="flex items-center gap-3 uppercase"><Hash size={16} className="text-red-600"/> Trave {tNum}</span>
                                 {chamadosDaTrave.length > 0 && (
                                   <div className="flex items-center gap-2 text-red-500">
@@ -321,21 +314,25 @@ const VisualizarFalhas = () => {
                                 )}
                               </button>
                               {chamadosDaTrave.length > 0 && (
-                                <button onClick={() => abrirModalLote(setor, tNum)} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-600 transition-all font-black text-[10px] uppercase">
+                                <button onClick={() => handleAbrirModalLote(setor, tNum)} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 rounded-xl hover:bg-green-600 transition-all font-black text-[10px] uppercase">
                                   <CheckCircle2 size={14} /> Resolver Trave
                                 </button>
                               )}
                             </div>
+                            
+                            {/* GRADE DE PONTOS */}
                             {isTraveAberta && (
                               <div className="p-6 bg-black/40 rounded-[2rem] grid grid-cols-5 sm:grid-cols-10 gap-4 border border-white/5 animate-in slide-in-from-top-2">
-                                {[...Array(15)].map((_, j) => {
+                                {[...Array(15)].map((__, j) => {
                                   const pNum = j + 1;
                                   const dadosPonto = getDadosPonto(setor, tNum, pNum);
                                   return (
                                     <div key={pNum} className="ponto-container">
                                       {dadosPonto && <div className="tooltip-moderno">{dadosPonto.falha}</div>}
-                                      <button onClick={() => { if (dadosPonto) { setModalData(dadosPonto); setModoLote(false); } }} 
-                                        className={`aspect-square w-full rounded-2xl flex items-center justify-center text-xs font-black border transition-all hover:scale-110 active:scale-95 ${dadosPonto ? 'bg-red-600 border-red-400 text-white animate-pulse shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 'bg-white/[0.02] border-white/5 text-gray-800'}`}>
+                                      <button 
+                                        onClick={() => handlePontoClick(dadosPonto)} 
+                                        className={`aspect-square w-full rounded-2xl flex items-center justify-center text-xs font-black border transition-all hover:scale-110 active:scale-95 ${dadosPonto ? 'bg-red-600 border-red-400 text-white animate-pulse shadow-[0_0_15px_rgba(220,38,38,0.3)]' : 'bg-white/[0.02] border-white/5 text-gray-800'}`}
+                                      >
                                         {pNum}
                                       </button>
                                     </div>

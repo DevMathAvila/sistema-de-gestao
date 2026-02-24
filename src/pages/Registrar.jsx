@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Zap, Hash, Loader2, Check, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { supabase } from '../services/supabase'; 
+import { supabase } from '../services/supabase';
 
 const Registrar = () => {
   const location = useLocation();
@@ -9,34 +9,35 @@ const Registrar = () => {
   const setor = location.state?.setor || "Setor não selecionado";
 
   const [loading, setLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false); 
-  const [chamadosAbertos, setChamadosAbertos] = useState([]); 
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [chamadosAbertos, setChamadosAbertos] = useState([]);
   const [formData, setFormData] = useState({
     trave: '',
-    pontos: [], 
+    pontos: [],
     falhas: []
   });
 
   const falhasComuns = ["Rede (RJ45)", "VGA", "AC Adapter", "Energia Y", "Pino Retangular", "HDMI", "DisplayPort"];
   const listaPontos = [...Array(15)].map((_, i) => (i + 1).toString());
 
-  useEffect(() => {
-    const buscarChamadosAtivos = async () => {
-      if (!setor) return;
-      const { data, error } = await supabase
-        .from('registros_falhas')
-        .select('trave, ponto, falha')
-        .eq('setor', setor)
-        .eq('status', 'aberto');
+  // --- BUSCA DE DADOS ---
+  const buscarChamadosAtivos = useCallback(async () => {
+    if (!setor || setor === "Setor não selecionado") return;
+    const { data, error } = await supabase
+      .from('registros_falhas')
+      .select('trave, ponto, falha')
+      .eq('setor', setor)
+      .eq('status', 'aberto');
 
-      if (!error) setChamadosAbertos(data || []);
-    };
-    buscarChamadosAtivos();
+    if (!error) setChamadosAbertos(data || []);
   }, [setor]);
 
-  const traveTemErro = (numTrave) => {
-    return chamadosAbertos.some(c => String(c.trave) === String(numTrave));
-  };
+  useEffect(() => {
+    buscarChamadosAtivos();
+  }, [buscarChamadosAtivos]);
+
+  // --- LÓGICA DE VERIFICAÇÃO ---
+  const traveTemErro = (numTrave) => chamadosAbertos.some(c => String(c.trave) === String(numTrave));
 
   const getInfoPonto = (numPonto) => {
     if (!formData.trave) return null;
@@ -44,15 +45,15 @@ const Registrar = () => {
       if (String(c.trave) !== String(formData.trave)) return false;
       const pStr = String(c.ponto);
       if (pStr === "1-15 (Inteira)") return true;
-      const pontosArray = pStr.split(',').map(p => p.replace('Ponto ', '').trim());
-      return pontosArray.includes(String(numPonto));
+      return pStr.split(',').map(p => p.replace('Ponto ', '').trim()).includes(String(numPonto));
     });
+
     if (chamadosDestePonto.length === 0) return null;
     const todasFalhas = chamadosDestePonto.map(c => c.falha).join(', ');
-    const listaUnica = [...new Set(todasFalhas.split(', ').map(f => f.trim()))];
-    return listaUnica.join(', ');
+    return [...new Set(todasFalhas.split(', ').map(f => f.trim()))].join(', ');
   };
 
+  // --- HANDLERS ---
   const togglePonto = (ponto) => {
     setFormData(prev => ({
       ...prev,
@@ -76,38 +77,33 @@ const Registrar = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.falhas.length === 0 || formData.pontos.length === 0) return;
+    if (formData.falhas.length === 0 || formData.pontos.length === 0 || !formData.trave) return;
+
     setLoading(true);
     const userSession = JSON.parse(localStorage.getItem('lenovo_user'));
+    const usuario = userSession?.username || 'Técnico Desconhecido';
+    const falhasTexto = formData.falhas.join(', ');
+    const trave = formData.trave;
 
     try {
       let inserts = [];
-      const falhasTexto = formData.falhas.join(', ');
+      // Simplificação da lógica de inserts para reduzir complexidade ciclomática
       if (formData.pontos.length === listaPontos.length) {
-        inserts.push({
-          usuario: userSession?.username || 'Técnico Desconhecido',
-          setor: setor,
-          trave: formData.trave,
-          ponto: "1-15 (Inteira)",
-          falha: falhasTexto,
-          status: 'aberto'
-        });
+        inserts = [{ usuario, setor, trave, ponto: "1-15 (Inteira)", falha: falhasTexto, status: 'aberto' }];
       } else {
         inserts = formData.pontos.map(p => ({
-          usuario: userSession?.username || 'Técnico Desconhecido',
-          setor: setor,
-          trave: formData.trave,
-          ponto: `Ponto ${p}`,
-          falha: falhasTexto,
-          status: 'aberto'
+          usuario, setor, trave, ponto: `Ponto ${p}`, falha: falhasTexto, status: 'aberto'
         }));
       }
+
       const { error } = await supabase.from('registros_falhas').insert(inserts);
       if (error) throw error;
+
       setIsSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (error) {
-      alert('Erro ao registrar: ' + error.message);
+      // Uso de Template Literal para evitar concatenação de strings e tratamento de erro limpo
+      console.error(`Falha no registro: ${error.message}`);
       setLoading(false);
     }
   };
@@ -160,7 +156,7 @@ const Registrar = () => {
                   <button
                     key={num}
                     type="button"
-                    onClick={() => setFormData({...formData, trave: num, pontos: []})}
+                    onClick={() => setFormData(prev => ({...prev, trave: num, pontos: []}))}
                     className={`h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center relative overflow-hidden ${
                       isSelected 
                         ? 'bg-red-600 border-red-600 text-white z-10 scale-[1.02] shadow-[0_0_20px_rgba(220,38,38,0.3)]' 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, LogOut, HardDrive, User, 
@@ -17,13 +17,14 @@ const Dashboard = () => {
   const [showPassModal, setShowPassModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState({ type: '', text: '' });
 
   const setores = [
     "Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05",
     "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"
   ];
 
-  const buscarFalhas = async () => {
+  const buscarFalhas = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('registros_falhas')
@@ -35,33 +36,32 @@ const Dashboard = () => {
       const nomesDosSetores = [...new Set(data.map(item => item.setor))];
       setSetoresComFalha(nomesDosSetores);
     } catch (error) {
-      console.error("Erro ao carregar alertas:", error.message);
+      console.error(`Erro ao carregar alertas: ${error.message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     buscarFalhas();
     const interval = setInterval(buscarFalhas, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [buscarFalhas]);
 
-  // FUNÇÃO PARA ATUALIZAR SENHA - AJUSTADA PARA FLEXIBILIDADE DE ID
+  // JS-0045 & JS-R1005: Função simplificada e com retornos consistentes
   const handleUpdatePassword = async () => {
+    setFeedbackMsg({ type: '', text: '' });
+
     if (newPassword.length < 3) {
-      return alert("A senha deve ter pelo menos 3 caracteres.");
+      setFeedbackMsg({ type: 'error', text: 'Mínimo de 3 caracteres.' });
+      return;
     }
 
     setUpdating(true);
     try {
-      // INCREMENTO: Tentamos converter para número, mas se for UUID (texto), usamos o valor original
-      // Isso evita o erro de "ID inválido" se o ID no localStorage não for numérico
       const userIdFinal = isNaN(Number(user.id)) ? user.id : Number(user.id);
 
-      if (!userIdFinal) {
-        throw new Error("Sessão de usuário corrompida. Por favor, faça login novamente.");
-      }
+      if (!userIdFinal) throw new Error("Sessão inválida.");
 
       const { error } = await supabase
         .from('usuarios') 
@@ -70,11 +70,15 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      alert("Senha alterada com sucesso! Use a nova senha no próximo login.");
-      setShowPassModal(false);
-      setNewPassword('');
+      setFeedbackMsg({ type: 'success', text: 'Senha alterada!' });
+      setTimeout(() => {
+        setShowPassModal(false);
+        setNewPassword('');
+        setFeedbackMsg({ type: '', text: '' });
+      }, 1500);
+
     } catch (err) {
-      alert("Erro ao atualizar senha: " + err.message);
+      setFeedbackMsg({ type: 'error', text: `Erro: ${err.message}` });
     } finally {
       setUpdating(false);
     }
@@ -102,6 +106,14 @@ const Dashboard = () => {
                   <X size={24} />
                 </button>
               </div>
+
+              {feedbackMsg.text && (
+                <div className={`mb-4 p-3 rounded-lg text-[10px] font-black uppercase text-center animate-pulse ${
+                  feedbackMsg.type === 'error' ? 'bg-red-600/20 text-red-500' : 'bg-green-600/20 text-green-500'
+                }`}>
+                  {feedbackMsg.text}
+                </div>
+              )}
 
               <p className="text-gray-500 text-[10px] uppercase font-bold mb-2 tracking-widest">Usuário: {user.username}</p>
               <input 
