@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Zap, Hash, Loader2, Check, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Zap, Hash, Loader2, Check, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../services/supabase'; 
 
 const Registrar = () => {
@@ -38,23 +38,18 @@ const Registrar = () => {
     return chamadosAbertos.some(c => String(c.trave) === String(numTrave));
   };
 
-  // LÓGICA CORRIGIDA: Agora ele acumula todas as falhas encontradas para o mesmo ponto
   const getInfoPonto = (numPonto) => {
     if (!formData.trave) return null;
-    
-    // Filtra todos os chamados que pertencem a esta trave e este ponto
     const chamadosDestePonto = chamadosAbertos.filter(c => {
       if (String(c.trave) !== String(formData.trave)) return false;
       const pStr = String(c.ponto);
-      return pStr.includes("Inteira") || pStr.includes(`Ponto ${numPonto}`) || pStr.split(',').map(s => s.trim()).includes(numPonto);
+      if (pStr === "1-15 (Inteira)") return true;
+      const pontosArray = pStr.split(',').map(p => p.replace('Ponto ', '').trim());
+      return pontosArray.includes(String(numPonto));
     });
-
     if (chamadosDestePonto.length === 0) return null;
-
-    // Une todas as falhas encontradas (ex: "RJ45" + "VGA") removendo duplicatas
     const todasFalhas = chamadosDestePonto.map(c => c.falha).join(', ');
     const listaUnica = [...new Set(todasFalhas.split(', ').map(f => f.trim()))];
-    
     return listaUnica.join(', ');
   };
 
@@ -82,45 +77,59 @@ const Registrar = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.falhas.length === 0 || formData.pontos.length === 0) return;
-    
     setLoading(true);
     const userSession = JSON.parse(localStorage.getItem('lenovo_user'));
 
     try {
-      const pontosFormatados = formData.pontos.length === listaPontos.length 
-        ? "1-15 (Inteira)" 
-        : formData.pontos.sort((a,b) => a-b).map(p => `Ponto ${p}`).join(', ');
-
-      const { error } = await supabase
-        .from('registros_falhas')
-        .insert([{ 
+      let inserts = [];
+      const falhasTexto = formData.falhas.join(', ');
+      if (formData.pontos.length === listaPontos.length) {
+        inserts.push({
           usuario: userSession?.username || 'Técnico Desconhecido',
           setor: setor,
           trave: formData.trave,
-          ponto: pontosFormatados,
-          falha: formData.falhas.join(', '), 
+          ponto: "1-15 (Inteira)",
+          falha: falhasTexto,
           status: 'aberto'
-        }]);
-
+        });
+      } else {
+        inserts = formData.pontos.map(p => ({
+          usuario: userSession?.username || 'Técnico Desconhecido',
+          setor: setor,
+          trave: formData.trave,
+          ponto: `Ponto ${p}`,
+          falha: falhasTexto,
+          status: 'aberto'
+        }));
+      }
+      const { error } = await supabase.from('registros_falhas').insert(inserts);
       if (error) throw error;
       setIsSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (error) {
-      alert('Erro: ' + error.message);
+      alert('Erro ao registrar: ' + error.message);
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white p-6 md:p-10 font-sans selection:bg-red-500/30">
+      
+      <style>{`
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #1f1f1f; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #333; }
+      `}</style>
+
       {isSuccess && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
-           <div className="text-center animate-in zoom-in duration-500">
+            <div className="text-center animate-in zoom-in duration-500">
               <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_rgba(34,197,94,0.6)]">
                 <Check size={48} className="text-white stroke-[4px]" />
               </div>
               <h2 className="text-4xl font-black uppercase tracking-tighter">Registrado!</h2>
-           </div>
+            </div>
         </div>
       )}
 
@@ -136,35 +145,41 @@ const Registrar = () => {
 
         <form onSubmit={handleSubmit} className="space-y-8 bg-[#0A0A0A] border border-white/5 p-8 rounded-[2.5rem] shadow-2xl">
           
-          {/* SELEÇÃO DE TRAVE NEON */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <label className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">
-              <Hash size={14} className="text-red-600" /> Localização / Trave
+              <Hash size={14} className="text-red-600" /> Selecione a Trave
             </label>
-            <select 
-              required
-              className={`w-full bg-black border-2 p-5 rounded-2xl focus:outline-none appearance-none cursor-pointer transition-all duration-500 text-sm font-black ${
-                traveTemErro(formData.trave) 
-                ? 'border-red-600 text-red-500 shadow-[0_0_25px_rgba(220,38,38,0.2)]' 
-                : 'border-white/5 text-white hover:border-white/20'
-              }`}
-              value={formData.trave}
-              onChange={(e) => setFormData({...formData, trave: e.target.value, pontos: []})}
-            >
-              <option value="">Selecione a trave...</option>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 h-48 overflow-y-auto pr-2 custom-scroll bg-black/40 p-3 rounded-3xl border border-white/5">
               {[...Array(23)].map((_, i) => {
                 const num = i + 1;
                 const erro = traveTemErro(num);
+                const isSelected = String(formData.trave) === String(num);
+
                 return (
-                  <option key={num} value={num} className="bg-black text-white">
-                    TRAVE {num.toString().padStart(2, '0')} {erro ? '⚠️ PENDENTE' : ''}
-                  </option>
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setFormData({...formData, trave: num, pontos: []})}
+                    className={`h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center relative overflow-hidden ${
+                      isSelected 
+                        ? 'bg-red-600 border-red-600 text-white z-10 scale-[1.02] shadow-[0_0_20px_rgba(220,38,38,0.3)]' 
+                        : erro 
+                          ? 'bg-red-950/20 border-red-600/50 text-red-500 animate-pulse hover:border-red-600 shadow-[inset_0_0_15px_rgba(220,38,38,0.1)]' 
+                          : 'bg-white/[0.02] border-white/5 text-gray-500 hover:border-white/20 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-[9px] font-black uppercase italic opacity-60 mb-0.5 leading-none">Trave</span>
+                    <span className="text-2xl font-black tracking-tighter leading-none">{num.toString().padStart(2, '0')}</span>
+                    {erro && !isSelected && (
+                      <AlertTriangle size={12} className="absolute top-2 right-2 text-red-500" />
+                    )}
+                  </button>
                 );
               })}
-            </select>
+            </div>
           </div>
 
-          {/* GRID DE PONTOS COM FLAGS E TOOLTIP ACUMULATIVO */}
           <div className="space-y-4">
             <div className="flex justify-between items-end px-2">
               <label className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
@@ -186,26 +201,25 @@ const Registrar = () => {
                     type="button"
                     disabled={!formData.trave}
                     onClick={() => togglePonto(p)}
-                    className={`relative p-5 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center gap-2 group ${
+                    className={`relative h-20 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center group ${
+                      !formData.trave ? 'opacity-20 cursor-not-allowed text-gray-800' : ''
+                    } ${
                       selecionado 
                         ? 'bg-red-600 border-red-600 text-white shadow-[0_0_30px_rgba(220,38,38,0.4)] scale-105 z-10' 
                         : falhasNoPonto 
-                          ? 'bg-red-950/10 border-red-600 text-red-600 shadow-[0_0_15px_rgba(220,38,38,0.15)]' 
+                          ? 'bg-red-950/10 border-red-600 text-red-600 shadow-[0_0_15px_rgba(220,38,38,0.15)] animate-pulse' 
                           : 'bg-black border-white/5 text-gray-600 hover:border-white/20 hover:text-white'
                     }`}
                   >
-                    <span className="text-xs font-black tracking-tighter">PT {p}</span>
+                    <span className="text-[10px] font-black uppercase italic opacity-60 mb-0.5 leading-none">Ponto</span>
+                    <span className="text-xl font-black tracking-tighter leading-none">{p}</span>
                     
                     {falhasNoPonto && (
-                      <>
-                        <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-ping" />
-                        {/* TOOLTIP NEON ACUMULATIVO */}
-                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap font-black shadow-[0_10px_20px_rgba(0,0,0,0.4)] z-50 border border-white/20 scale-90 group-hover:scale-100">
-                          <span className="opacity-70 text-[8px] block mb-0.5 uppercase">Chamados Abertos:</span>
-                          {falhasNoPonto}
-                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-600 rotate-45"></div>
-                        </div>
-                      </>
+                      <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap font-black shadow-[0_10px_20px_rgba(0,0,0,0.4)] z-50 border border-white/20 scale-90 group-hover:scale-100">
+                        <span className="opacity-70 text-[8px] block mb-0.5 uppercase">Aberto:</span>
+                        {falhasNoPonto}
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-600 rotate-45"></div>
+                      </div>
                     )}
                   </button>
                 );
@@ -213,7 +227,6 @@ const Registrar = () => {
             </div>
           </div>
 
-          {/* CHECKLIST DE FALHAS */}
           <div className="pt-6 border-t border-white/5 grid grid-cols-2 sm:grid-cols-3 gap-3">
             {falhasComuns.map((falha) => {
               const isSelected = formData.falhas.includes(falha);
