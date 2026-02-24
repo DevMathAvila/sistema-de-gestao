@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Zap, Hash, Loader2, Check, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { supabase } from '../services/supabase';
+import { ArrowLeft, Save, Zap, Hash, Loader2, Check, AlertTriangle, CheckCircle2, Layout, Cpu } from 'lucide-react';
+import { supabase } from '../services/supabase'; 
 
 const Registrar = () => {
   const location = useLocation();
@@ -9,51 +9,49 @@ const Registrar = () => {
   const setor = location.state?.setor || "Setor não selecionado";
 
   const [loading, setLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [chamadosAbertos, setChamadosAbertos] = useState([]);
+  const [isSuccess, setIsSuccess] = useState(false); 
+  const [chamadosAbertos, setChamadosAbertos] = useState([]); 
   const [formData, setFormData] = useState({
     trave: '',
-    pontos: [],
+    pontos: [], 
     falhas: []
   });
 
   const falhasComuns = ["Rede (RJ45)", "VGA", "AC Adapter", "Energia Y", "Pino Retangular", "HDMI", "DisplayPort"];
   const listaPontos = [...Array(15)].map((_, i) => (i + 1).toString());
 
-  // --- BUSCA DE DADOS ---
-  const buscarChamadosAtivos = useCallback(async () => {
-    if (!setor || setor === "Setor não selecionado") return;
-    const { data, error } = await supabase
-      .from('registros_falhas')
-      .select('trave, ponto, falha')
-      .eq('setor', setor)
-      .eq('status', 'aberto');
+  useEffect(() => {
+    const buscarChamadosAtivos = async () => {
+      if (!setor) return;
+      const { data, error } = await supabase
+        .from('registros_falhas')
+        .select('trave, ponto, falha')
+        .eq('setor', setor)
+        .eq('status', 'aberto')
+        .not('trave', 'is', null)
+        .not('ponto', 'is', null);
 
-    if (!error) setChamadosAbertos(data || []);
+      if (!error) setChamadosAbertos(data || []);
+    };
+    buscarChamadosAtivos();
   }, [setor]);
 
-  useEffect(() => {
-    buscarChamadosAtivos();
-  }, [buscarChamadosAtivos]);
-
-  // --- LÓGICA DE VERIFICAÇÃO ---
   const traveTemErro = (numTrave) => chamadosAbertos.some(c => String(c.trave) === String(numTrave));
 
   const getInfoPonto = (numPonto) => {
     if (!formData.trave) return null;
     const chamadosDestePonto = chamadosAbertos.filter(c => {
       if (String(c.trave) !== String(formData.trave)) return false;
-      const pStr = String(c.ponto);
+      const pStr = String(c.ponto || "");
       if (pStr === "1-15 (Inteira)") return true;
-      return pStr.split(',').map(p => p.replace('Ponto ', '').trim()).includes(String(numPonto));
+      const pontosArray = pStr.split(',').map(p => p.replace('Ponto ', '').trim());
+      return pontosArray.includes(String(numPonto));
     });
-
     if (chamadosDestePonto.length === 0) return null;
     const todasFalhas = chamadosDestePonto.map(c => c.falha).join(', ');
     return [...new Set(todasFalhas.split(', ').map(f => f.trim()))].join(', ');
   };
 
-  // --- HANDLERS ---
   const togglePonto = (ponto) => {
     setFormData(prev => ({
       ...prev,
@@ -78,184 +76,220 @@ const Registrar = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.falhas.length === 0 || formData.pontos.length === 0 || !formData.trave) return;
-
     setLoading(true);
     const userSession = JSON.parse(localStorage.getItem('lenovo_user'));
-    const usuario = userSession?.username || 'Técnico Desconhecido';
-    const falhasTexto = formData.falhas.join(', ');
-    const trave = formData.trave;
 
     try {
       let inserts = [];
-      // Simplificação da lógica de inserts para reduzir complexidade ciclomática
+      const falhasTexto = formData.falhas.join(', ');
+      
       if (formData.pontos.length === listaPontos.length) {
-        inserts = [{ usuario, setor, trave, ponto: "1-15 (Inteira)", falha: falhasTexto, status: 'aberto' }];
+        inserts.push({
+          usuario: userSession?.username || 'Técnico',
+          setor: setor,
+          trave: formData.trave,
+          ponto: "1-15 (Inteira)",
+          falha: falhasTexto,
+          status: 'aberto'
+        });
       } else {
         inserts = formData.pontos.map(p => ({
-          usuario, setor, trave, ponto: `Ponto ${p}`, falha: falhasTexto, status: 'aberto'
+          usuario: userSession?.username || 'Técnico',
+          setor: setor,
+          trave: formData.trave,
+          ponto: `Ponto ${p}`,
+          falha: falhasTexto,
+          status: 'aberto'
         }));
       }
 
       const { error } = await supabase.from('registros_falhas').insert(inserts);
       if (error) throw error;
-
       setIsSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (error) {
-      // Uso de Template Literal para evitar concatenação de strings e tratamento de erro limpo
-      console.error(`Falha no registro: ${error.message}`);
+      alert('Erro: ' + error.message);
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-6 md:p-10 font-sans selection:bg-red-500/30">
+    <div className="min-h-screen bg-[#020202] text-white p-4 md:p-10 font-sans relative overflow-hidden">
       
-      <style>{`
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #1f1f1f; border-radius: 10px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #333; }
-      `}</style>
+      {/* Background Decorativo - Efeito de profundidade flutuante */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-red-600/10 blur-[120px] rounded-full animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-600/5 blur-[100px] rounded-full" />
 
       {isSuccess && (
-        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
-            <div className="text-center animate-in zoom-in duration-500">
-              <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_rgba(34,197,94,0.6)]">
-                <Check size={48} className="text-white stroke-[4px]" />
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-24 h-24 bg-gradient-to-tr from-green-500 to-emerald-400 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_rgba(16,185,129,0.4)] rotate-12 animate-in zoom-in duration-300">
+                <Check size={48} className="text-black stroke-[3px]" />
               </div>
-              <h2 className="text-4xl font-black uppercase tracking-tighter">Registrado!</h2>
+              <h2 className="text-4xl font-black uppercase tracking-tighter italic">Processado com Sucesso!</h2>
             </div>
         </div>
       )}
 
-      <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 text-gray-500 hover:text-white mb-8 transition-colors group text-xs font-bold uppercase tracking-widest">
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Voltar ao Painel
-      </button>
+      <div className="relative z-10 max-w-4xl mx-auto">
+        {/* Header Navigation */}
+        <button onClick={() => navigate('/dashboard')} className="group flex items-center gap-3 text-gray-400 hover:text-white mb-12 transition-all">
+          <div className="p-2 rounded-full bg-white/5 border border-white/10 group-hover:bg-red-600 group-hover:border-red-600 transition-all">
+            <ArrowLeft size={18} />
+          </div>
+          <span className="text-xs font-black uppercase tracking-[0.3em]">Back to System</span>
+        </button>
 
-      <div className="max-w-2xl mx-auto">
-        <header className="mb-10 border-l-4 border-red-600 pl-6">
-          <h2 className="text-5xl font-black uppercase tracking-tighter italic">{setor}</h2>
-          <p className="text-gray-500 mt-1 font-medium">Diagnóstico e Reporte de Falhas</p>
+        {/* Brand Header */}
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+                <div className="h-[2px] w-8 bg-red-600"></div>
+                <span className="text-red-600 text-[10px] font-black uppercase tracking-widest">Active Terminal</span>
+            </div>
+            <h2 className="text-6xl md:text-7xl font-black uppercase tracking-tighter italic leading-none">{setor}</h2>
+          </div>
+          <div className="flex flex-col items-end">
+            <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-2xl backdrop-blur-md">
+                <Cpu size={16} className="text-red-600 animate-spin-slow" />
+                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wider">Hardware Diagnostic v2.0</span>
+            </div>
+          </div>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-8 bg-[#0A0A0A] border border-white/5 p-8 rounded-[2.5rem] shadow-2xl">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          <div className="space-y-4">
-            <label className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">
-              <Hash size={14} className="text-red-600" /> Selecione a Trave
-            </label>
+          {/* Coluna Esquerda: Seleção de Trave e Pontos */}
+          <div className="lg:col-span-7 space-y-6">
             
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 h-48 overflow-y-auto pr-2 custom-scroll bg-black/40 p-3 rounded-3xl border border-white/5">
-              {[...Array(23)].map((_, i) => {
-                const num = i + 1;
-                const erro = traveTemErro(num);
-                const isSelected = String(formData.trave) === String(num);
-
-                return (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setFormData(prev => ({...prev, trave: num, pontos: []}))}
-                    className={`h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center relative overflow-hidden ${
-                      isSelected 
-                        ? 'bg-red-600 border-red-600 text-white z-10 scale-[1.02] shadow-[0_0_20px_rgba(220,38,38,0.3)]' 
-                        : erro 
-                          ? 'bg-red-950/20 border-red-600/50 text-red-500 animate-pulse hover:border-red-600 shadow-[inset_0_0_15px_rgba(220,38,38,0.1)]' 
-                          : 'bg-white/[0.02] border-white/5 text-gray-500 hover:border-white/20 hover:text-white'
-                    }`}
-                  >
-                    <span className="text-[9px] font-black uppercase italic opacity-60 mb-0.5 leading-none">Trave</span>
-                    <span className="text-2xl font-black tracking-tighter leading-none">{num.toString().padStart(2, '0')}</span>
-                    {erro && !isSelected && (
-                      <AlertTriangle size={12} className="absolute top-2 right-2 text-red-500" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-end px-2">
-              <label className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                <Zap size={14} className="text-yellow-500" /> Pontos da Trave
+            {/* Seção Trave */}
+            <div className="bg-white/[0.03] border border-white/10 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl">
+              <label className="flex items-center gap-3 text-[11px] font-black text-gray-400 uppercase tracking-widest mb-6 px-2">
+                <Hash size={16} className="text-red-600" /> Rack ID (Trave)
               </label>
-              <button type="button" onClick={selecionarTodosPontos} className="text-[10px] font-black text-red-600 uppercase hover:text-red-400 transition-colors">
-                {formData.pontos.length === listaPontos.length ? "Desmarcar Tudo" : "Selecionar Tudo"}
-              </button>
+              
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                {[...Array(23)].map((_, i) => {
+                  const num = i + 1;
+                  const erro = traveTemErro(num);
+                  const isSelected = String(formData.trave) === String(num);
+                  return (
+                    <button key={num} type="button" onClick={() => setFormData({...formData, trave: num, pontos: []})}
+                      className={`h-14 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center relative overflow-hidden font-black text-lg ${
+                        isSelected 
+                        ? 'bg-red-600 border-red-500 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)] scale-105' 
+                        : erro 
+                        ? 'bg-red-950/30 border-red-600/50 text-red-500 animate-pulse' 
+                        : 'bg-white/5 border-white/5 text-gray-500 hover:border-white/20'
+                      }`}>
+                      {num}
+                      {erro && !isSelected && <div className="absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_8px_rgba(220,38,38,1)]"></div>}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-              {listaPontos.map((p) => {
-                const selecionado = formData.pontos.includes(p);
-                const falhasNoPonto = getInfoPonto(p);
-                
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    disabled={!formData.trave}
-                    onClick={() => togglePonto(p)}
-                    className={`relative h-20 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center group ${
-                      !formData.trave ? 'opacity-20 cursor-not-allowed text-gray-800' : ''
-                    } ${
-                      selecionado 
-                        ? 'bg-red-600 border-red-600 text-white shadow-[0_0_30px_rgba(220,38,38,0.4)] scale-105 z-10' 
-                        : falhasNoPonto 
-                          ? 'bg-red-950/10 border-red-600 text-red-600 shadow-[0_0_15px_rgba(220,38,38,0.15)] animate-pulse' 
-                          : 'bg-black border-white/5 text-gray-600 hover:border-white/20 hover:text-white'
-                    }`}
-                  >
-                    <span className="text-[10px] font-black uppercase italic opacity-60 mb-0.5 leading-none">Ponto</span>
-                    <span className="text-xl font-black tracking-tighter leading-none">{p}</span>
-                    
-                    {falhasNoPonto && (
-                      <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap font-black shadow-[0_10px_20px_rgba(0,0,0,0.4)] z-50 border border-white/20 scale-90 group-hover:scale-100">
-                        <span className="opacity-70 text-[8px] block mb-0.5 uppercase">Aberto:</span>
-                        {falhasNoPonto}
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-600 rotate-45"></div>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
-          <div className="pt-6 border-t border-white/5 grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {falhasComuns.map((falha) => {
-              const isSelected = formData.falhas.includes(falha);
-              return (
-                <button
-                  key={falha}
-                  type="button"
-                  onClick={() => toggleFalha(falha)}
-                  className={`p-4 rounded-xl border-2 transition-all flex items-center justify-between text-[10px] font-black uppercase tracking-tighter ${
-                    isSelected 
-                    ? 'bg-red-600 border-red-600 text-white shadow-lg scale-95' 
-                    : 'bg-white/5 border-transparent text-gray-500 hover:bg-white/10'
-                  }`}
-                >
-                  {falha}
-                  {isSelected && <CheckCircle2 size={14} />}
+            {/* Seção Pontos */}
+            <div className={`bg-white/[0.03] border border-white/10 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl transition-all duration-500 ${!formData.trave ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+              <div className="flex justify-between items-center mb-6 px-2">
+                <label className="flex items-center gap-3 text-[11px] font-black text-gray-400 uppercase tracking-widest">
+                  <Layout size={16} className="text-blue-500" /> Unit Slots (Pontos)
+                </label>
+                <button type="button" onClick={selecionarTodosPontos} className="text-[10px] font-black text-blue-500 uppercase hover:text-white transition-colors">
+                  {formData.pontos.length === listaPontos.length ? "[ Deselect All ]" : "[ Select All ]"}
                 </button>
-              );
-            })}
+              </div>
+              
+              <div className="grid grid-cols-5 gap-3">
+                {listaPontos.map((p) => {
+                  const selecionado = formData.pontos.includes(p);
+                  const falhasNoPonto = getInfoPonto(p);
+                  return (
+                    <button key={p} type="button" onClick={() => togglePonto(p)}
+                      className={`relative h-14 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center group font-black ${
+                        selecionado 
+                        ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]' 
+                        : falhasNoPonto 
+                        ? 'bg-red-950/20 border-red-600 text-red-600' 
+                        : 'bg-white/5 border-white/5 text-gray-600 hover:border-white/20'
+                      }`}>
+                      {p}
+                      {falhasNoPonto && (
+                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[8px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 shadow-xl transition-all pointer-events-none uppercase tracking-tighter">
+                          {falhasNoPonto}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          <button 
-            type="submit"
-            disabled={formData.falhas.length === 0 || !formData.trave || formData.pontos.length === 0 || loading}
-            className={`w-full p-6 rounded-2xl font-black text-xl flex items-center justify-center gap-4 transition-all mt-4 ${
-              loading ? 'bg-gray-900 text-gray-700' : 'bg-red-600 hover:bg-red-700 text-white shadow-[0_20px_40px_rgba(220,38,38,0.2)] active:scale-95'
-            }`}
-          >
-            {loading ? <Loader2 className="animate-spin" size={28} /> : <Save size={28} />}
-            <span className="italic uppercase tracking-tighter">{loading ? 'Sincronizando...' : 'Finalizar Registro'}</span>
-          </button>
+          {/* Coluna Direita: Falhas e Submit */}
+          <div className="lg:col-span-5 space-y-6 flex flex-col">
+            <div className="bg-gradient-to-b from-white/[0.08] to-transparent border border-white/10 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl flex-1">
+              <label className="flex items-center gap-3 text-[11px] font-black text-gray-400 uppercase tracking-widest mb-8">
+                <Zap size={16} className="text-yellow-500" /> Failure Type
+              </label>
+              
+              <div className="space-y-3">
+                {falhasComuns.map((falha) => {
+                  const isSelected = formData.falhas.includes(falha);
+                  return (
+                    <button key={falha} type="button" onClick={() => toggleFalha(falha)}
+                      className={`w-full p-5 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between font-black uppercase tracking-tighter text-sm ${
+                        isSelected 
+                        ? 'bg-gradient-to-r from-red-600 to-red-500 border-red-400 text-white shadow-lg translate-x-2' 
+                        : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
+                      }`}>
+                      {falha}
+                      {isSelected ? <CheckCircle2 size={18} /> : <div className="w-5 h-5 rounded-full border-2 border-white/10" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button type="submit" disabled={formData.falhas.length === 0 || !formData.trave || formData.pontos.length === 0 || loading}
+              className={`w-full p-8 rounded-[2rem] font-black text-2xl flex items-center justify-center gap-4 transition-all duration-500 relative overflow-hidden group shadow-2xl ${
+                loading ? 'bg-gray-800' : 'bg-white text-black hover:bg-red-600 hover:text-white active:scale-95 disabled:opacity-20 disabled:grayscale'
+              }`}>
+              {loading ? (
+                <Loader2 className="animate-spin" size={32} />
+              ) : (
+                <>
+                  <Save size={28} className="group-hover:rotate-12 transition-transform" />
+                  <span className="italic uppercase tracking-tighter">Execute System log</span>
+                </>
+              )}
+              {/* Overlay de brilho no botão */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            </button>
+          </div>
         </form>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+        }
+        .custom-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.02);
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+          background: rgba(220, 38, 38, 0.5);
+          border-radius: 10px;
+        }
+      `}} />
     </div>
   );
 };

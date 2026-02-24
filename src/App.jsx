@@ -1,14 +1,14 @@
-import React from 'react'; // Adicionado de volta para evitar o ReferenceError
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard'; 
 import Registrar from './pages/Registrar'; 
 import VisualizarFalhas from './pages/VisualizarFalhas'; 
-import Admin from './pages/Admin';
+import Admin from './pages/Admin'; // IMPORTANTE: Importando o novo Admin
 
 const PrivateRoute = ({ children }) => {
-  const isAuthenticated = Boolean(localStorage.getItem('lenovo_user'));
-  return isAuthenticated ? children : <Navigate replace to="/" />;
+  const user = localStorage.getItem('lenovo_user');
+  return user ? children : <Navigate to="/" />;
 };
 
 function App() {
@@ -45,6 +45,7 @@ function App() {
             } 
           />
 
+          {/* NOVA ROTA: Painel Administrativo */}
           <Route 
             path="/admin" 
             element={
@@ -54,7 +55,7 @@ function App() {
             } 
           />
 
-          <Route path="*" element={<Navigate replace to="/" />} />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
     </Router>
