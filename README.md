@@ -4,6 +4,14 @@ Mapeamento de Trave Neon: Identificação instantânea de pendências. Ao seleci
 
 Flags de Pontos (PT) em Tempo Real: Pontos com falhas são destacados com ícones de alerta e animações de pulsação, diferenciando-se visualmente de pontos livres.
 
+
+### 🛒 Carrinho de Ferramentas Inteligente (Smart Logistics)
+O sistema agora conta com um motor de cálculo de insumos por setor (Run In). 
+
+- **Consolidação Automática:** Ao abrir um setor, o técnico visualiza instantaneamente o checklist de materiais necessários para sanar todas as falhas daquela linha.
+- **Cálculo de Volume:** A lógica diferencia falhas pontuais de falhas de "Trave Inteira", multiplicando automaticamente a quantidade de componentes (ex: 15 cabos para uma trave inteira vs 1 cabo para um ponto individual).
+- **Eficiência Operacional:** Reduz o tempo de deslocamento ao almoxarifado, garantindo que o técnico já chegue ao setor com o kit de reparo completo.
+
 Tooltips Acumulativos: Lógica inteligente que agrupa falhas. Ao passar o mouse sobre um ponto com erro, o sistema exibe um balão informando todos os problemas ativos (ex: "Rede (RJ45), VGA"), evitando registros duplicados.
 
 Persistência de Seleção: O técnico pode optar por abrir um novo chamado em um ponto já ocupado se o diagnóstico for diferente, garantindo total flexibilidade operacional.

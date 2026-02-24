@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, HardDrive, Hash, AlertTriangle, 
   User, LogOut, ChevronRight, ChevronDown, Eye, X, Clock, 
-  ShieldAlert, Check, ArrowRight, MessageSquare, Loader2
+  ShieldAlert, Check, ArrowRight, MessageSquare, Loader2, Briefcase
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -20,6 +20,29 @@ const VisualizarFalhas = () => {
 
   const user = JSON.parse(localStorage.getItem('lenovo_user')) || { username: 'Técnico' };
   const setores = ["Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05", "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"];
+
+  // LÓGICA DO CARRINHO DE FERRAMENTAS (RESUMO POR SETOR)
+  const gerarResumoMateriais = (setorNome) => {
+    const resumo = {};
+    const falhasDoSetor = falhas.filter(f => f.setor === setorNome);
+
+    falhasDoSetor.forEach(f => {
+      if (!f.falha) return;
+      
+      const listaFalhas = f.falha.split(',').map(s => s.trim());
+      // Lógica: Se for inteira conta 15, senão conta os pontos listados na string
+      const qtdPontos = f.ponto === "1-15 (Inteira)" 
+        ? 15 
+        : (f.ponto ? f.ponto.split(',').length : 1);
+      
+      listaFalhas.forEach(item => {
+        if (item) {
+          resumo[item] = (resumo[item] || 0) + qtdPontos;
+        }
+      });
+    });
+    return resumo;
+  };
 
   const buscarFalhas = async () => {
     try {
@@ -80,17 +103,13 @@ const VisualizarFalhas = () => {
   const countFalhasSetor = (s) => falhas.filter(f => f.setor === s).length;
   const temFalhaNaTrave = (s, t) => falhas.some(f => f.setor === s && f.trave === t.toString());
 
-  // LÓGICA ATUALIZADA PARA DETECTAR MÚLTIPLOS PONTOS
   const getFalhaNoPonto = (s, t, p) => {
     return falhas.find(f => {
       const mesmoSetorETrave = f.setor === s && f.trave === t.toString();
       const pontoString = f.ponto || "";
-      
-      // Verifica se o ponto atual está incluso na string do banco
       const pontoMatch = pontoString === "1-15 (Inteira)" || 
                          pontoString.includes(`Ponto ${p}`) || 
                          pontoString === p.toString();
-
       return mesmoSetorETrave && pontoMatch;
     });
   };
@@ -208,6 +227,9 @@ const VisualizarFalhas = () => {
             {setores.map(setor => {
               const numFalhas = countFalhasSetor(setor);
               const isSetorAberto = setorAberto === setor;
+              
+              // CHAMADA CORRIGIDA DA FUNÇÃO
+              const materiais = gerarResumoMateriais(setor);
 
               return (
                 <div key={setor} className={`border rounded-[2rem] overflow-hidden transition-all duration-500 ${numFalhas > 0 ? 'border-red-600/30 bg-red-950/5' : 'border-white/5 bg-[#0A0A0A]'}`}>
@@ -225,7 +247,31 @@ const VisualizarFalhas = () => {
                   </button>
 
                   {isSetorAberto && (
-                    <div className="p-8 pt-2 space-y-4 animate-in slide-in-from-top-4 duration-500">
+                    <div className="p-8 pt-2 space-y-6 animate-in slide-in-from-top-4 duration-500">
+                      
+                      {/* CARRINHO DE FERRAMENTAS - RESUMO POR RUNIN */}
+                      {Object.keys(materiais).length > 0 && (
+                        <div className="bg-black/40 border border-white/5 rounded-[2rem] p-6 mb-4 shadow-inner animate-in zoom-in-95 duration-300">
+                          <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-red-600 rounded-lg shadow-lg shadow-red-900/20">
+                              <Briefcase size={18} className="text-white" />
+                            </div>
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Kit de Manutenção: {setor}</h4>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            {Object.entries(materiais).map(([nome, qtd]) => (
+                              <div key={nome} className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 flex items-center justify-between group hover:border-red-600/30 transition-all">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase group-hover:text-white truncate pr-2">{nome}</span>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <span className="text-lg font-black text-red-600">{qtd}</span>
+                                  <span className="text-[8px] font-black text-gray-700 uppercase tracking-tighter font-mono">UN</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {[...Array(23)].map((_, i) => {
                         const tNum = i + 1;
                         const traveComErro = temFalhaNaTrave(setor, tNum);
@@ -235,7 +281,7 @@ const VisualizarFalhas = () => {
                           <div key={tNum} className="group">
                             <button onClick={() => setTraveAberta(isTraveAberta ? null : tNum)} className={`w-full p-5 flex justify-between items-center text-xs font-black transition-all rounded-[1.5rem] border ${traveComErro ? 'bg-red-600/10 border-red-600/40 text-red-500 shadow-xl' : 'bg-white/[0.02] border-white/5 text-gray-500 hover:border-white/10'}`}>
                               <span className="flex items-center gap-3"><Hash size={16} className={traveComErro ? "text-red-500" : "text-red-600"}/> TRAVE {String(tNum).padStart(2, '0')}</span>
-                              {traveComErro ? <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] animate-bounce">AÇÃO NECESSÁRIA</span> : <ChevronRight size={14} className="opacity-20"/>}
+                              {traveComErro ? <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] animate-bounce tracking-widest">AÇÃO NECESSÁRIA</span> : <ChevronRight size={14} className="opacity-20"/>}
                             </button>
 
                             {isTraveAberta && (
