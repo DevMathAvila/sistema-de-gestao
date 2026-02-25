@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, HardDrive, Hash, ChevronDown, 
   Eye, X, ShieldAlert, ArrowRight, Sun, Moon,
-  Box, Zap, Activity, Bell, BellRing, Octagon, Monitor
+  Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -46,6 +46,52 @@ const VisualizarFalhas = () => {
     return () => clearInterval(interval);
   }, [buscarFalhas]);
 
+  // --- LÓGICA DE ALERTAS PRIORIZADOS ---
+  const getAlertasSininho = () => {
+    const grupos = {};
+
+    falhas.forEach(f => {
+      const chave = `${f.setor}-T${f.trave}`;
+      if (!grupos[chave]) {
+        grupos[chave] = { 
+          setor: f.setor, 
+          trave: f.trave, 
+          count: 0, 
+          isTraveToda: false,
+          falhaExemplo: f.falha 
+        };
+      }
+      grupos[chave].count += 1;
+      if (normalizar(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15')) {
+        grupos[chave].isTraveToda = true;
+      }
+    });
+
+    return Object.values(grupos)
+      .filter(g => g.isTraveToda || g.count >= 5)
+      .sort((a, b) => {
+        // Trave Toda (Parada) sempre no topo
+        if (a.isTraveToda && !b.isTraveToda) return -1;
+        if (!a.isTraveToda && b.isTraveToda) return 1;
+        return b.count - a.count;
+      });
+  };
+
+  const alertasCriticos = getAlertasSininho();
+
+  const irParaTraveRecorrente = (setor, trave) => {
+    setSetorAberto(setor);
+    setTraveAberta(Number(trave));
+    setShowNotifications(false);
+
+    setTimeout(() => {
+      const elemento = document.getElementById(`anchor-${normalizar(setor)}-${trave}`);
+      if (elemento) {
+        elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 300);
+  };
+
   const getStatusTrave = (chamados) => {
     const temTraveParada = chamados.some(f => 
         normalizar(f.ponto).includes('travetoda') || 
@@ -59,11 +105,6 @@ const VisualizarFalhas = () => {
     if (total >= 1) return { label: 'ATENÇÃO (1-5)', color: 'bg-yellow-500', textColor: 'text-black', level: 1 };
     return { label: 'OPERACIONAL', color: 'bg-emerald-500', textColor: 'text-white', level: 0 };
   };
-
-  const alertasCriticos = falhas.filter(f => 
-    normalizar(f.ponto).includes('travetoda') || 
-    String(f.ponto).includes('1-15')
-  );
 
   const calcularCarrinhoSetor = (nomeSetor) => {
     const falhasDoSetor = falhas.filter(f => normalizar(f.setor) === normalizar(nomeSetor));
@@ -190,41 +231,90 @@ const VisualizarFalhas = () => {
           </div>
           
           <div className="flex items-center gap-3">
-             <div className="relative">
+              <div className="relative">
                 <button onClick={() => setShowNotifications(!showNotifications)}
-                  className={`p-4 rounded-2xl transition-all relative border shadow-md ${alertasCriticos.length > 0 ? 'bg-purple-600 border-purple-400 text-white animate-bounce' : `${colors.card} ${colors.subtext}`}`}>
+                  className={`p-4 rounded-2xl transition-all relative border shadow-md ${alertasCriticos.length > 0 ? (alertasCriticos.some(a => a.isTraveToda) ? 'bg-purple-600 border-purple-400 text-white animate-bounce' : 'bg-red-600 border-red-400 text-white') : `${colors.card} ${colors.subtext}`}`}>
                   {alertasCriticos.length > 0 ? <BellRing size={20} /> : <Bell size={20} />}
                   {alertasCriticos.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-white text-purple-600 text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border border-purple-600">
+                    <span className="absolute -top-1 -right-1 bg-white text-red-600 text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border border-gray-200">
                       {alertasCriticos.length}
                     </span>
                   )}
                 </button>
+
                 {showNotifications && (
-                  <div className="absolute right-0 mt-4 w-72 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl z-[120] overflow-hidden animate-in fade-in zoom-in-95">
-                    <div className="p-4 border-b border-white/5 flex justify-between items-center">
-                      <span className="text-[9px] font-black tracking-widest uppercase text-purple-500">Alertas Críticos</span>
-                      <button onClick={() => setShowNotifications(false)} className="text-gray-500"><X size={16}/></button>
+                  <div className="absolute right-0 mt-4 w-80 bg-[#0A0A0A] border border-white/10 rounded-3xl shadow-2xl z-[120] overflow-hidden animate-in fade-in zoom-in-95">
+                    <div className="p-5 border-b border-white/5 flex justify-between items-center bg-gradient-to-r from-black to-zinc-900">
+                      <div>
+                        <span className="text-[10px] font-black tracking-widest uppercase text-white">Central de Alertas</span>
+                        <p className="text-[7px] text-gray-500 font-bold uppercase tracking-[0.2em]">Prioridade Crítica</p>
+                      </div>
+                      <button onClick={() => setShowNotifications(false)} className="text-gray-500 hover:text-white transition-colors"><X size={18}/></button>
                     </div>
-                    <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                      {alertasCriticos.map(alerta => (
-                        <div key={alerta.id} className="p-4 border-b border-white/5 hover:bg-white/[0.02]">
-                          <p className="text-[11px] font-black uppercase text-white">{alerta.setor} • T{alerta.trave}</p>
-                          <p className="text-[9px] text-red-500 font-bold uppercase">{alerta.falha}</p>
+                    <div className="max-h-[400px] overflow-y-auto custom-scrollbar bg-black/40">
+                      {alertasCriticos.length === 0 ? (
+                        <div className="p-12 text-center opacity-20 text-[10px] font-black uppercase tracking-widest">Nenhuma anormalidade</div>
+                      ) : (
+                        <div className="flex flex-col">
+                          {alertasCriticos.map((alerta, idx) => {
+                            const isFirstParada = alerta.isTraveToda && (idx === 0);
+                            const isFirstRecorrente = !alerta.isTraveToda && (idx === 0 || alertasCriticos[idx-1].isTraveToda);
+
+                            return (
+                              <React.Fragment key={idx}>
+                                {isFirstParada && (
+                                  <div className="px-4 py-2 bg-purple-600/10 border-y border-purple-500/20 flex items-center gap-2">
+                                    <Octagon size={10} className="text-purple-500 animate-pulse" />
+                                    <span className="text-[7px] font-black text-purple-500 uppercase tracking-widest">Traves Bloqueadas</span>
+                                  </div>
+                                )}
+                                {isFirstRecorrente && (
+                                  <div className="px-4 py-2 bg-red-600/10 border-y border-red-500/20 flex items-center gap-2">
+                                    <AlertTriangle size={10} className="text-red-500" />
+                                    <span className="text-[7px] font-black text-red-500 uppercase tracking-widest">Alta Recorrência (+5)</span>
+                                  </div>
+                                )}
+                                <div 
+                                  onClick={() => irParaTraveRecorrente(alerta.setor, alerta.trave)}
+                                  className={`p-4 border-b border-white/5 hover:bg-white/[0.05] cursor-pointer group transition-all relative overflow-hidden ${alerta.isTraveToda ? 'bg-purple-600/[0.03]' : ''}`}
+                                >
+                                  {alerta.isTraveToda && <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-600 animate-pulse" />}
+                                  
+                                  <div className="flex justify-between items-start">
+                                     <p className={`text-[11px] font-black uppercase transition-colors ${alerta.isTraveToda ? 'text-purple-400 group-hover:text-purple-300' : 'text-white group-hover:text-red-500'}`}>
+                                       {alerta.setor} <span className="opacity-40 ml-1">•</span> T{alerta.trave}
+                                     </p>
+                                     {alerta.isTraveToda ? (
+                                       <span className="bg-purple-600 text-[7px] px-2 py-0.5 rounded-full font-black text-white shadow-lg shadow-purple-500/40 animate-bounce">STOP</span>
+                                     ) : (
+                                       <span className="bg-red-600 text-[7px] px-2 py-0.5 rounded-full font-black text-white">+{alerta.count} FALHAS</span>
+                                     )}
+                                  </div>
+                                  <p className="text-[9px] text-gray-500 font-bold uppercase mt-1 flex items-center gap-1">
+                                     {alerta.isTraveToda ? 'Parada Total de Linha' : 'Multiplos Pontos com Defeito'}
+                                     <ArrowRight size={8} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                                  </p>
+                                </div>
+                              </React.Fragment>
+                            );
+                          })}
                         </div>
-                      ))}
+                      )}
+                    </div>
+                    <div className="p-3 bg-zinc-900/50 text-center">
+                       <p className="text-[6px] font-black text-gray-600 uppercase tracking-widest">Sistema de Alerta em Tempo Real</p>
                     </div>
                   </div>
                 )}
-             </div>
+              </div>
 
-             <div className={`px-4 py-3 ${theme === 'dark' ? 'bg-red-600/5' : 'bg-red-50'} rounded-2xl border ${theme === 'dark' ? 'border-red-600/20' : 'border-red-100'} flex items-center gap-3`}>
+              <div className={`px-4 py-3 ${theme === 'dark' ? 'bg-red-600/5' : 'bg-red-50'} rounded-2xl border ${theme === 'dark' ? 'border-red-600/20' : 'border-red-100'} flex items-center gap-3`}>
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute h-full w-full rounded-full bg-red-500 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
                 </span>
                 <span className="text-[10px] font-black text-red-600 uppercase italic">{falhas.length} Falhas Ativas</span>
-             </div>
+              </div>
           </div>
         </header>
 
@@ -286,7 +376,7 @@ const VisualizarFalhas = () => {
                         const isTraveAberta = traveAberta === tNum;
                         
                         return (
-                          <div key={tNum}>
+                          <div key={tNum} id={`anchor-${normalizar(setor)}-${tNum}`}>
                             <div className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${chamadosDaTrave.length > 0 ? `border-${status.color.split('-')[1]}-500/20 bg-white/[0.01]` : 'border-transparent'}`}>
                               <button onClick={() => setTraveAberta(isTraveAberta ? null : tNum)} className="flex-1 flex items-center justify-between px-3">
                                 <span className={`flex items-center gap-2 text-[10px] font-black uppercase italic ${chamadosDaTrave.length > 0 ? (status.level === 4 ? 'text-purple-500' : 'text-red-600') : 'text-gray-600'}`}>
@@ -329,7 +419,6 @@ const VisualizarFalhas = () => {
                                         {pNum}
                                       </button>
 
-                                      {/* TOOLTIP DESIGNER */}
                                       {dadosPonto && (
                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-[#0f0f0f]/95 backdrop-blur-md border border-white/10 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] pointer-events-none shadow-2xl">
                                           <div className="flex items-center gap-2 mb-1">
