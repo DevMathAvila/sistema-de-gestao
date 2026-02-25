@@ -46,14 +46,41 @@ const VisualizarFalhas = () => {
     return () => clearInterval(interval);
   }, [buscarFalhas]);
 
+  const getStatusTrave = (chamados) => {
+    const temTraveParada = chamados.some(f => normalizar(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15'));
+    
+    // Incrementação: Conta cada falha individual dentro da string (ex: "VGA + Rede" conta como 2)
+    let totalFalhasReais = 0;
+    chamados.forEach(f => {
+      if (f.falha) {
+        const partes = f.falha.split(/[+,]/).filter(p => p.trim() !== "");
+        totalFalhasReais += partes.length;
+      } else {
+        totalFalhasReais += 1;
+      }
+    });
+
+    if (temTraveParada) return { label: 'TRAVE PARADA', color: 'bg-purple-600', textColor: 'text-white', level: 4 };
+    
+    // Correção das Badges baseada no total real de falhas encontradas
+    if (totalFalhasReais >= 11) return { label: `URGÊNCIA (${totalFalhasReais})`, color: 'bg-red-600', textColor: 'text-white', level: 3 };
+    if (totalFalhasReais >= 6) return { label: `PRIORIDADE (${totalFalhasReais})`, color: 'bg-orange-500', textColor: 'text-white', level: 2 };
+    if (totalFalhasReais >= 1) return { label: `ATENÇÃO (${totalFalhasReais})`, color: 'bg-yellow-500', textColor: 'text-black', level: 1 };
+    
+    return { label: 'OPERACIONAL', color: 'bg-emerald-500', textColor: 'text-white', level: 0 };
+  };
+
   const getAlertasSininho = () => {
     const grupos = {};
     falhas.forEach(f => {
       const chave = `${f.setor}-T${f.trave}`;
       if (!grupos[chave]) {
-        grupos[chave] = { setor: f.setor, trave: f.trave, count: 0, isTraveToda: false, falhaExemplo: f.falha };
+        grupos[chave] = { setor: f.setor, trave: f.trave, count: 0, isTraveToda: false };
       }
-      grupos[chave].count += 1;
+      
+      const numFalhasNoRegistro = (f.falha || "").split(/[+,]/).filter(p => p.trim() !== "").length || 1;
+      grupos[chave].count += numFalhasNoRegistro;
+
       if (normalizar(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15')) {
         grupos[chave].isTraveToda = true;
       }
@@ -75,16 +102,6 @@ const VisualizarFalhas = () => {
       const elemento = document.getElementById(`anchor-${normalizar(setor)}-${trave}`);
       if (elemento) elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 300);
-  };
-
-  const getStatusTrave = (chamados) => {
-    const temTraveParada = chamados.some(f => normalizar(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15'));
-    const total = chamados.length;
-    if (temTraveParada) return { label: 'TRAVE PARADA', color: 'bg-purple-600', textColor: 'text-white', level: 4 };
-    if (total >= 11) return { label: 'URGÊNCIA (11-15)', color: 'bg-red-600', textColor: 'text-white', level: 3 };
-    if (total >= 6) return { label: 'PRIORIDADE (6-10)', color: 'bg-orange-500', textColor: 'text-white', level: 2 };
-    if (total >= 1) return { label: 'ATENÇÃO (1-5)', color: 'bg-yellow-500', textColor: 'text-black', level: 1 };
-    return { label: 'OPERACIONAL', color: 'bg-emerald-500', textColor: 'text-white', level: 0 };
   };
 
   const calcularCarrinhoSetor = (nomeSetor) => {
@@ -281,7 +298,7 @@ const VisualizarFalhas = () => {
                   <span className="animate-ping absolute h-full w-full rounded-full bg-red-500 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
                 </span>
-                <span className="text-[10px] font-black text-red-600 uppercase italic">{falhas.length} Falhas Ativas</span>
+                <span className="text-[10px] font-black text-red-600 uppercase italic">{falhas.length} Registros Ativos</span>
               </div>
           </div>
         </header>
@@ -347,7 +364,7 @@ const VisualizarFalhas = () => {
                                     <Hash size={14} /> Trave {tNum.toString().padStart(2, '0')}
                                 </span>
                                 {chamadosDaTrave.length > 0 && (
-                                  <span className={`px-3 py-1 ${status.color} ${status.textColor} text-[8px] font-black rounded-full`}>
+                                  <span className={`px-3 py-1 ${status.color} ${status.textColor} text-[8px] font-black rounded-full transition-all duration-300`}>
                                     {status.label}
                                   </span>
                                 )}
