@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Zap, Hash, Loader2, Check, AlertTriangle, CheckCircle2, Layout, Cpu } from 'lucide-react';
+import { ArrowLeft, Save, Zap, Hash, Loader2, Check, AlertTriangle, CheckCircle2, Layout, Cpu, Sun, Moon } from 'lucide-react';
 import { supabase } from '../services/supabase'; 
 
 const Registrar = () => {
@@ -11,13 +11,14 @@ const Registrar = () => {
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false); 
   const [chamadosAbertos, setChamadosAbertos] = useState([]); 
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [formData, setFormData] = useState({
     trave: '',
     pontos: [], 
     falhas: []
   });
 
-  const falhasComuns = ["Rede (RJ45)", "VGA", "AC Adapter", "Energia Y", "Pino Retangular", "HDMI", "DisplayPort"];
+  const falhasComuns = ["Rede (RJ45)", "VGA", "AC Adapter", "Energia Y", "Pino Retangular", "HDMI", "DisplayPort", "Monitor"];
   const listaPontos = [...Array(15)].map((_, i) => (i + 1).toString());
 
   useEffect(() => {
@@ -35,6 +36,12 @@ const Registrar = () => {
     };
     buscarChamadosAtivos();
   }, [setor]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
 
   const traveTemErro = (numTrave) => chamadosAbertos.some(c => String(c.trave) === String(numTrave));
 
@@ -113,60 +120,84 @@ const Registrar = () => {
     }
   };
 
+  // Configurações de cores baseadas no tema
+  const colors = {
+    bg: theme === 'dark' ? 'bg-[#020202]' : 'bg-slate-50',
+    card: theme === 'dark' ? 'bg-white/[0.03] border-white/10 shadow-black' : 'bg-white border-slate-100 shadow-slate-200/50',
+    text: theme === 'dark' ? 'text-white' : 'text-slate-900',
+    subtext: theme === 'dark' ? 'text-gray-400' : 'text-slate-500',
+    buttonInativo: theme === 'dark' ? 'bg-white/5 border-white/5 text-gray-500' : 'bg-slate-100 border-slate-100 text-slate-400',
+    hover: theme === 'dark' ? 'hover:border-white/20' : 'hover:border-slate-300'
+  };
+
   return (
-    <div className="min-h-screen bg-[#020202] text-white p-4 md:p-10 font-sans relative overflow-hidden">
+    <div className={`min-h-screen ${colors.bg} ${colors.text} p-4 md:p-10 font-sans relative transition-colors duration-500 overflow-x-hidden`}>
       
-      {/* Background Decorativo - Efeito de profundidade flutuante */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-red-600/10 blur-[120px] rounded-full animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-600/5 blur-[100px] rounded-full" />
+      {/* Background Decorativo */}
+      <div className={`absolute top-[-10%] left-[-10%] w-[40%] h-[40%] ${theme === 'dark' ? 'bg-red-600/10' : 'bg-red-500/10'} blur-[120px] rounded-full animate-pulse`} />
+      <div className={`absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] ${theme === 'dark' ? 'bg-blue-600/5' : 'bg-blue-500/10'} blur-[100px] rounded-full`} />
 
       {isSuccess && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center">
             <div className="text-center">
-              <div className="w-24 h-24 bg-gradient-to-tr from-green-500 to-emerald-400 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_rgba(16,185,129,0.4)] rotate-12 animate-in zoom-in duration-300">
+              <div className="w-24 h-24 bg-gradient-to-tr from-green-500 to-emerald-400 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl rotate-12 animate-in zoom-in duration-300">
                 <Check size={48} className="text-black stroke-[3px]" />
               </div>
-              <h2 className="text-4xl font-black uppercase tracking-tighter italic">Processado com Sucesso!</h2>
+              <h2 className="text-4xl font-black uppercase tracking-tighter italic">Registro Finalizado</h2>
             </div>
         </div>
       )}
 
       <div className="relative z-10 max-w-4xl mx-auto">
         {/* Header Navigation */}
-        <button onClick={() => navigate('/dashboard')} className="group flex items-center gap-3 text-gray-400 hover:text-white mb-12 transition-all">
-          <div className="p-2 rounded-full bg-white/5 border border-white/10 group-hover:bg-red-600 group-hover:border-red-600 transition-all">
-            <ArrowLeft size={18} />
-          </div>
-          <span className="text-xs font-black uppercase tracking-[0.3em]">Back to System</span>
-        </button>
+        <div className="flex justify-between items-center mb-12">
+          <button onClick={() => navigate('/dashboard')} className={`group flex items-center gap-3 ${colors.subtext} hover:text-red-600 transition-all`}>
+            <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} border group-hover:bg-red-600 group-hover:border-red-600 group-hover:text-white transition-all`}>
+              <ArrowLeft size={18} />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Voltar ao Início</span>
+          </button>
+
+          <button onClick={toggleTheme} className={`p-3 rounded-2xl border ${colors.card} hover:scale-105 transition-all`}>
+            {theme === 'dark' ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-red-600" />}
+          </button>
+        </div>
 
         {/* Brand Header */}
         <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-                <div className="h-[2px] w-8 bg-red-600"></div>
-                <span className="text-red-600 text-[10px] font-black uppercase tracking-widest">Active Terminal</span>
+            <div className="flex items-center gap-3 mb-4">
+                <div className="h-[2px] w-12 bg-red-600"></div>
+                <span className="text-red-600 text-[11px] font-black uppercase tracking-[0.2em]">Diagnostic Terminal</span>
             </div>
-            <h2 className="text-6xl md:text-7xl font-black uppercase tracking-tighter italic leading-none">{setor}</h2>
+            <h2 className={`text-6xl md:text-8xl font-black uppercase tracking-tighter italic leading-none ${colors.text}`}>{setor}</h2>
           </div>
-          <div className="flex flex-col items-end">
-            <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2 rounded-2xl backdrop-blur-md">
-                <Cpu size={16} className="text-red-600 animate-spin-slow" />
-                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-wider">Hardware Diagnostic v2.0</span>
-            </div>
+          <div className={`flex items-center gap-4 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100'} border px-6 py-3 rounded-3xl backdrop-blur-md shadow-sm`}>
+              <Cpu size={20} className="text-red-600" />
+              <div className="flex flex-col">
+                <span className={`text-[10px] font-black uppercase tracking-wider ${colors.text}`}>Lenovo System</span>
+                <span className={`text-[8px] font-bold ${colors.subtext} uppercase`}>Hardware Engine v3.0</span>
+              </div>
           </div>
         </header>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Coluna Esquerda: Seleção de Trave e Pontos */}
-          <div className="lg:col-span-7 space-y-6">
+          {/* Coluna Esquerda */}
+          <div className="lg:col-span-7 space-y-8">
             
             {/* Seção Trave */}
-            <div className="bg-white/[0.03] border border-white/10 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl">
-              <label className="flex items-center gap-3 text-[11px] font-black text-gray-400 uppercase tracking-widest mb-6 px-2">
-                <Hash size={16} className="text-red-600" /> Rack ID (Trave)
-              </label>
+            <div className={`${colors.card} backdrop-blur-xl p-8 rounded-[3rem] shadow-2xl`}>
+              <div className="flex items-center justify-between mb-8 px-2">
+                <label className={`flex items-center gap-3 text-[11px] font-black ${colors.subtext} uppercase tracking-widest`}>
+                  <Hash size={18} className="text-red-600" /> Identificação da Trave
+                </label>
+                {formData.trave && (
+                  <span className="text-[10px] font-black bg-red-600 text-white px-3 py-1 rounded-lg animate-in fade-in zoom-in">
+                    TRAVE {formData.trave} SELECIONADA
+                  </span>
+                )}
+              </div>
               
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
                 {[...Array(23)].map((_, i) => {
@@ -175,15 +206,15 @@ const Registrar = () => {
                   const isSelected = String(formData.trave) === String(num);
                   return (
                     <button key={num} type="button" onClick={() => setFormData({...formData, trave: num, pontos: []})}
-                      className={`h-14 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center relative overflow-hidden font-black text-lg ${
+                      className={`h-16 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center relative overflow-hidden font-black text-xl ${
                         isSelected 
-                        ? 'bg-red-600 border-red-500 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)] scale-105' 
+                        ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/40 scale-105' 
                         : erro 
-                        ? 'bg-red-950/30 border-red-600/50 text-red-500 animate-pulse' 
-                        : 'bg-white/5 border-white/5 text-gray-500 hover:border-white/20'
+                        ? (theme === 'dark' ? 'bg-red-950/30 border-red-600/50 text-red-500' : 'bg-red-50 border-red-200 text-red-600') 
+                        : `${colors.buttonInativo} ${colors.hover}`
                       }`}>
                       {num}
-                      {erro && !isSelected && <div className="absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_8px_rgba(220,38,38,1)]"></div>}
+                      {erro && !isSelected && <div className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-sm"></div>}
                     </button>
                   );
                 })}
@@ -191,13 +222,13 @@ const Registrar = () => {
             </div>
 
             {/* Seção Pontos */}
-            <div className={`bg-white/[0.03] border border-white/10 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl transition-all duration-500 ${!formData.trave ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-              <div className="flex justify-between items-center mb-6 px-2">
-                <label className="flex items-center gap-3 text-[11px] font-black text-gray-400 uppercase tracking-widest">
-                  <Layout size={16} className="text-blue-500" /> Unit Slots (Pontos)
+            <div className={`${colors.card} backdrop-blur-xl p-8 rounded-[3rem] shadow-2xl transition-all duration-500 ${!formData.trave ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
+              <div className="flex justify-between items-center mb-8 px-2">
+                <label className={`flex items-center gap-3 text-[11px] font-black ${colors.subtext} uppercase tracking-widest`}>
+                  <Layout size={18} className="text-blue-500" /> Slots da Unidade
                 </label>
-                <button type="button" onClick={selecionarTodosPontos} className="text-[10px] font-black text-blue-500 uppercase hover:text-white transition-colors">
-                  {formData.pontos.length === listaPontos.length ? "[ Deselect All ]" : "[ Select All ]"}
+                <button type="button" onClick={selecionarTodosPontos} className="text-[10px] font-black text-blue-600 uppercase hover:text-red-600 transition-colors">
+                  {formData.pontos.length === listaPontos.length ? "[ Desmarcar Todos ]" : "[ Selecionar Todos ]"}
                 </button>
               </div>
               
@@ -209,14 +240,14 @@ const Registrar = () => {
                     <button key={p} type="button" onClick={() => togglePonto(p)}
                       className={`relative h-14 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center group font-black ${
                         selecionado 
-                        ? 'bg-blue-600 border-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]' 
+                        ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30' 
                         : falhasNoPonto 
-                        ? 'bg-red-950/20 border-red-600 text-red-600' 
-                        : 'bg-white/5 border-white/5 text-gray-600 hover:border-white/20'
+                        ? (theme === 'dark' ? 'bg-red-900/20 border-red-600 text-red-500' : 'bg-red-50 border-red-300 text-red-600') 
+                        : `${colors.buttonInativo} ${colors.hover}`
                       }`}>
                       {p}
                       {falhasNoPonto && (
-                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[8px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 shadow-xl transition-all pointer-events-none uppercase tracking-tighter">
+                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[9px] px-4 py-2 rounded-xl opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 shadow-2xl transition-all pointer-events-none uppercase font-black italic">
                           {falhasNoPonto}
                         </div>
                       )}
@@ -227,11 +258,11 @@ const Registrar = () => {
             </div>
           </div>
 
-          {/* Coluna Direita: Falhas e Submit */}
-          <div className="lg:col-span-5 space-y-6 flex flex-col">
-            <div className="bg-gradient-to-b from-white/[0.08] to-transparent border border-white/10 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl flex-1">
-              <label className="flex items-center gap-3 text-[11px] font-black text-gray-400 uppercase tracking-widest mb-8">
-                <Zap size={16} className="text-yellow-500" /> Failure Type
+          {/* Coluna Direita */}
+          <div className="lg:col-span-5 space-y-8 flex flex-col">
+            <div className={`${colors.card} p-8 rounded-[3rem] shadow-2xl flex-1`}>
+              <label className={`flex items-center gap-3 text-[11px] font-black ${colors.subtext} uppercase tracking-widest mb-10`}>
+                <Zap size={18} className="text-yellow-500" /> Tipos de Ocorrência
               </label>
               
               <div className="space-y-3">
@@ -241,11 +272,11 @@ const Registrar = () => {
                     <button key={falha} type="button" onClick={() => toggleFalha(falha)}
                       className={`w-full p-5 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between font-black uppercase tracking-tighter text-sm ${
                         isSelected 
-                        ? 'bg-gradient-to-r from-red-600 to-red-500 border-red-400 text-white shadow-lg translate-x-2' 
-                        : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
+                        ? 'bg-gradient-to-r from-red-600 to-rose-500 border-red-400 text-white shadow-xl translate-x-2' 
+                        : `${colors.buttonInativo} hover:bg-slate-200/50`
                       }`}>
                       {falha}
-                      {isSelected ? <CheckCircle2 size={18} /> : <div className="w-5 h-5 rounded-full border-2 border-white/10" />}
+                      {isSelected ? <CheckCircle2 size={20} /> : <div className={`w-6 h-6 rounded-full border-2 ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`} />}
                     </button>
                   );
                 })}
@@ -253,43 +284,22 @@ const Registrar = () => {
             </div>
 
             <button type="submit" disabled={formData.falhas.length === 0 || !formData.trave || formData.pontos.length === 0 || loading}
-              className={`w-full p-8 rounded-[2rem] font-black text-2xl flex items-center justify-center gap-4 transition-all duration-500 relative overflow-hidden group shadow-2xl ${
-                loading ? 'bg-gray-800' : 'bg-white text-black hover:bg-red-600 hover:text-white active:scale-95 disabled:opacity-20 disabled:grayscale'
+              className={`w-full p-10 rounded-[2.5rem] font-black text-2xl flex items-center justify-center gap-4 transition-all duration-500 relative overflow-hidden group shadow-2xl ${
+                loading ? 'bg-slate-800' : `${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} hover:bg-red-600 hover:text-white active:scale-95 disabled:opacity-20`
               }`}>
               {loading ? (
-                <Loader2 className="animate-spin" size={32} />
+                <Loader2 className="animate-spin" size={36} />
               ) : (
                 <>
-                  <Save size={28} className="group-hover:rotate-12 transition-transform" />
-                  <span className="italic uppercase tracking-tighter">Execute System log</span>
+                  <Save size={32} className="group-hover:rotate-12 transition-transform" />
+                  <span className="italic uppercase tracking-tighter">Registrar Falha</span>
                 </>
               )}
-              {/* Overlay de brilho no botão */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
             </button>
           </div>
         </form>
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
-        }
-        .custom-scroll::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scroll::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.02);
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-          background: rgba(220, 38, 38, 0.5);
-          border-radius: 10px;
-        }
-      `}} />
     </div>
   );
 };

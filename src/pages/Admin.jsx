@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ShieldCheck, Users, BarChart3, Trash2, 
-  LayoutDashboard, Loader2, Calendar, Search, AlertTriangle
+  ShieldCheck, Users, BarChart3, Trash2, Sun, Moon,
+  LayoutDashboard, Loader2, Calendar, Search, AlertTriangle, UserPlus
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -13,16 +13,22 @@ const Admin = () => {
   const [falhasStats, setFalhasStats] = useState([]);
   const [setorFiltro, setSetorFiltro] = useState('TODOS');
   const [loading, setLoading] = useState(true); 
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   
-  const [historicoFalhas, setHistoricoFalhas] = useState([]);
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
-  const [buscandoHistorico, setBuscandoHistorico] = useState(false);
   const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'técnico' });
 
-  const COLUNA_DATA = 'created_at'; 
+  // Lista mestre de setores para garantir consistência em todo o app
+  const LISTA_SETORES = [
+    "Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05",
+    "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"
+  ];
 
-  // --- BUSCAS (Memorizadas para evitar loops) ---
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
+
   const buscarUsuarios = useCallback(async () => {
     try {
       const { data, error } = await supabase.from('usuarios').select('*').order('username');
@@ -34,48 +40,36 @@ const Admin = () => {
   const buscarEstatisticas = useCallback(async () => {
     try {
       let query = supabase.from('registros_falhas').select('falha');
+      
+      // Filtra por setor se não for "TODOS"
       if (setorFiltro !== 'TODOS') query = query.eq('setor', setorFiltro);
+      
       const { data, error } = await query;
       if (error) throw error;
       
       const contagemIndividual = {};
+      
       data?.forEach(reg => {
         if (reg.falha) {
-          reg.falha.split(',').map(item => item.trim()).forEach(f => {
-            if (f) contagemIndividual[f] = (contagemIndividual[f] || 0) + 1;
+          // Correção: Split, limpeza de espaços e remoção de itens vazios
+          const partes = reg.falha.split(',')
+            .map(item => item.trim())
+            .filter(item => item !== "");
+
+          partes.forEach(f => {
+            contagemIndividual[f] = (contagemIndividual[f] || 0) + 1;
           });
         }
       });
+
       const statsFormatadas = Object.entries(contagemIndividual)
         .map(([nome, total]) => ({ nome, total }))
         .sort((a, b) => b.total - a.total);
+
       setFalhasStats(statsFormatadas);
     } catch (err) { console.error("Erro Pareto:", err.message); }
   }, [setorFiltro]);
 
-  const buscarHistorico = useCallback(async () => {
-    setBuscandoHistorico(true);
-    try {
-      let query = supabase.from('registros_falhas').select('*');
-      query = query.order(COLUNA_DATA, { ascending: false });
-
-      if (dataInicio && dataFim) {
-        query = query.gte(COLUNA_DATA, `${dataInicio}T00:00:00.000Z`)
-                     .lte(COLUNA_DATA, `${dataFim}T23:59:59.999Z`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setHistoricoFalhas(data || []);
-    } catch (err) {
-      console.error("Modo Manutenção Histórico:", err.message);
-      setHistoricoFalhas([]); 
-    } finally {
-      setBuscandoHistorico(false);
-    }
-  }, [dataInicio, dataFim]);
-
-  // --- EFEITOS ---
   useEffect(() => {
     const sessaoSativa = localStorage.getItem('lenovo_user');
     if (!sessaoSativa) { navigate('/'); return; }
@@ -91,14 +85,12 @@ const Admin = () => {
     if (!loading) {
       if (activeTab === 'usuarios') buscarUsuarios();
       if (activeTab === 'estatisticas') buscarEstatisticas();
-      if (activeTab === 'historico') buscarHistorico();
     }
-  }, [activeTab, loading, buscarUsuarios, buscarEstatisticas, buscarHistorico]);
+  }, [activeTab, loading, buscarUsuarios, buscarEstatisticas]);
 
-  // --- AÇÕES ---
   const handleCriarUsuario = async (e) => {
     e.preventDefault();
-    if (!novoUser.username || !novoUser.senha) return alert("Preencha tudo!");
+    if (!novoUser.username || !novoUser.senha) return;
     setLoading(true);
     try {
       const { error } = await supabase.from('usuarios').insert([
@@ -110,60 +102,110 @@ const Admin = () => {
     } catch (err) { alert(err.message); } finally { setLoading(false); }
   };
 
-  const formatarDataBR = (dataIso) => {
-    if (!dataIso) return '-';
-    const d = new Date(dataIso);
-    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const s = {
+    bg: theme === 'dark' ? 'bg-[#050505]' : 'bg-slate-50',
+    sidebar: theme === 'dark' ? 'bg-[#0A0A0A] border-white/10' : 'bg-white border-slate-200 shadow-xl',
+    card: theme === 'dark' ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-slate-100 shadow-lg shadow-slate-200/50',
+    input: theme === 'dark' ? 'bg-black border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900',
+    text: theme === 'dark' ? 'text-white' : 'text-slate-900',
+    sub: theme === 'dark' ? 'text-gray-500' : 'text-slate-400'
   };
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-red-600" size={48} /></div>;
+  if (loading) return (
+    <div className={`min-h-screen ${s.bg} flex items-center justify-center`}>
+      <Loader2 className="animate-spin text-red-600" size={48} />
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col md:flex-row font-sans">
-      <aside className="w-full md:w-64 border-r border-white/10 p-6 flex flex-col bg-[#0A0A0A]">
-        <div className="flex items-center gap-3 mb-10 text-red-600">
-          <ShieldCheck size={30} />
-          <h1 className="text-xl font-black tracking-tighter text-white italic">LENOVO ADMIN</h1>
+    <div className={`min-h-screen ${s.bg} ${s.text} flex flex-col md:flex-row font-sans transition-colors duration-500`}>
+      
+      <aside className={`w-full md:w-72 ${s.sidebar} border-r p-8 flex flex-col z-20`}>
+        <div className="flex items-center justify-between mb-12">
+          <div className="flex items-center gap-3 text-red-600">
+            <ShieldCheck size={32} strokeWidth={2.5} />
+            <div>
+              <h1 className="text-xl font-black tracking-tighter text-red-600 italic leading-none">ADMIN</h1>
+              <span className={`text-[8px] font-bold uppercase tracking-widest ${s.sub}`}>Privileged Access</span>
+            </div>
+          </div>
+          <button onClick={toggleTheme} className={`p-2 rounded-xl border ${theme === 'dark' ? 'border-white/10' : 'border-slate-100'}`}>
+            {theme === 'dark' ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} className="text-red-600" />}
+          </button>
         </div>
-        <nav className="flex-1 space-y-2">
-          <button onClick={() => setActiveTab('usuarios')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${activeTab === 'usuarios' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><Users size={20} /> Gestão de Equipe</button>
-          <button onClick={() => setActiveTab('estatisticas')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${activeTab === 'estatisticas' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><BarChart3 size={20} /> Pareto de Falhas</button>
-          <button onClick={() => setActiveTab('historico')} className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${activeTab === 'historico' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><Calendar size={20} /> Histórico Geral</button>
-          <hr className="border-white/5 my-4" />
-          <button onClick={() => navigate('/dashboard')} className="w-full flex items-center gap-3 p-3 text-gray-500 hover:text-white transition-all"><LayoutDashboard size={20} /> Painel de Linha</button>
+
+        <nav className="flex-1 space-y-3">
+          {[
+            { id: 'usuarios', label: 'Gestão de Equipe', icon: Users },
+            { id: 'estatisticas', label: 'Pareto de Falhas', icon: BarChart3 },
+            { id: 'historico', label: 'Histórico Geral', icon: Calendar }
+          ].map((item) => (
+            <button key={item.id} onClick={() => setActiveTab(item.id)} 
+              className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-wider ${
+                activeTab === item.id 
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' 
+                : `${s.sub} hover:bg-red-600/5 hover:text-red-600`
+              }`}>
+              <item.icon size={20} /> {item.label}
+            </button>
+          ))}
+          <div className={`my-8 border-t ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`} />
+          <button onClick={() => navigate('/dashboard')} className={`w-full flex items-center gap-3 p-4 ${s.sub} hover:text-red-600 transition-all font-black text-[10px] uppercase`}>
+            <LayoutDashboard size={20} /> Painel de Linha
+          </button>
         </nav>
       </aside>
 
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
         {activeTab === 'usuarios' && (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-3xl font-black mb-8 uppercase italic tracking-tighter">Acessos</h2>
-            <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-3xl mb-10 shadow-2xl">
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
+            <header className="mb-10">
+              <h2 className="text-4xl font-black uppercase italic tracking-tighter">Controle de <span className="text-red-600">Acessos</span></h2>
+              <p className={s.sub}>Cadastre novos técnicos ou gerencie permissões administrativas.</p>
+            </header>
+
+            <div className={`${s.card} p-8 rounded-[2.5rem] mb-10`}>
               <form onSubmit={handleCriarUsuario} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input type="text" placeholder="Username" className="bg-black border border-white/10 p-4 rounded-2xl focus:border-red-600 outline-none text-sm" value={novoUser.username} onChange={e => setNovoUser({...novoUser, username: e.target.value})} />
-                <input type="text" placeholder="Senha" className="bg-black border border-white/10 p-4 rounded-2xl focus:border-red-600 outline-none text-sm font-mono" value={novoUser.senha} onChange={e => setNovoUser({...novoUser, senha: e.target.value})} />
-                <select className="bg-black border border-white/10 p-4 rounded-2xl outline-none text-sm" value={novoUser.role} onChange={e => setNovoUser({...novoUser, role: e.target.value})}>
-                  <option value="técnico">Técnico Operador</option>
-                  <option value="admin">Administrador</option>
-                </select>
-                <button className="bg-white text-black font-black rounded-2xl hover:bg-red-600 hover:text-white transition-all uppercase text-xs">Criar</button>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase ml-2 opacity-50">Username</label>
+                  <input type="text" placeholder="ex: jsilva" className={`${s.input} w-full p-4 rounded-2xl focus:ring-2 ring-red-600/20 outline-none text-sm transition-all`} value={novoUser.username} onChange={e => setNovoUser({...novoUser, username: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase ml-2 opacity-50">Senha de Acesso</label>
+                  <input type="text" placeholder="••••" className={`${s.input} w-full p-4 rounded-2xl focus:ring-2 ring-red-600/20 outline-none text-sm font-mono transition-all`} value={novoUser.senha} onChange={e => setNovoUser({...novoUser, senha: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase ml-2 opacity-50">Nível</label>
+                  <select className={`${s.input} w-full p-4 rounded-2xl outline-none text-sm`} value={novoUser.role} onChange={e => setNovoUser({...novoUser, role: e.target.value})}>
+                    <option value="técnico">Técnico Operador</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+                <button className="mt-6 h-[52px] bg-red-600 text-white font-black rounded-2xl hover:bg-red-700 transition-all uppercase text-xs flex items-center justify-center gap-2">
+                  <UserPlus size={18} /> Criar Usuário
+                </button>
               </form>
             </div>
-            <div className="bg-[#0A0A0A] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
-              <table className="w-full text-left text-sm">
+
+            <div className={`${s.card} rounded-[2.5rem] overflow-hidden`}>
+              <table className="w-full text-left">
                 <thead>
-                  <tr className="text-gray-500 text-[10px] uppercase tracking-[0.2em] border-b border-white/5 bg-white/[0.02]">
-                    <th className="p-6">Nível</th><th className="p-6">Usuário</th><th className="p-6">Senha</th><th className="p-6 text-right">Ações</th>
+                  <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'} text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+                    <th className="p-6 text-red-600">Nível</th>
+                    <th className="p-6 text-current">Usuário</th>
+                    <th className="p-6 text-current">Credencial</th>
+                    <th className="p-6 text-right">Ação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-100'}`}>
                   {usuarios.map(u => (
-                    <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-6 text-[9px] font-black uppercase tracking-widest text-red-500">{u.role}</td>
+                    <tr key={u.id} className="hover:bg-red-600/[0.02] transition-colors">
+                      <td className="p-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.role === 'admin' ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{u.role}</span></td>
                       <td className="p-6 font-bold">{u.username}</td>
-                      <td className="p-6 font-mono text-gray-500">{u.senha}</td>
+                      <td className="p-6 font-mono text-xs opacity-50">{u.senha}</td>
                       <td className="p-6 text-right">
-                        <button onClick={async () => {if(window.confirm("Excluir?")){await supabase.from('usuarios').delete().eq('id', u.id); buscarUsuarios();}}} className="text-gray-700 hover:text-red-500"><Trash2 size={18} /></button>
+                        <button onClick={async () => {if(window.confirm("Remover acesso?")){await supabase.from('usuarios').delete().eq('id', u.id); buscarUsuarios();}}} 
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
                       </td>
                     </tr>
                   ))}
@@ -174,51 +216,66 @@ const Admin = () => {
         )}
 
         {activeTab === 'estatisticas' && (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-center mb-10 gap-4">
-              <h2 className="text-3xl font-black uppercase italic tracking-tighter text-red-600">Pareto</h2>
-              <select value={setorFiltro} onChange={e => setSetorFiltro(e.target.value)} className="bg-white/5 border border-white/10 text-white font-bold p-3 rounded-2xl outline-none">
-                <option value="TODOS" className="bg-black">GERAL</option>
-                {["Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05", "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"].map(s => (
-                  <option key={s} value={s} className="bg-black">{s}</option>
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+              <div>
+                <h2 className="text-4xl font-black uppercase italic tracking-tighter">Gráfico <span className="text-red-600">Pareto</span></h2>
+                <p className={s.sub}>Análise de recorrência por componente.</p>
+              </div>
+              <select value={setorFiltro} onChange={e => setSetorFiltro(e.target.value)} 
+                className={`${s.input} font-black text-[10px] p-4 rounded-2xl outline-none border-2 border-red-600/20 uppercase tracking-widest`}>
+                <option value="TODOS">TODOS OS SETORES</option>
+                {LISTA_SETORES.map(s => (
+                  <option key={s} value={s}>{s.toUpperCase()}</option>
                 ))}
               </select>
             </div>
-            <div className="bg-[#0A0A0A] border border-white/5 p-8 rounded-[2rem] shadow-2xl">
-              <div className="space-y-6">
+
+            <div className={`${s.card} p-10 rounded-[3rem]`}>
+              <div className="space-y-8">
                 {falhasStats.map((item) => (
-                  <div key={item.nome}>
-                    <div className="flex justify-between text-[10px] font-black mb-2 uppercase tracking-widest text-gray-400">
-                      <span>{item.nome}</span><span className="text-red-600">{item.total}</span>
+                  <div key={item.nome} className="group">
+                    <div className="flex justify-between text-[11px] font-black mb-3 uppercase tracking-widest">
+                      <span className={s.sub}>{item.nome}</span>
+                      <span className="text-red-600 font-black">{item.total} Ocorrências</span>
                     </div>
-                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-red-600" style={{ width: `${(item.total / (falhasStats[0]?.total || 1)) * 100}%` }}></div>
+                    <div className={`w-full h-4 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} rounded-full overflow-hidden p-1`}>
+                      <div className="h-full bg-gradient-to-r from-red-600 to-rose-400 rounded-full transition-all duration-1000 group-hover:brightness-110 shadow-lg shadow-red-600/20" 
+                        style={{ width: `${(item.total / (falhasStats[0]?.total || 1)) * 100}%` }}></div>
                     </div>
                   </div>
                 ))}
+                {falhasStats.length === 0 && (
+                  <div className="text-center py-10 italic opacity-50">Nenhum dado registrado para este filtro.</div>
+                )}
               </div>
             </div>
           </section>
         )}
 
         {activeTab === 'historico' && (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <div className="text-center py-20 bg-[#0A0A0A] rounded-[3rem] border border-red-600/20 mb-8">
-               <AlertTriangle size={48} className="mx-auto text-red-600 mb-4 animate-pulse" />
-               <h3 className="font-black uppercase italic text-xl">Relatório de Auditoria</h3>
-               <p className="text-gray-500 text-sm">Este módulo está sendo otimizado para o novo banco de dados.</p>
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center justify-center py-20">
+             <div className={`${s.card} p-12 rounded-[3rem] text-center max-w-md border-red-600/30`}>
+                <div className="w-20 h-20 bg-red-600/10 rounded-3xl flex items-center justify-center text-red-600 mx-auto mb-6">
+                  <AlertTriangle size={40} className="animate-pulse" />
+                </div>
+                <h3 className="font-black uppercase italic text-2xl mb-4">Módulo em Upgrade</h3>
+                <p className={`${s.sub} text-sm mb-8`}>Estamos otimizando a exportação de CSV e o motor de busca do histórico para suportar grandes volumes de dados.</p>
+                <button disabled className="w-full p-4 bg-slate-200 text-slate-400 rounded-2xl font-black uppercase text-[10px]">Indisponível Temporariamente</button>
              </div>
-
-            <div className="bg-[#0A0A0A] border border-white/5 p-6 rounded-3xl mb-8 shadow-2xl opacity-50 pointer-events-none">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <input type="date" className="bg-black border border-white/10 p-4 rounded-2xl text-sm" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
-                <input type="date" className="bg-black border border-white/10 p-4 rounded-2xl text-sm" value={dataFim} onChange={e => setDataFim(e.target.value)} />
-                <button className="bg-white text-black font-black rounded-2xl p-4 flex items-center justify-center gap-2 uppercase text-xs"><Search size={18}/> Filtrar</button>
-              </div>
-            </div>
           </section>
         )}
       </main>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { 
+          background: ${theme === 'dark' ? '#1a1a1a' : '#e2e8f0'}; 
+          border-radius: 20px;
+          border: 2px solid ${theme === 'dark' ? '#050505' : '#f8fafc'};
+        }
+      `}} />
     </div>
   );
 };
