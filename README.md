@@ -74,3 +74,29 @@ Ambiente: Configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no 
 Deploy Local: npm run dev
 
 Desenvolvido para máxima eficiência e precisão técnica.
+
+# Lenovo Asset System - Refatoração e Qualidade
+
+Recentemente, o projeto passou por uma bateria de melhorias focadas em **Qualidade de Código** e conformidade com as métricas do **SonarQube**.
+
+## 🚀 Principais Melhorias Técnicas
+
+### 1. Performance & Hooks
+- **Memoização:** Implementação de `useCallback` nas funções de busca do Supabase (Admin/Dashboard) para evitar re-renderizações infinitas e garantir que o `useEffect` tenha dependências estáveis.
+- **Limpeza de Efeitos:** Ajuste nos intervalos de sincronização em tempo real (polling) para evitar vazamento de memória.
+
+### 2. Experiência do Usuário (UX)
+- **Fim dos Alertas Bloqueantes:** Substituição do `window.alert()` por estados de feedback visual (`feedbackMsg`), garantindo que a aplicação não trave a thread principal do JavaScript durante notificações de erro ou sucesso.
+- **Feedback em Tempo Real:** Adição de estados de "loading" e animações de transição para ações assíncronas (como troca de senha e criação de usuários).
+
+### 3. Segurança & Rotas
+- **PrivateRoute:** Centralização da lógica de autenticação no `App.jsx`, protegendo rotas administrativas e operacionais contra acessos não autorizados via URL.
+- **Sanitização:** Tratamento de IDs (UUID vs Number) para garantir compatibilidade com diferentes estruturas de banco de dados no Supabase.
+
+### 4. Manutenibilidade (Padrões Sonar)
+- **Redução de Complexidade:** Simplificação de funções com alta complexidade ciclomática.
+- **Remoção de Código Morto:** Faxina geral em imports não utilizados de bibliotecas como `lucide-react` e `react`.
+- **Template Literals:** Substituição de concatenações de strings (`"erro: " + err`) por interpolações modernas para melhor legibilidade.
+
+---
+*Status do Projeto: 🟢 Estável / Em conformidade com SonarJS.*
