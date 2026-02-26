@@ -4,7 +4,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard'; 
 import Registrar from './pages/Registrar'; 
 import VisualizarFalhas from './pages/VisualizarFalhas'; 
-import Admin from './pages/Admin'; // IMPORTANTE: Importando o novo Admin
+import Admin from './pages/Admin'; 
+import MonitorTV from './components/MonitorTV'; // IMPORTANTE: Importando a nova tela de TV
 
 const PrivateRoute = ({ children }) => {
   const user = localStorage.getItem('lenovo_user');
@@ -16,8 +17,10 @@ function App() {
     <Router>
       <div className="min-h-screen bg-[#050505]">
         <Routes>
+          {/* Rota de Login */}
           <Route path="/" element={<Login />} />
 
+          {/* Rota do Dashboard Principal */}
           <Route 
             path="/dashboard" 
             element={
@@ -27,6 +30,7 @@ function App() {
             } 
           />
           
+          {/* Rota para Cadastrar Nova Falha */}
           <Route 
             path="/registrar" 
             element={
@@ -36,6 +40,7 @@ function App() {
             } 
           />
 
+          {/* Rota para Monitoramento e Interação (Live Monitor) */}
           <Route 
             path="/visualizar" 
             element={
@@ -45,7 +50,7 @@ function App() {
             } 
           />
 
-          {/* NOVA ROTA: Painel Administrativo */}
+          {/* Rota: Painel Administrativo */}
           <Route 
             path="/admin" 
             element={
@@ -55,6 +60,13 @@ function App() {
             } 
           />
 
+          {/* NOVA ROTA: Monitor para TV 
+            Esta rota está FORA do PrivateRoute para que a TV não precise de login constante.
+            Ela é puramente visual e segura (apenas leitura).
+          */}
+          <Route path="/monitor-tv" element={<MonitorTV />} />
+
+          {/* Redirecionamento para rotas inexistentes */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
