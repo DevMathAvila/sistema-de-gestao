@@ -1,64 +1,21 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard'; 
-import Registrar from './pages/Registrar'; 
-import VisualizarFalhas from './pages/VisualizarFalhas'; 
-import Admin from './pages/Admin'; // IMPORTANTE: Importando o novo Admin
-
-const PrivateRoute = ({ children }) => {
-  const user = localStorage.getItem('lenovo_user');
-  return user ? children : <Navigate to="/" />;
-};
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Registrar from './pages/Registrar'; // Verifique se o nome da pasta/arquivo está igual
+import VisualizarFalhas from './pages/VisualizarFalhas';
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-[#050505]">
-        <Routes>
-          <Route path="/" element={<Login />} />
-
-          <Route 
-            path="/dashboard" 
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            } 
-          />
-          
-          <Route 
-            path="/registrar" 
-            element={
-              <PrivateRoute>
-                <Registrar />
-              </PrivateRoute>
-            } 
-          />
-
-          <Route 
-            path="/visualizar" 
-            element={
-              <PrivateRoute>
-                <VisualizarFalhas />
-              </PrivateRoute>
-            } 
-          />
-
-          {/* NOVA ROTA: Painel Administrativo */}
-          <Route 
-            path="/admin" 
-            element={
-              <PrivateRoute>
-                <Admin />
-              </PrivateRoute>
-            } 
-          />
-
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </div>
-    </Router>
+    <Routes>
+      {/* Define a tela inicial como o Monitor Live */}
+      <Route path="/" element={<VisualizarFalhas />} />
+      <Route path="/dashboard" element={<VisualizarFalhas />} />
+      
+      {/* Rota para o formulário de registro */}
+      <Route path="/registrar" element={<Registrar />} />
+      
+      {/* Caso acesse uma rota que não existe, volta para o monitor */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 }
 
