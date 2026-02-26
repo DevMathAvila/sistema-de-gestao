@@ -5,8 +5,9 @@ import Dashboard from './pages/Dashboard';
 import Registrar from './pages/Registrar'; 
 import VisualizarFalhas from './pages/VisualizarFalhas'; 
 import Admin from './pages/Admin'; 
-import MonitorTV from './components/MonitorTV'; // IMPORTANTE: Importando a nova tela de TV
+import MonitorTV from './components/MonitorTV'; 
 
+// Componente de Proteção
 const PrivateRoute = ({ children }) => {
   const user = localStorage.getItem('lenovo_user');
   return user ? children : <Navigate to="/" />;
@@ -17,10 +18,13 @@ function App() {
     <Router>
       <div className="min-h-screen bg-[#050505]">
         <Routes>
-          {/* Rota de Login */}
+          {/* 1. ROTA PÚBLICA (Sempre no topo para prioridade total) */}
+          <Route path="/monitor-tv" element={<MonitorTV />} />
+
+          {/* 2. ROTA DE LOGIN */}
           <Route path="/" element={<Login />} />
 
-          {/* Rota do Dashboard Principal */}
+          {/* 3. ROTAS PROTEGIDAS */}
           <Route 
             path="/dashboard" 
             element={
@@ -30,7 +34,6 @@ function App() {
             } 
           />
           
-          {/* Rota para Cadastrar Nova Falha */}
           <Route 
             path="/registrar" 
             element={
@@ -40,7 +43,6 @@ function App() {
             } 
           />
 
-          {/* Rota para Monitoramento e Interação (Live Monitor) */}
           <Route 
             path="/visualizar" 
             element={
@@ -50,7 +52,6 @@ function App() {
             } 
           />
 
-          {/* Rota: Painel Administrativo */}
           <Route 
             path="/admin" 
             element={
@@ -60,13 +61,7 @@ function App() {
             } 
           />
 
-          {/* NOVA ROTA: Monitor para TV 
-            Esta rota está FORA do PrivateRoute para que a TV não precise de login constante.
-            Ela é puramente visual e segura (apenas leitura).
-          */}
-          <Route path="/monitor-tv" element={<MonitorTV />} />
-
-          {/* Redirecionamento para rotas inexistentes */}
+          {/* 4. REDIRECIONAMENTO DE SEGURANÇA */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
