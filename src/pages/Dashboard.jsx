@@ -94,7 +94,7 @@ const Dashboard = () => {
           <div className={`flex items-center gap-4 mb-6 p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}`}>
             <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center text-red-600"><User size={20}/></div>
             <div className="overflow-hidden">
-                <p className={`text-[8px] font-black uppercase ${styles.subtext}`}>Logado como</p>
+                <p className={`text-[8px] font-black uppercase ${styles.subtext}`}>Usuario: </p>
                 <p className="text-sm font-black truncate italic leading-none">{user.username}</p>
             </div>
           </div>
