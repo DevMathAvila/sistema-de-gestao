@@ -1,32 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   LayoutDashboard, LogOut, HardDrive, User, Sun, Moon,
-  Settings, AlertTriangle, Eye, Key, X, CheckCircle2, Trash2, Activity, Zap
+  Settings, AlertTriangle, Eye, Key, Activity, Zap
 } from 'lucide-react';
-import { supabase } from '../services/supabase';
+import { LISTA_SETORES } from '../data/setores';
+import { listarFalhasAbertas } from '../services/supabaseSecure';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('lenovo_user')) || { username: 'Técnico' };
-  
+  const user = (() => {
+    try {
+      const stored = localStorage.getItem('lenovo_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  })() || { username: 'Técnico' };
+
   const [setoresComFalha, setSetoresComFalha] = useState([]);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [showPassModal, setShowPassModal] = useState(false);
 
-  const setores = [
-    "Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05",
-    "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"
-  ];
-
   const buscarFalhas = async () => {
     try {
-      const { data, error } = await supabase.from('registros_falhas').select('setor, trave, ponto').eq('status', 'aberto');
+      const { data, error } = await listarFalhasAbertas();
       if (error) throw error;
       const registrosValidos = (data || []).filter(item => item.setor && item.trave && item.ponto);
       setSetoresComFalha([...new Set(registrosValidos.map(item => item.setor))]);
-    } catch (error) { console.error(error.message); } finally { setLoading(false); }
+    } catch { /* silencioso */ } finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -127,7 +128,7 @@ const Dashboard = () => {
 
         {/* Grid de Setores */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {setores.map((setorNome) => {
+          {LISTA_SETORES.map((setorNome) => {
             const temFalha = setoresComFalha.includes(setorNome);
             return (
               <button key={setorNome} onClick={() => navigate('/registrar', { state: { setor: setorNome } })}

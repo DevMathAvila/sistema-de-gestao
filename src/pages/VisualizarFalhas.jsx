@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, HardDrive, Hash, ChevronDown, 
+import {
+  LayoutDashboard, HardDrive, Hash, ChevronDown,
   Eye, X, ShieldAlert, ArrowRight, Sun, Moon,
   Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle
 } from 'lucide-react';
-import { supabase } from '../services/supabase';
+import { LISTA_SETORES } from '../data/setores';
+import { listarFalhasAbertas, fecharRegistros } from '../services/supabaseSecure';
 
 const VisualizarFalhas = () => {
   const navigate = useNavigate();
@@ -27,17 +28,23 @@ const VisualizarFalhas = () => {
     localStorage.setItem('theme', newTheme);
   };
 
-  const user = JSON.parse(localStorage.getItem('lenovo_user')) || { username: 'Técnico' };
-  const setoresValidos = ["Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05", "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"];
+  const user = (() => {
+    try {
+      const stored = localStorage.getItem('lenovo_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  })() || { username: 'Técnico' };
+  const isColaborador = user.role === 'colaborador';
+  const setoresValidos = LISTA_SETORES;
 
   const normalizar = (texto) => String(texto || "").replace(/\s|-|_/g, '').toLowerCase().trim();
 
   const buscarFalhas = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from('registros_falhas').select('*').eq('status', 'aberto');
+      const { data, error } = await listarFalhasAbertas();
       if (error) throw error;
       setFalhas((data || []).filter(f => f.setor && f.trave));
-    } catch (err) { console.error(err.message); } finally { setLoading(false); }
+    } catch { /* silencioso */ } finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -125,16 +132,18 @@ const VisualizarFalhas = () => {
 
   const handleFinalizarChamado = async () => {
     if (!solucaoTexto.trim()) return;
+    if (isColaborador) {
+      alert('Colaborador não tem permissão para concluir falhas.');
+      return;
+    }
     setEnviando(true);
     try {
       const idsParaFechar = modoLote ? modalData.ids : [modalData.id];
-      const { error } = await supabase.from('registros_falhas').update({
-        status: 'fechado', solucao: solucaoTexto, resolvido_por: user.username, resolvido_em: new Date().toISOString()
-      }).in('id', idsParaFechar);
+      const { error } = await fecharRegistros(idsParaFechar, solucaoTexto, user.username);
       if (error) throw error;
       fecharModal();
       buscarFalhas();
-    } catch (err) { alert(err.message); } finally { setEnviando(false); }
+    } catch (err) { alert(err?.message || 'Erro ao concluir'); } finally { setEnviando(false); }
   };
 
   const abrirModalLote = (s, t) => {
@@ -369,7 +378,7 @@ const VisualizarFalhas = () => {
                                   </span>
                                 )}
                               </button>
-                              {chamadosDaTrave.length > 0 && (
+                              {chamadosDaTrave.length > 0 && !isColaborador && (
                                 <button onClick={() => abrirModalLote(setor, tNum)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg font-black text-[8px] uppercase hover:bg-red-700 transition-all">
                                   Resolver
                                 </button>
@@ -402,7 +411,7 @@ const VisualizarFalhas = () => {
                                   return (
                                     <div key={pNum} className="relative group">
                                       <button
-                                        onClick={() => { if (dadosPonto) { setModalData(dadosPonto); setModoLote(false); } }}
+                                        onClick={() => { if (dadosPonto && !isColaborador) { setModalData(dadosPonto); setModoLote(false); } }}
                                         className={`w-full aspect-square rounded-lg flex flex-col items-center justify-center text-[9px] font-black transition-all duration-300 group-hover:z-10 ${bgClass} ${pulseClass}`}
                                       >
                                         <span className="text-[5px] opacity-50 mb-0">PT</span>
@@ -452,7 +461,11 @@ const VisualizarFalhas = () => {
                     <span className="text-[8px] text-gray-500 font-bold uppercase block mb-1">Causa da Falha:</span>
                     <h4 className="text-lg font-black italic uppercase text-red-600 leading-tight">"{modalData.falha}"</h4>
                   </div>
-                  <button onClick={() => setEtapaFechamento(true)} className={`w-full py-4 ${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} font-black rounded-xl flex items-center justify-center gap-2 uppercase text-[10px] hover:scale-[1.02] transition-all shadow-xl`}>
+                  <button
+                    onClick={() => setEtapaFechamento(true)}
+                    disabled={isColaborador}
+                    className={`w-full py-4 ${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} font-black rounded-xl flex items-center justify-center gap-2 uppercase text-[10px] hover:scale-[1.02] transition-all shadow-xl disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
                     Reparar Falha <ArrowRight size={14} />
                   </button>
                 </div>
@@ -461,7 +474,11 @@ const VisualizarFalhas = () => {
                   <textarea autoFocus placeholder="Relatório de solução..." className={`w-full ${colors.input} p-4 rounded-xl outline-none min-h-[100px] text-[11px] resize-none transition-all`} value={solucaoTexto} onChange={(e) => setSolucaoTexto(e.target.value)} />
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setEtapaFechamento(false)} className={`py-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} text-[9px] font-black uppercase rounded-xl`}>Voltar</button>
-                    <button onClick={handleFinalizarChamado} disabled={enviando || !solucaoTexto.trim()} className="py-3 bg-green-600 text-white rounded-xl font-black uppercase text-[9px] shadow-lg disabled:opacity-30">
+                    <button
+                      onClick={handleFinalizarChamado}
+                      disabled={enviando || !solucaoTexto.trim() || isColaborador}
+                      className="py-3 bg-green-600 text-white rounded-xl font-black uppercase text-[9px] shadow-lg disabled:opacity-30"
+                    >
                       {enviando ? '...' : 'Concluir'}
                     </button>
                   </div>

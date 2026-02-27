@@ -1,40 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Zap, Hash, Loader2, Check, AlertTriangle, CheckCircle2, Layout, Cpu, Sun, Moon } from 'lucide-react';
-import { supabase } from '../services/supabase'; 
+import { ArrowLeft, Save, Zap, Hash, Loader2, Check, CheckCircle2, Layout, Cpu, Sun, Moon } from 'lucide-react';
+import { LISTA_SETORES } from '../data/setores';
+import { FALHAS_COMUNS } from '../data/falhasComuns';
+import { inserirRegistrosFalha, listarChamadosAbertosPorSetor } from '../services/supabaseSecure';
+
+const listaPontos = [...Array(15)].map((_, i) => (i + 1).toString());
 
 const Registrar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const setor = location.state?.setor || "Setor não selecionado";
+  const setor = (() => {
+    const s = location.state?.setor;
+    return s && LISTA_SETORES.includes(s) ? s : LISTA_SETORES[0] ?? 'Setor não selecionado';
+  })();
 
   const [loading, setLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false); 
-  const [chamadosAbertos, setChamadosAbertos] = useState([]); 
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [chamadosAbertos, setChamadosAbertos] = useState([]);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-  const [formData, setFormData] = useState({
-    trave: '',
-    pontos: [], 
-    falhas: []
-  });
-
-  const falhasComuns = ["Rede (RJ45)", "VGA", "AC Adapter", "Energia Y", "Pino Retangular", "HDMI", "DisplayPort", "Monitor"];
-  const listaPontos = [...Array(15)].map((_, i) => (i + 1).toString());
+  const [formData, setFormData] = useState({ trave: '', pontos: [], falhas: [] });
 
   useEffect(() => {
-    const buscarChamadosAtivos = async () => {
-      if (!setor) return;
-      const { data, error } = await supabase
-        .from('registros_falhas')
-        .select('trave, ponto, falha')
-        .eq('setor', setor)
-        .eq('status', 'aberto')
-        .not('trave', 'is', null)
-        .not('ponto', 'is', null);
-
-      if (!error) setChamadosAbertos(data || []);
-    };
-    buscarChamadosAtivos();
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await listarChamadosAbertosPorSetor(setor);
+      if (!cancelled && !error) setChamadosAbertos(data || []);
+    })();
+    return () => { cancelled = true; };
   }, [setor]);
 
   const toggleTheme = () => {
@@ -84,38 +77,18 @@ const Registrar = () => {
     e.preventDefault();
     if (formData.falhas.length === 0 || formData.pontos.length === 0 || !formData.trave) return;
     setLoading(true);
-    const userSession = JSON.parse(localStorage.getItem('lenovo_user'));
-
     try {
-      let inserts = [];
-      const falhasTexto = formData.falhas.join(', ');
-      
-      if (formData.pontos.length === listaPontos.length) {
-        inserts.push({
-          usuario: userSession?.username || 'Técnico',
-          setor: setor,
-          trave: formData.trave,
-          ponto: "1-15 (Inteira)",
-          falha: falhasTexto,
-          status: 'aberto'
-        });
-      } else {
-        inserts = formData.pontos.map(p => ({
-          usuario: userSession?.username || 'Técnico',
-          setor: setor,
-          trave: formData.trave,
-          ponto: `Ponto ${p}`,
-          falha: falhasTexto,
-          status: 'aberto'
-        }));
-      }
-
-      const { error } = await supabase.from('registros_falhas').insert(inserts);
+      const { error } = await inserirRegistrosFalha(
+        setor,
+        formData.trave,
+        formData.pontos,
+        formData.falhas
+      );
       if (error) throw error;
       setIsSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1500);
-    } catch (error) {
-      alert('Erro: ' + error.message);
+    } catch (err) {
+      alert(err?.message || 'Erro ao registrar.');
       setLoading(false);
     }
   };
@@ -266,7 +239,7 @@ const Registrar = () => {
               </label>
               
               <div className="space-y-3">
-                {falhasComuns.map((falha) => {
+                {FALHAS_COMUNS.map((falha) => {
                   const isSelected = formData.falhas.includes(falha);
                   return (
                     <button key={falha} type="button" onClick={() => toggleFalha(falha)}

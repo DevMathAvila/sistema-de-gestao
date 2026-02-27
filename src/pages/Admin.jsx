@@ -1,27 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   ShieldCheck, Users, BarChart3, Trash2, Sun, Moon,
-  LayoutDashboard, Loader2, Calendar, Search, AlertTriangle, UserPlus
+  LayoutDashboard, Loader2, Calendar, AlertTriangle, UserPlus
 } from 'lucide-react';
-import { supabase } from '../services/supabase';
+import { LISTA_SETORES, SETOR_TODOS } from '../data/setores';
+import * as api from '../services/supabaseSecure';
+import * as XLSX from 'xlsx';
 
 const Admin = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('usuarios');
   const [usuarios, setUsuarios] = useState([]);
   const [falhasStats, setFalhasStats] = useState([]);
-  const [setorFiltro, setSetorFiltro] = useState('TODOS');
-  const [loading, setLoading] = useState(true); 
+  const [setorFiltro, setSetorFiltro] = useState(SETOR_TODOS);
+  const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-  
   const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'técnico' });
-
-  // Lista mestre de setores para garantir consistência em todo o app
-  const LISTA_SETORES = [
-    "Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05",
-    "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"
-  ];
+  const [historico, setHistorico] = useState([]);
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -31,53 +30,62 @@ const Admin = () => {
 
   const buscarUsuarios = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from('usuarios').select('*').order('username');
+      const { data, error } = await api.listarUsuarios();
       if (error) throw error;
       setUsuarios(data || []);
-    } catch (err) { console.error('Erro usuários:', err.message); }
+    } catch (err) { /* erro tratado na UI */ }
   }, []);
 
   const buscarEstatisticas = useCallback(async () => {
     try {
-      let query = supabase.from('registros_falhas').select('falha');
-      
-      // Filtra por setor se não for "TODOS"
-      if (setorFiltro !== 'TODOS') query = query.eq('setor', setorFiltro);
-      
-      const { data, error } = await query;
+      const { data, error } = await api.listarRegistrosFalhas(setorFiltro);
       if (error) throw error;
-      
       const contagemIndividual = {};
-      
       data?.forEach(reg => {
         if (reg.falha) {
-          // Correção: Split, limpeza de espaços e remoção de itens vazios
           const partes = reg.falha.split(',')
             .map(item => item.trim())
-            .filter(item => item !== "");
-
+            .filter(item => item !== '');
           partes.forEach(f => {
             contagemIndividual[f] = (contagemIndividual[f] || 0) + 1;
           });
         }
       });
-
       const statsFormatadas = Object.entries(contagemIndividual)
         .map(([nome, total]) => ({ nome, total }))
         .sort((a, b) => b.total - a.total);
-
       setFalhasStats(statsFormatadas);
-    } catch (err) { console.error("Erro Pareto:", err.message); }
+    } catch (err) { /* erro Pareto */ }
   }, [setorFiltro]);
 
+  const buscarHistorico = useCallback(async () => {
+    try {
+      setLoadingHistorico(true);
+      const { data, error } = await api.listarOcorrenciasConcluidas(
+        dataInicio || null,
+        dataFim || null
+      );
+      if (error) throw error;
+      setHistorico(data || []);
+    } catch {
+      // falha silenciosa; pode ser logada se necessário
+    } finally {
+      setLoadingHistorico(false);
+    }
+  }, [dataInicio, dataFim]);
+
   useEffect(() => {
-    const sessaoSativa = localStorage.getItem('lenovo_user');
-    if (!sessaoSativa) { navigate('/'); return; }
-    const user = JSON.parse(sessaoSativa);
-    if (user.role !== 'admin') {
-      navigate('/dashboard');
-    } else {
-      setLoading(false); 
+    try {
+      const stored = localStorage.getItem('lenovo_user');
+      if (!stored) { navigate('/', { replace: true }); return; }
+      const user = JSON.parse(stored);
+      if (!user || user.role !== 'admin') {
+        navigate('/dashboard', { replace: true });
+      } else {
+        setLoading(false);
+      }
+    } catch {
+      navigate('/', { replace: true });
     }
   }, [navigate]);
 
@@ -85,21 +93,42 @@ const Admin = () => {
     if (!loading) {
       if (activeTab === 'usuarios') buscarUsuarios();
       if (activeTab === 'estatisticas') buscarEstatisticas();
+      if (activeTab === 'historico') buscarHistorico();
     }
-  }, [activeTab, loading, buscarUsuarios, buscarEstatisticas]);
+  }, [activeTab, loading, buscarUsuarios, buscarEstatisticas, buscarHistorico]);
+
+  const handleExportHistoricoExcel = () => {
+    if (!historico || historico.length === 0) return;
+    const rows = historico.map((item) => ({
+      'Run In': item.setor || '',
+      Trave: item.trave ?? '',
+      Ponto: item.ponto ?? '',
+      Falha: item.falha || '',
+      'Descrição': item.solucao || '',
+      Dia: item.resolvido_em || '',
+      'Finalizado por': item.resolvido_por || '',
+      'Criado por': item.usuario || '',
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Histórico');
+    XLSX.writeFile(workbook, 'historico_registros_falhas.xlsx');
+  };
 
   const handleCriarUsuario = async (e) => {
     e.preventDefault();
     if (!novoUser.username || !novoUser.senha) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('usuarios').insert([
-        { username: novoUser.username.toLowerCase().trim(), senha: novoUser.senha, role: novoUser.role }
-      ]);
+      const { error } = await api.criarUsuario({
+        username: novoUser.username,
+        senha: novoUser.senha,
+        role: novoUser.role,
+      });
       if (error) throw error;
       setNovoUser({ username: '', senha: '', role: 'técnico' });
       await buscarUsuarios();
-    } catch (err) { alert(err.message); } finally { setLoading(false); }
+    } catch (err) { alert(err?.message || 'Erro ao criar usuário'); } finally { setLoading(false); }
   };
 
   const s = {
@@ -179,6 +208,7 @@ const Admin = () => {
                   <select className={`${s.input} w-full p-4 rounded-2xl outline-none text-sm`} value={novoUser.role} onChange={e => setNovoUser({...novoUser, role: e.target.value})}>
                     <option value="técnico">Técnico Operador</option>
                     <option value="admin">Administrador</option>
+                    <option value="colaborador">Colaborador</option>
                   </select>
                 </div>
                 <button className="mt-6 h-[52px] bg-red-600 text-white font-black rounded-2xl hover:bg-red-700 transition-all uppercase text-xs flex items-center justify-center gap-2">
@@ -204,8 +234,12 @@ const Admin = () => {
                       <td className="p-6 font-bold">{u.username}</td>
                       <td className="p-6 font-mono text-xs opacity-50">{u.senha}</td>
                       <td className="p-6 text-right">
-                        <button onClick={async () => {if(window.confirm("Remover acesso?")){await supabase.from('usuarios').delete().eq('id', u.id); buscarUsuarios();}}} 
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
+                        <button onClick={async () => {
+                          if (!window.confirm('Remover acesso deste usuário?')) return;
+                          const { error } = await api.removerUsuario(u.id);
+                          if (!error) await buscarUsuarios();
+                          else alert(error.message);
+                        }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
                       </td>
                     </tr>
                   ))}
@@ -224,9 +258,9 @@ const Admin = () => {
               </div>
               <select value={setorFiltro} onChange={e => setSetorFiltro(e.target.value)} 
                 className={`${s.input} font-black text-[10px] p-4 rounded-2xl outline-none border-2 border-red-600/20 uppercase tracking-widest`}>
-                <option value="TODOS">TODOS OS SETORES</option>
-                {LISTA_SETORES.map(s => (
-                  <option key={s} value={s}>{s.toUpperCase()}</option>
+                <option value={SETOR_TODOS}>TODOS OS SETORES</option>
+                {LISTA_SETORES.map((setorNome) => (
+                  <option key={setorNome} value={setorNome}>{setorNome.toUpperCase()}</option>
                 ))}
               </select>
             </div>
@@ -254,15 +288,108 @@ const Admin = () => {
         )}
 
         {activeTab === 'historico' && (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center justify-center py-20">
-             <div className={`${s.card} p-12 rounded-[3rem] text-center max-w-md border-red-600/30`}>
-                <div className="w-20 h-20 bg-red-600/10 rounded-3xl flex items-center justify-center text-red-600 mx-auto mb-6">
-                  <AlertTriangle size={40} className="animate-pulse" />
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
+            <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <h2 className="text-4xl font-black uppercase italic tracking-tighter">
+                  Histórico <span className="text-red-600">Geral</span>
+                </h2>
+                <p className={s.sub}>Visualize todas as ocorrências concluídas em linha.</p>
+              </div>
+              <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+                <div className="flex gap-2">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-widest ml-1 opacity-50">De</span>
+                    <input
+                      type="date"
+                      value={dataInicio}
+                      onChange={(e) => setDataInicio(e.target.value)}
+                      className={`${s.input} px-4 py-2 rounded-2xl text-xs`}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-widest ml-1 opacity-50">Até</span>
+                    <input
+                      type="date"
+                      value={dataFim}
+                      onChange={(e) => setDataFim(e.target.value)}
+                      className={`${s.input} px-4 py-2 rounded-2xl text-xs`}
+                    />
+                  </div>
                 </div>
-                <h3 className="font-black uppercase italic text-2xl mb-4">Módulo em Upgrade</h3>
-                <p className={`${s.sub} text-sm mb-8`}>Estamos otimizando a exportação de CSV e o motor de busca do histórico para suportar grandes volumes de dados.</p>
-                <button disabled className="w-full p-4 bg-slate-200 text-slate-400 rounded-2xl font-black uppercase text-[10px]">Indisponível Temporariamente</button>
-             </div>
+                <button
+                  type="button"
+                  onClick={handleExportHistoricoExcel}
+                  disabled={!historico.length}
+                  className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 ${
+                    historico.length
+                      ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  Exportar Excel
+                </button>
+              </div>
+            </header>
+
+            <div className={`${s.card} rounded-[2.5rem] overflow-hidden`}>
+              {loadingHistorico ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="animate-spin text-red-600" size={32} />
+                </div>
+              ) : historico.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="w-16 h-16 bg-red-600/10 rounded-3xl flex items-center justify-center text-red-600 mb-4">
+                    <AlertTriangle size={32} className="animate-pulse" />
+                  </div>
+                  <h3 className="font-black uppercase italic text-xl mb-2">Nenhum registro encontrado</h3>
+                  <p className={`${s.sub} text-xs max-w-sm`}>
+                    Ajuste o intervalo de datas ou aguarde novas ocorrências concluídas para visualizar o histórico.
+                  </p>
+                </div>
+              ) : (
+                <table className="w-full text-left">
+                  <thead>
+                    <tr
+                      className={`${
+                        theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'
+                      } text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${
+                        theme === 'dark' ? 'border-white/5' : 'border-slate-100'
+                      }`}
+                    >
+                      <th className="p-4 md:p-5 text-red-600">Run In</th>
+                      <th className="p-4 md:p-5">Trave</th>
+                      <th className="p-4 md:p-5">Ponto</th>
+                      <th className="p-4 md:p-5">Tipo de Falha</th>
+                      <th className="p-4 md:p-5">Data de Conclusão</th>
+                      <th className="p-4 md:p-5">Quem Resolveu</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`text-xs divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-100'}`}>
+                    {historico.map((item) => (
+                      <tr key={item.id}>
+                        <td className="p-4 md:p-5 font-bold">{item.setor}</td>
+                        <td className="p-4 md:p-5 font-mono">{item.trave}</td>
+                        <td className="p-4 md:p-5 font-mono">{item.ponto}</td>
+                        <td className="p-4 md:p-5">
+                          <span className="inline-flex px-3 py-1 rounded-full bg-red-600/10 text-red-600 font-black text-[10px] uppercase tracking-widest">
+                            {item.falha}
+                          </span>
+                        </td>
+                        <td className="p-4 md:p-5">
+                          <span className="text-[11px] font-mono opacity-80">
+                            {item.resolvido_em || '-'}
+                          </span>
+                        </td>
+                        <td className="p-4 md:p-5">
+                          <span className="text-[11px] font-bold">{item.resolvido_por || '-'}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </section>
         )}
       </main>

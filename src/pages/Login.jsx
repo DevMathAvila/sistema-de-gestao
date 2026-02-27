@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../services/supabase';
+import { getUsuarioParaLogin } from '../services/supabaseSecure';
 import { Loader2 } from 'lucide-react';
 
 const Login = () => {
-  const [username, setUsername] = useState(localStorage.getItem('lenovo_remember_user') || '');
-  const [password, setPassword] = useState(localStorage.getItem('lenovo_remember_pass') || '');
-  const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('lenovo_remember_user'));
-  
+  const [username, setUsername] = useState(() => {
+    try { return localStorage.getItem('lenovo_remember_user') || ''; } catch { return ''; }
+  });
+  const [password, setPassword] = useState(() => {
+    try { return localStorage.getItem('lenovo_remember_pass') || ''; } catch { return ''; }
+  });
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('lenovo_remember_user'));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -16,53 +19,27 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
-      const cleanUsername = username.toLowerCase().trim();
-
-      // 1. Busca o usuário na tabela 'usuarios'
-      const { data: user, error: supabaseError } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('username', cleanUsername)
-        .eq('senha', password) 
-        .maybeSingle();
-
-      if (supabaseError) throw supabaseError;
-
-      if (!user) {
-        setError("Usuário ou senha incorretos.");
+      const { data: user, error: apiError } = await getUsuarioParaLogin(username, password);
+      if (apiError) throw apiError;
+      if (!user || user.senha !== password) {
+        setError('Usuário ou senha incorretos.');
         setLoading(false);
         return;
       }
-
-      // --- INCREMENTO CRÍTICO PARA RESOLVER O SEU ERRO ---
-      
-      // 2. Limpamos o localStorage ANTES de gravar o novo para evitar conflitos de cache
       localStorage.removeItem('lenovo_user');
-
-      // 3. Criamos o objeto de sessão garantindo que o ID seja o que o banco espera
-      // Se user.id for o UUID longo, ele manterá o valor, mas não travará o sistema
-      const sessaoFormatada = {
-        ...user,
-        id: user.id // Mantemos o ID original vindo da tabela 'usuarios'
-      };
-
-      // 4. Grava a nova sessão limpa
+      const sessaoFormatada = { id: user.id, username: user.username, senha: user.senha, role: user.role };
       localStorage.setItem('lenovo_user', JSON.stringify(sessaoFormatada));
-      
       if (rememberMe) {
-        localStorage.setItem('lenovo_remember_user', cleanUsername);
+        localStorage.setItem('lenovo_remember_user', user.username);
         localStorage.setItem('lenovo_remember_pass', password);
       } else {
         localStorage.removeItem('lenovo_remember_user');
         localStorage.removeItem('lenovo_remember_pass');
       }
-      
       navigate('/dashboard');
-
     } catch (err) {
-      setError("Falha na conexão: " + err.message);
+      setError(err?.message || 'Falha na conexão.');
     } finally {
       setLoading(false);
     }
