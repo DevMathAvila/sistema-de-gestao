@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck, Users, BarChart3, Trash2, Sun, Moon,
-  LayoutDashboard, Loader2, Calendar, AlertTriangle, UserPlus
+  LayoutDashboard, Loader2, Calendar, AlertTriangle, UserPlus, TrendingUp
 } from 'lucide-react';
+import DashboardKPI from '../components/DashboardKPI';
 import { LISTA_SETORES, SETOR_TODOS } from '../data/setores';
 import * as api from '../services/supabaseSecure';
 import * as XLSX from 'xlsx';
@@ -18,9 +19,12 @@ const Admin = () => {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'técnico' });
   const [historico, setHistorico] = useState([]);
+  const [historicoAbertas, setHistoricoAbertas] = useState([]);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [loadingHistoricoAbertas, setLoadingHistoricoAbertas] = useState(false);
+  const [historicoSubAba, setHistoricoSubAba] = useState('concluidas');
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -67,10 +71,22 @@ const Admin = () => {
       );
       if (error) throw error;
       setHistorico(data || []);
-    } catch {
-      // falha silenciosa; pode ser logada se necessário
-    } finally {
+    } catch { /* silencioso */ } finally {
       setLoadingHistorico(false);
+    }
+  }, [dataInicio, dataFim]);
+
+  const buscarHistoricoAbertas = useCallback(async () => {
+    try {
+      setLoadingHistoricoAbertas(true);
+      const { data, error } = await api.listarRegistrosAbertos(
+        dataInicio || null,
+        dataFim || null
+      );
+      if (error) throw error;
+      setHistoricoAbertas(data || []);
+    } catch { /* silencioso */ } finally {
+      setLoadingHistoricoAbertas(false);
     }
   }, [dataInicio, dataFim]);
 
@@ -93,9 +109,21 @@ const Admin = () => {
     if (!loading) {
       if (activeTab === 'usuarios') buscarUsuarios();
       if (activeTab === 'estatisticas') buscarEstatisticas();
-      if (activeTab === 'historico') buscarHistorico();
+      if (activeTab === 'historico') {
+        if (historicoSubAba === 'concluidas') buscarHistorico();
+        else buscarHistoricoAbertas();
+      }
     }
-  }, [activeTab, loading, buscarUsuarios, buscarEstatisticas, buscarHistorico]);
+  }, [activeTab, loading, historicoSubAba, buscarUsuarios, buscarEstatisticas, buscarHistorico, buscarHistoricoAbertas]);
+
+  const formatarDataBR = (isoStr) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const handleExportHistoricoExcel = () => {
     if (!historico || historico.length === 0) return;
@@ -105,14 +133,30 @@ const Admin = () => {
       Ponto: item.ponto ?? '',
       Falha: item.falha || '',
       'Descrição': item.solucao || '',
-      Dia: item.resolvido_em || '',
+      Dia: item.resolvido_em ? formatarDataBR(item.resolvido_em) : '',
       'Finalizado por': item.resolvido_por || '',
       'Criado por': item.usuario || '',
     }));
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Histórico');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Concluídas');
     XLSX.writeFile(workbook, 'historico_registros_falhas.xlsx');
+  };
+
+  const handleExportAbertasExcel = () => {
+    if (!historicoAbertas || historicoAbertas.length === 0) return;
+    const rows = historicoAbertas.map((item) => ({
+      'Run In': item.setor || '',
+      Trave: item.trave ?? '',
+      Ponto: item.ponto ?? '',
+      Falha: item.falha || '',
+      Dia: item.data ? formatarDataBR(item.data) : '',
+      Solicitante: item.usuario || '',
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Abertas');
+    XLSX.writeFile(workbook, 'falhas_em_aberto.xlsx');
   };
 
   const handleCriarUsuario = async (e) => {
@@ -165,6 +209,7 @@ const Admin = () => {
 
         <nav className="flex-1 space-y-3">
           {[
+            { id: 'indicadores', label: 'Dashboard KPI', icon: TrendingUp },
             { id: 'usuarios', label: 'Gestão de Equipe', icon: Users },
             { id: 'estatisticas', label: 'Pareto de Falhas', icon: BarChart3 },
             { id: 'historico', label: 'Histórico Geral', icon: Calendar }
@@ -289,12 +334,12 @@ const Admin = () => {
 
         {activeTab === 'historico' && (
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
-            <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <header className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <h2 className="text-4xl font-black uppercase italic tracking-tighter">
                   Histórico <span className="text-red-600">Geral</span>
                 </h2>
-                <p className={s.sub}>Visualize todas as ocorrências concluídas em linha.</p>
+                <p className={s.sub}>Visualize ocorrências concluídas ou em aberto.</p>
               </div>
               <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
                 <div className="flex gap-2">
@@ -317,80 +362,162 @@ const Admin = () => {
                     />
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleExportHistoricoExcel}
-                  disabled={!historico.length}
-                  className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 ${
-                    historico.length
-                      ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  }`}
-                >
-                  Exportar Excel
-                </button>
+                {historicoSubAba === 'concluidas' ? (
+                  <button
+                    type="button"
+                    onClick={handleExportHistoricoExcel}
+                    disabled={!historico.length}
+                    className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest ${
+                      historico.length ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Exportar Excel
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleExportAbertasExcel}
+                    disabled={!historicoAbertas.length}
+                    className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest ${
+                      historicoAbertas.length ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Exportar Excel
+                  </button>
+                )}
               </div>
             </header>
 
-            <div className={`${s.card} rounded-[2.5rem] overflow-hidden`}>
-              {loadingHistorico ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="animate-spin text-red-600" size={32} />
-                </div>
-              ) : historico.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-16 h-16 bg-red-600/10 rounded-3xl flex items-center justify-center text-red-600 mb-4">
-                    <AlertTriangle size={32} className="animate-pulse" />
-                  </div>
-                  <h3 className="font-black uppercase italic text-xl mb-2">Nenhum registro encontrado</h3>
-                  <p className={`${s.sub} text-xs max-w-sm`}>
-                    Ajuste o intervalo de datas ou aguarde novas ocorrências concluídas para visualizar o histórico.
-                  </p>
-                </div>
-              ) : (
-                <table className="w-full text-left">
-                  <thead>
-                    <tr
-                      className={`${
-                        theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'
-                      } text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${
-                        theme === 'dark' ? 'border-white/5' : 'border-slate-100'
-                      }`}
-                    >
-                      <th className="p-4 md:p-5 text-red-600">Run In</th>
-                      <th className="p-4 md:p-5">Trave</th>
-                      <th className="p-4 md:p-5">Ponto</th>
-                      <th className="p-4 md:p-5">Tipo de Falha</th>
-                      <th className="p-4 md:p-5">Data de Conclusão</th>
-                      <th className="p-4 md:p-5">Quem Resolveu</th>
-                    </tr>
-                  </thead>
-                  <tbody className={`text-xs divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-100'}`}>
-                    {historico.map((item) => (
-                      <tr key={item.id}>
-                        <td className="p-4 md:p-5 font-bold">{item.setor}</td>
-                        <td className="p-4 md:p-5 font-mono">{item.trave}</td>
-                        <td className="p-4 md:p-5 font-mono">{item.ponto}</td>
-                        <td className="p-4 md:p-5">
-                          <span className="inline-flex px-3 py-1 rounded-full bg-red-600/10 text-red-600 font-black text-[10px] uppercase tracking-widest">
-                            {item.falha}
-                          </span>
-                        </td>
-                        <td className="p-4 md:p-5">
-                          <span className="text-[11px] font-mono opacity-80">
-                            {item.resolvido_em || '-'}
-                          </span>
-                        </td>
-                        <td className="p-4 md:p-5">
-                          <span className="text-[11px] font-bold">{item.resolvido_por || '-'}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* Abas estilo Chrome */}
+            <div className="flex border-b border-slate-200 dark:border-white/10 mb-6">
+              <button
+                type="button"
+                onClick={() => setHistoricoSubAba('concluidas')}
+                className={`px-6 py-3 rounded-t-2xl font-black text-[10px] uppercase tracking-widest border border-b-0 transition-all ${
+                  historicoSubAba === 'concluidas'
+                    ? 'bg-red-600 text-white border-red-600 shadow-lg'
+                    : `${s.sub} border-transparent hover:bg-slate-100 dark:hover:bg-white/5`
+                }`}
+              >
+                Falhas Concluídas
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoricoSubAba('abertas')}
+                className={`px-6 py-3 rounded-t-2xl font-black text-[10px] uppercase tracking-widest border border-b-0 transition-all ${
+                  historicoSubAba === 'abertas'
+                    ? 'bg-red-600 text-white border-red-600 shadow-lg'
+                    : `${s.sub} border-transparent hover:bg-slate-100 dark:hover:bg-white/5`
+                }`}
+              >
+                Falhas em Aberto
+              </button>
+            </div>
+
+            <div className={`${s.card} rounded-[2.5rem] overflow-hidden rounded-tl-none`}>
+              {historicoSubAba === 'concluidas' && (
+                <>
+                  {loadingHistorico ? (
+                    <div className="flex items-center justify-center py-16">
+                      <Loader2 className="animate-spin text-red-600" size={32} />
+                    </div>
+                  ) : historico.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-16 h-16 bg-red-600/10 rounded-3xl flex items-center justify-center text-red-600 mb-4">
+                        <AlertTriangle size={32} className="animate-pulse" />
+                      </div>
+                      <h3 className="font-black uppercase italic text-xl mb-2">Nenhum registro encontrado</h3>
+                      <p className={`${s.sub} text-xs max-w-sm`}>Ajuste o intervalo de datas ou aguarde novas ocorrências concluídas.</p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'} text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+                          <th className="p-4 md:p-5 text-red-600">Run In</th>
+                          <th className="p-4 md:p-5">Trave</th>
+                          <th className="p-4 md:p-5">Ponto</th>
+                          <th className="p-4 md:p-5">Tipo de Falha</th>
+                          <th className="p-4 md:p-5">Data de Conclusão</th>
+                          <th className="p-4 md:p-5">Quem Resolveu</th>
+                        </tr>
+                      </thead>
+                      <tbody className={`text-xs divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-100'}`}>
+                        {historico.map((item) => (
+                          <tr key={item.id}>
+                            <td className="p-4 md:p-5 font-bold">{item.setor}</td>
+                            <td className="p-4 md:p-5 font-mono">{item.trave}</td>
+                            <td className="p-4 md:p-5 font-mono">{item.ponto}</td>
+                            <td className="p-4 md:p-5">
+                              <span className="inline-flex px-3 py-1 rounded-full bg-red-600/10 text-red-600 font-black text-[10px] uppercase tracking-widest">{item.falha}</span>
+                            </td>
+                            <td className="p-4 md:p-5 font-mono opacity-80">{item.resolvido_em ? formatarDataBR(item.resolvido_em) : '-'}</td>
+                            <td className="p-4 md:p-5 font-bold">{item.resolvido_por || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </>
+              )}
+              {historicoSubAba === 'abertas' && (
+                <>
+                  {loadingHistoricoAbertas ? (
+                    <div className="flex items-center justify-center py-16">
+                      <Loader2 className="animate-spin text-red-600" size={32} />
+                    </div>
+                  ) : historicoAbertas.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-16 h-16 bg-red-600/10 rounded-3xl flex items-center justify-center text-red-600 mb-4">
+                        <AlertTriangle size={32} className="animate-pulse" />
+                      </div>
+                      <h3 className="font-black uppercase italic text-xl mb-2">Nenhum registro em aberto</h3>
+                      <p className={`${s.sub} text-xs max-w-sm`}>Ajuste o intervalo de datas ou não há falhas abertas no período.</p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'} text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+                          <th className="p-4 md:p-5 text-red-600">Run In</th>
+                          <th className="p-4 md:p-5">Trave</th>
+                          <th className="p-4 md:p-5">Ponto</th>
+                          <th className="p-4 md:p-5">Tipo de Falha</th>
+                          <th className="p-4 md:p-5">Dia</th>
+                          <th className="p-4 md:p-5">Solicitante</th>
+                        </tr>
+                      </thead>
+                      <tbody className={`text-xs divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-100'}`}>
+                        {historicoAbertas.map((item) => (
+                          <tr key={item.id}>
+                            <td className="p-4 md:p-5 font-bold">{item.setor}</td>
+                            <td className="p-4 md:p-5 font-mono">{item.trave}</td>
+                            <td className="p-4 md:p-5 font-mono">{item.ponto}</td>
+                            <td className="p-4 md:p-5">
+                              <span className="inline-flex px-3 py-1 rounded-full bg-red-600/10 text-red-600 font-black text-[10px] uppercase tracking-widest">{item.falha}</span>
+                            </td>
+                            <td className="p-4 md:p-5 font-mono opacity-80">{item.data ? formatarDataBR(item.data) : '-'}</td>
+                            <td className="p-4 md:p-5 font-bold">{item.usuario || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </>
               )}
             </div>
           </section>
+        )}
+
+        {activeTab === 'indicadores' && (
+          <DashboardKPI
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+            setDataInicio={setDataInicio}
+            setDataFim={setDataFim}
+            theme={theme}
+            s={s}
+            api={api}
+            Loader2={Loader2}
+          />
         )}
       </main>
 

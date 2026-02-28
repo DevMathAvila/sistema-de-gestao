@@ -118,6 +118,52 @@ export async function listarRegistrosFalhas(filtroSetor = null) {
 }
 
 /**
+ * Lista registros em aberto (status exatamente 'aberto') com filtro opcional por coluna data.
+ */
+export async function listarRegistrosAbertos(dataInicio = null, dataFim = null) {
+  const normalizeDate = (value) => {
+    const s = sanitizeString(value, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  };
+  const inicio = dataInicio ? normalizeDate(dataInicio) : null;
+  const fim = dataFim ? normalizeDate(dataFim) : null;
+
+  let query = supabase
+    .from('registros_falhas')
+    .select('id, usuario, setor, trave, ponto, falha, data')
+    .eq('status', 'aberto');
+
+  if (inicio) query = query.gte('data', `${inicio}T00:00:00.000Z`);
+  if (fim) query = query.lte('data', `${fim}T23:59:59.999Z`);
+
+  const { data, error } = await query.order('data', { ascending: false });
+  return { data: data || [], error };
+}
+
+/**
+ * Lista todos os registros para Dashboard KPI. Busca registros_falhas com filtro opcional por data.
+ * Sem filtros retorna todo o período. Campos: id, setor, status, falha, data, usuario.
+ */
+export async function listarRegistrosParaKPI(dataInicio = null, dataFim = null) {
+  const normalizeDate = (value) => {
+    const s = sanitizeString(value, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  };
+  const inicio = dataInicio ? normalizeDate(dataInicio) : null;
+  const fim = dataFim ? normalizeDate(dataFim) : null;
+
+  let query = supabase
+    .from('registros_falhas')
+    .select('id, setor, status, falha, data, usuario');
+
+  if (inicio) query = query.gte('data', `${inicio}T00:00:00.000Z`);
+  if (fim) query = query.lte('data', `${fim}T23:59:59.999Z`);
+
+  const { data, error } = await query.order('data', { ascending: false });
+  return { data: data || [], error };
+}
+
+/**
  * Lista registros concluídos da tabela registros_falhas (status CONCLUÍDO) com filtro opcional por intervalo de datas.
  */
 export async function listarOcorrenciasConcluidas(dataInicio = null, dataFim = null) {

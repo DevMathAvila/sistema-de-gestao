@@ -1,28 +1,32 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { listarFalhasAbertas } from '../services/supabaseSecure';
-import { LISTA_SETORES } from '../data/setores';
-import { AlertTriangle } from 'lucide-react';
+import { supabase } from '../services/supabase';
+import { AlertTriangle, Octagon } from 'lucide-react';
 
 const MonitorTV = () => {
   const [falhas, setFalhas] = useState([]);
   const [stats, setStats] = useState({ total: 0, criticas: 0 });
 
-  const normalizar = (texto) => String(texto || '').replace(/\s|-|_/g, '').toLowerCase().trim();
+  const normalizar = (texto) => String(texto || "").replace(/\s|-|_/g, '').toLowerCase().trim();
 
   const processarDados = useCallback(async () => {
     try {
-      const { data, error } = await listarFalhasAbertas();
+      const { data, error } = await supabase.from('registros_falhas').select('*');
       if (error) throw error;
-      const listaAbertos = (data || []).filter(f =>
-        String(f.status || '').toLowerCase().trim() === 'aberto'
+
+      const listaAbertos = (data || []).filter(f => 
+        String(f.status || "").toLowerCase().trim() === 'aberto'
       );
+      
       setFalhas(listaAbertos);
       const criticas = listaAbertos.filter(f => {
         const pNorm = normalizar(f.ponto);
         return pNorm.includes('travetoda') || pNorm.includes('1-15');
       }).length;
+
       setStats({ total: listaAbertos.length, criticas });
-    } catch { /* silencioso */ }
+    } catch (err) {
+      console.error(err);
+    }
   }, []);
 
   useEffect(() => {
@@ -32,7 +36,7 @@ const MonitorTV = () => {
   }, [processarDados]);
 
   const montarDados = () => {
-    const setores = LISTA_SETORES;
+    const setores = ["Runin 01", "Runin 02", "Runin 03", "Runin 04", "Runin 05", "Runin 06", "Runin 07", "Runin 08", "Runin 09", "Runin 10", "AVT"];
     return setores.map(nome => {
       const chamados = falhas.filter(f => normalizar(f.setor) === normalizar(nome));
       const resumoFalhas = {};
