@@ -52,6 +52,29 @@ export async function listarUsuarios() {
 }
 
 /**
+ * Atualiza senha do usuario pelo username (case-insensitive).
+ */
+export const atualizarSenhaUsuario = async (username, novaSenha) => {
+  const usernameLimpo = sanitizeString(username, LIMITS.MAX_USERNAME).trim();
+  const usernameNormalizado = usernameLimpo.toLowerCase();
+  const senhaLimpa = String(novaSenha || '');
+  if (!usernameLimpo || !senhaLimpa) {
+    return { success: false, error: { message: 'Dados invalidos para atualizar senha.' } };
+  }
+
+  const { data, error, count } = await supabase
+    .from('usuarios')
+    .update({ senha: senhaLimpa })
+    .ilike('username', usernameNormalizado)
+    .select('username', { count: 'exact' });
+
+  if (error) return { success: false, error };
+  if (typeof count === 'number' && count > 0) return { success: true };
+  if (Array.isArray(data) && data.length > 0) return { success: true };
+  return { success: false, error: { message: 'Nenhum usuario atualizado.' } };
+};
+
+/**
  * Cria usuário — apenas admin; validação rigorosa.
  */
 export async function criarUsuario(payload) {

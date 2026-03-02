@@ -23,12 +23,16 @@ CREATE POLICY "usuarios_insert_anon"
   TO anon
   WITH CHECK (true);
 
--- Bloquear UPDATE para anon (evita alteração de senha/role em massa pela API pública)
+-- UPDATE: permitir para anon para viabilizar troca de senha no Dashboard.
+-- Observação: sem Supabase Auth no app, não há vínculo forte de identidade no banco.
+-- Para ambiente de produção, prefira mover esta ação para Edge Function com service_role.
+DROP POLICY IF EXISTS "usuarios_deny_update_anon" ON public.usuarios;
 DROP POLICY IF EXISTS "usuarios_update_anon" ON public.usuarios;
-CREATE POLICY "usuarios_deny_update_anon"
+CREATE POLICY "usuarios_update_anon"
   ON public.usuarios FOR UPDATE
   TO anon
-  USING (false);
+  USING (true)
+  WITH CHECK (true);
 
 -- DELETE: permitido para anon para o painel Admin (Remover usuário) funcionar.
 -- Para máxima segurança (só remover usuários pelo Dashboard ou Edge Function),

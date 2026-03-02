@@ -5,7 +5,7 @@ import {
   Settings, AlertTriangle, Eye, Key, Activity, Zap
 } from 'lucide-react';
 import { LISTA_SETORES } from '../data/setores';
-import { listarFalhasAbertas } from '../services/supabaseSecure';
+import { listarFalhasAbertas, atualizarSenhaUsuario } from '../services/supabaseSecure';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,6 +20,31 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [showPassModal, setShowPassModal] = useState(false);
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [updatingSenha, setUpdatingSenha] = useState(false);
+
+  const regexSenhaForte = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
+  const avaliarForcaSenha = (senha) => {
+    if (!senha) return { nivel: 'Nenhuma', barra: 'bg-slate-400', progresso: 0, forte: false };
+    let score = 0;
+    if (senha.length >= 8) score += 1;
+    if (/[A-Z]/.test(senha)) score += 1;
+    if (/\d/.test(senha)) score += 1;
+    if (/[^A-Za-z0-9]/.test(senha)) score += 1;
+
+    if (regexSenhaForte.test(senha)) {
+      return { nivel: 'Forte/Segura', barra: 'bg-emerald-500', progresso: 100, forte: true };
+    }
+    if (score >= 2) return { nivel: 'Média', barra: 'bg-amber-400', progresso: 66, forte: false };
+    return { nivel: 'Fraca', barra: 'bg-red-500', progresso: 33, forte: false };
+  };
+
+  const forcaSenha = avaliarForcaSenha(novaSenha);
+  const senhasIguais = novaSenha.length > 0 && novaSenha === confirmarSenha;
+  const podeAtualizarSenha = forcaSenha.forte && senhasIguais && !updatingSenha;
+  const usernameSessao = String(user?.username ?? '').trim();
 
   const buscarFalhas = async () => {
     try {
@@ -45,6 +70,33 @@ const Dashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('lenovo_user');
     navigate('/');
+  };
+
+  const limparModalSenha = () => {
+    setNovaSenha('');
+    setConfirmarSenha('');
+    setUpdatingSenha(false);
+    setShowPassModal(false);
+  };
+
+  const handleAtualizarSenha = async () => {
+    if (!podeAtualizarSenha) return;
+    setUpdatingSenha(true);
+    try {
+      if (!usernameSessao) throw new Error('Usuario logado nao encontrado.');
+
+      const result = await atualizarSenhaUsuario(usernameSessao, novaSenha);
+      if (!result?.success) throw new Error(result?.error?.message || 'Falha ao atualizar senha.');
+
+      alert('Senha atualizada com sucesso!');
+      setTimeout(() => {
+        limparModalSenha();
+      }, 2000);
+    } catch (err) {
+      alert(err?.message || 'Nao foi possivel atualizar a senha.');
+    } finally {
+      setUpdatingSenha(false);
+    }
   };
 
   // Variáveis de Estilo Baseadas no Tema
@@ -123,6 +175,18 @@ const Dashboard = () => {
               <Activity size={14} className="text-green-500 animate-pulse" />
               <span className="text-[9px] font-black uppercase tracking-wider">Telemetria Ativa</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowPassModal(true)}
+              className={`px-4 py-2 rounded-2xl border flex items-center gap-2 font-black text-[10px] uppercase tracking-wider transition-all ${
+                theme === 'dark'
+                  ? 'border-red-600/40 bg-red-600/10 text-red-500 hover:bg-red-600/20'
+                  : 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+              }`}
+            >
+              <Key size={14} />
+              Segurança
+            </button>
           </div>
         </header>
 
@@ -168,6 +232,93 @@ const Dashboard = () => {
           })}
         </div>
       </main>
+
+      {showPassModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`w-full max-w-xl rounded-[2.5rem] border p-8 ${theme === 'dark' ? 'bg-[#0B0B0B] border-white/10' : 'bg-white border-slate-200 shadow-2xl'}`}>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-600">Security</p>
+                <h3 className="text-2xl font-black italic uppercase tracking-tight">Alterar Senha</h3>
+              </div>
+              <button
+                type="button"
+                onClick={limparModalSenha}
+                className={`px-4 py-2 rounded-2xl font-black text-[10px] uppercase transition-all ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'}`}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <label className={`text-[10px] font-black uppercase ml-2 ${styles.subtext}`}>Nova Senha</label>
+                <input
+                  type="password"
+                  value={novaSenha}
+                  onChange={(e) => setNovaSenha(e.target.value)}
+                  placeholder="Digite a nova senha"
+                  className={`w-full px-5 py-4 rounded-[2.5rem] border outline-none text-sm font-bold transition-all ${
+                    theme === 'dark'
+                      ? 'bg-black border-white/10 text-white focus:border-red-600/40'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-red-300'
+                  }`}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-[10px] font-black uppercase ml-2 ${styles.subtext}`}>Confirmar Nova Senha</label>
+                <input
+                  type="password"
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  placeholder="Repita a nova senha"
+                  className={`w-full px-5 py-4 rounded-[2.5rem] border outline-none text-sm font-bold transition-all ${
+                    theme === 'dark'
+                      ? 'bg-black border-white/10 text-white focus:border-red-600/40'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-red-300'
+                  }`}
+                />
+              </div>
+
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${styles.subtext}`}>Forca da senha</span>
+                  <span className={`text-[10px] font-black uppercase tracking-wider ${
+                    forcaSenha.forte ? 'text-emerald-500' : forcaSenha.nivel === 'Média' ? 'text-amber-500' : 'text-red-500'
+                  }`}>{forcaSenha.nivel}</span>
+                </div>
+                <div className={`w-full h-3 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-200'}`}>
+                  <div
+                    className={`h-full transition-all duration-300 ${forcaSenha.barra}`}
+                    style={{ width: `${forcaSenha.progresso}%` }}
+                  />
+                </div>
+                <p className={`mt-2 text-[10px] font-black uppercase tracking-wider ${styles.subtext}`}>
+                  Minimo 8 caracteres, 1 letra maiuscula, 1 numero e 1 caractere especial.
+                </p>
+              </div>
+
+              {confirmarSenha.length > 0 && !senhasIguais && (
+                <p className="text-[10px] font-black uppercase tracking-wider text-red-500">As senhas nao coincidem.</p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleAtualizarSenha}
+                disabled={!podeAtualizarSenha}
+                className={`w-full mt-2 px-6 py-4 rounded-[2.5rem] font-black uppercase text-xs tracking-widest transition-all ${
+                  podeAtualizarSenha
+                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-600/30'
+                    : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                {updatingSenha ? 'Atualizando...' : 'Atualizar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Estilos Globais Customizados */}
       <style dangerouslySetInnerHTML={{ __html: `
