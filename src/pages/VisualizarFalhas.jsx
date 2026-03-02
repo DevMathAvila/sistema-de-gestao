@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, HardDrive, Hash, ChevronDown,
   Eye, X, ShieldAlert, ArrowRight, Sun, Moon,
-  Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle, Menu
+  Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle, Menu, Clock3
 } from 'lucide-react';
 import { LISTA_SETORES } from '../data/setores';
-import { listarFalhasAbertas, fecharRegistros } from '../services/supabaseSecure';
+import { listarFalhasAbertas, fecharRegistros, listarHistoricoRecentePorPonto } from '../services/supabaseSecure';
 import { getSessionUser } from '../lib/session';
 
 const VisualizarFalhas = () => {
@@ -20,6 +20,10 @@ const VisualizarFalhas = () => {
   const [solucaoTexto, setSolucaoTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [falhasSelecionadas, setFalhasSelecionadas] = useState([]);
+  const [historicoPonto, setHistoricoPonto] = useState([]);
+  const [loadingHistoricoPonto, setLoadingHistoricoPonto] = useState(false);
+  const [mostrarHistoricoCompleto, setMostrarHistoricoCompleto] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
   const [modoLote, setModoLote] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
@@ -80,6 +84,61 @@ const VisualizarFalhas = () => {
       document.body.style.overflow = '';
     };
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 768px)');
+    const apply = (evt) => setIsMobileView(evt.matches);
+    setIsMobileView(media.matches);
+    if (typeof media.addEventListener === 'function') media.addEventListener('change', apply);
+    else media.addListener(apply);
+    return () => {
+      if (typeof media.removeEventListener === 'function') media.removeEventListener('change', apply);
+      else media.removeListener(apply);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!modalData || String(modalData.ponto) === 'Todos') {
+      setHistoricoPonto([]);
+      setLoadingHistoricoPonto(false);
+      setMostrarHistoricoCompleto(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingHistoricoPonto(true);
+    setMostrarHistoricoCompleto(false);
+
+    listarHistoricoRecentePorPonto(modalData.setor, modalData.trave, `Ponto ${modalData.ponto}`, 5)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setHistoricoPonto([]);
+          return;
+        }
+        setHistoricoPonto(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setHistoricoPonto([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingHistoricoPonto(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [modalData]);
+
+  const formatarDataHora = (value) => {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '-';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hour = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hour}:${min}`;
+  };
 
   const getStatusTrave = (chamados) => {
     const temTraveParada = chamados.some(f => normalizar(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15'));
@@ -244,6 +303,7 @@ const VisualizarFalhas = () => {
     hover: theme === 'dark' ? 'hover:bg-white/[0.03]' : 'hover:bg-slate-100',
     input: theme === 'dark' ? 'bg-black border-white/10' : 'bg-slate-50 border-slate-200 text-slate-900'
   };
+  const historicoVisivel = isMobileView && !mostrarHistoricoCompleto ? historicoPonto.slice(0, 3) : historicoPonto;
 
   if (loading) return (
     <div className={`min-h-screen ${colors.bg} flex flex-col items-center justify-center`}>
@@ -572,6 +632,45 @@ const VisualizarFalhas = () => {
               <button onClick={fecharModal} className="text-gray-500 hover:text-red-500"><X size={20} /></button>
             </div>
             <div className="p-6">
+              {String(modalData.ponto) !== 'Todos' && (
+                <section className={`mb-5 p-4 rounded-xl border ${theme === 'dark' ? 'bg-white/[0.03] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock3 size={14} className="text-red-600" />
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-red-600">Histórico Recente deste Ponto</h4>
+                  </div>
+
+                  {loadingHistoricoPonto ? (
+                    <p className="text-[10px] font-black uppercase opacity-50">Carregando histórico...</p>
+                  ) : historicoPonto.length === 0 ? (
+                    <p className="text-[11px] opacity-60">Nenhum histórico registrado para este ponto.</p>
+                  ) : (
+                    <>
+                      <div className="relative pl-5 space-y-3">
+                        <div className={`absolute left-[6px] top-1 bottom-1 w-px ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-300'}`} />
+                        {historicoVisivel.map((item) => (
+                          <article key={`${item.id}-${item.resolvido_em || item.data || ''}`} className="relative">
+                            <span className="absolute -left-[18px] top-1.5 w-2.5 h-2.5 rounded-full bg-red-600 border-2 border-white" />
+                            <p className="text-[9px] font-black uppercase tracking-wider opacity-60">{formatarDataHora(item.resolvido_em || item.data)}</p>
+                            <p className="text-[10px] font-black uppercase text-red-600 mt-1">{item.falha || '-'}</p>
+                            <p className="text-[11px] mt-1 opacity-80">{item.solucao || '-'}</p>
+                            <p className="text-[9px] font-black uppercase opacity-50 mt-1">Técnico: {item.resolvido_por || item.usuario || '-'}</p>
+                          </article>
+                        ))}
+                      </div>
+                      {isMobileView && historicoPonto.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => setMostrarHistoricoCompleto((prev) => !prev)}
+                          className="mt-3 text-[10px] font-black uppercase tracking-wider text-red-600"
+                        >
+                          {mostrarHistoricoCompleto ? 'Ver menos' : 'Ver mais'}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </section>
+              )}
+
               {!etapaFechamento ? (
                 <div className="text-center space-y-6">
                   <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'} p-4 rounded-xl`}>

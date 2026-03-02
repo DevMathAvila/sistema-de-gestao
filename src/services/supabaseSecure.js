@@ -312,6 +312,69 @@ export async function listarOcorrenciasConcluidas(dataInicio = null, dataFim = n
   return { data: dataFiltrada, error: null };
 }
 
+function pontoCorrespondeAoAlvo(pontoRegistro, pontoAlvo) {
+  const registro = String(pontoRegistro || '').trim();
+  const alvo = String(pontoAlvo || '').trim();
+  if (!registro || !alvo) return false;
+
+  const registroNorm = registro.toLowerCase();
+  if (registroNorm.includes('1-15')) return true;
+  if (registroNorm.includes('travetoda')) return true;
+
+  const alvoNum = alvo.match(/\d+/)?.[0];
+  if (!alvoNum) return registroNorm === alvo.toLowerCase();
+
+  const registroNum = registro.match(/\d+/)?.[0];
+  return registroNum === alvoNum;
+}
+
+export async function listarHistoricoRecentePorPonto(setor, trave, ponto, limite = 5) {
+  if (!validateSetor(setor, LISTA_SETORES)) return { data: [], error: null };
+  if (!validateTrave(trave)) return { data: [], error: null };
+
+  const setorSanit = String(setor).trim();
+  const traveNum = Number(trave);
+  const pontoSanit = sanitizeString(ponto, 50).trim();
+  const limiteSeguro = Number.isInteger(limite) ? Math.max(1, Math.min(limite, 20)) : 5;
+
+  const selectCols = 'id, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, usuario';
+
+  try {
+    const { data, error } = await supabase
+      .from('historico_concluidas')
+      .select(selectCols)
+      .eq('setor', setorSanit)
+      .eq('trave', traveNum)
+      .order('resolvido_em', { ascending: false })
+      .limit(60);
+
+    if (!error) {
+      const filtrado = (data || [])
+        .filter((item) => pontoCorrespondeAoAlvo(item?.ponto, pontoSanit))
+        .slice(0, limiteSeguro);
+      return { data: filtrado, error: null };
+    }
+  } catch {
+    // fallback abaixo
+  }
+
+  const { data, error } = await supabase
+    .from('registros_falhas')
+    .select(selectCols)
+    .eq('setor', setorSanit)
+    .eq('trave', traveNum)
+    .ilike('status', '%conclu%')
+    .order('resolvido_em', { ascending: false })
+    .limit(60);
+
+  if (error) return { data: [], error };
+  const filtrado = (data || [])
+    .filter((item) => pontoCorrespondeAoAlvo(item?.ponto, pontoSanit))
+    .slice(0, limiteSeguro);
+
+  return { data: filtrado, error: null };
+}
+
 export async function inserirRegistrosFalha(setor, trave, pontos, falhas) {
   if (!validateSetor(setor, LISTA_SETORES)) return { error: { message: 'Setor invalido.' } };
   if (!validateTrave(trave)) return { error: { message: 'Trave invalida.' } };
