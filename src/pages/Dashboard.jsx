@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, LogOut, HardDrive, User, Sun, Moon,
-  Settings, AlertTriangle, Eye, Key, Activity, Zap, Menu, X
+  Settings, AlertTriangle, Eye, Key, Activity, Zap, Menu, X, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { LISTA_SETORES } from '../data/setores';
 import { listarFalhasAbertas, atualizarSenhaUsuario } from '../services/supabaseSecure';
 import { clearSessionData, getSessionUser, isAdminUser } from '../lib/session';
+import AppBottomNav from '../components/AppBottomNav';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [updatingSenha, setUpdatingSenha] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const regexSenhaForte = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -168,19 +170,13 @@ const Dashboard = () => {
               </button>
             </div>
             <nav className="space-y-3">
-              <div className={`flex items-center gap-3 p-4 rounded-2xl font-black italic border border-red-600/10 text-xs ${styles.navActive}`}>
-                <LayoutDashboard size={18} /> PAINEL PRINCIPAL
-              </div>
-              {navItems.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={item.action || (() => navegar(item.path))}
-                  className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
-                >
-                  <item.icon size={18} className="group-hover:text-red-600 transition-all" /> {item.label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={abrirModalSenha}
+                className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
+              >
+                <Key size={18} className="group-hover:text-red-600 transition-all" /> Alterar Senha
+              </button>
             </nav>
             <div className="mt-auto space-y-3 pt-6 border-t border-white/10">
               <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
@@ -196,28 +192,33 @@ const Dashboard = () => {
       )}
       
       {/* Sidebar */}
-      <aside className={`hidden md:flex w-64 border-r ${styles.sidebar} p-6 flex-col z-20 backdrop-blur-xl`}>
+      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${styles.sidebar} p-4 flex-col z-20 backdrop-blur-xl transition-all duration-300`}>
         <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl text-white shadow-lg shadow-red-600/20">L</div>
-            <div>
+            {!sidebarCollapsed && <div>
               <h1 className="text-xl font-black tracking-tighter italic leading-none">LENOVO</h1>
               <span className="text-[8px] font-bold tracking-[0.2em] text-red-600 uppercase">Core Dashboard</span>
-            </div>
+            </div>}
           </div>
-          <button onClick={toggleTheme} className={`p-2 rounded-lg border ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
-            {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleTheme} className={`p-2 rounded-lg border ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
+              {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
+            </button>
+            <button onClick={() => setSidebarCollapsed((v) => !v)} className={`p-2 rounded-lg border ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
+              {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            </button>
+          </div>
         </div>
         
         <nav className="flex-1 space-y-2">
           <div className={`flex items-center gap-3 p-4 rounded-2xl font-black italic border border-red-600/10 text-xs ${styles.navActive}`}>
-            <LayoutDashboard size={18} /> PAINEL PRINCIPAL
+            <LayoutDashboard size={18} /> {!sidebarCollapsed && 'PAINEL PRINCIPAL'}
           </div>
           {navItems.map((item, idx) => (
             <button key={idx} onClick={item.action || (() => navigate(item.path))} 
               className={`w-full flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 hover:translate-x-1 rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase`}>
-              <item.icon size={18} className="group-hover:text-red-600 transition-all" /> {item.label}
+              <item.icon size={18} className="group-hover:text-red-600 transition-all" /> {!sidebarCollapsed && item.label}
             </button>
           ))}
         </nav>
@@ -225,19 +226,19 @@ const Dashboard = () => {
         <div className="mt-auto pt-6 border-t border-white/5">
           <div className={`flex items-center gap-4 mb-6 p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}`}>
             <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center text-red-600"><User size={20}/></div>
-            <div className="overflow-hidden">
+            {!sidebarCollapsed && <div className="overflow-hidden">
                 <p className={`text-[8px] font-black uppercase ${styles.subtext}`}>Usuario: </p>
                 <p className="text-sm font-black truncate italic leading-none">{user.username}</p>
-            </div>
+            </div>}
           </div>
           <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 p-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl transition-all uppercase text-xs">
-            <LogOut size={16} /> Encerrar Sessão
+            <LogOut size={16} /> {!sidebarCollapsed && 'Encerrar Sessão'}
           </button>
         </div>
       </aside>
 
       {/* Conteúdo Principal */}
-      <main className="flex-1 p-4 sm:p-6 md:p-10 overflow-y-auto z-10">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 pb-24 md:pb-10 overflow-y-auto z-10">
         <header className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -415,9 +416,11 @@ const Dashboard = () => {
           border-radius: 10px; 
         }
       `}} />
+      <AppBottomNav isAdmin={isAdmin} />
     </div>
   );
 };
 
 export default Dashboard;
+
 

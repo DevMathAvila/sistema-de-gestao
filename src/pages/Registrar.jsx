@@ -4,6 +4,8 @@ import { ArrowLeft, Save, Zap, Hash, Loader2, Check, CheckCircle2, Layout, Cpu, 
 import { LISTA_SETORES } from '../data/setores';
 import { FALHAS_COMUNS } from '../data/falhasComuns';
 import { inserirRegistrosFalha, listarChamadosAbertosPorSetor } from '../services/supabaseSecure';
+import { getSessionUser, isAdminUser } from '../lib/session';
+import AppBottomNav from '../components/AppBottomNav';
 
 const listaPontos = [...Array(15)].map((_, i) => (i + 1).toString());
 
@@ -20,6 +22,7 @@ const Registrar = () => {
   const [chamadosAbertos, setChamadosAbertos] = useState([]);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [formData, setFormData] = useState({ trave: '', pontos: [], falhas: [] });
+  const isAdmin = isAdminUser(getSessionUser() || { role: 'colaborador' });
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +107,7 @@ const Registrar = () => {
   };
 
   return (
-    <div className={`min-h-screen ${colors.bg} ${colors.text} p-4 md:p-10 font-sans relative transition-colors duration-500 overflow-x-hidden`}>
+    <div className={`min-h-screen ${colors.bg} ${colors.text} p-4 md:p-10 pb-24 md:pb-10 font-sans relative transition-colors duration-500 overflow-x-hidden`}>
       
       {/* Background Decorativo */}
       <div className={`absolute top-[-10%] left-[-10%] w-[40%] h-[40%] ${theme === 'dark' ? 'bg-red-600/10' : 'bg-red-500/10'} blur-[120px] rounded-full animate-pulse`} />
@@ -273,6 +276,7 @@ const Registrar = () => {
           </div>
         </form>
       </div>
+      <AppBottomNav isAdmin={isAdmin} />
     </div>
   );
 };

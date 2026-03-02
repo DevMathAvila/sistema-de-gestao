@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck, Users, BarChart3, Trash2, Sun, Moon,
-  LayoutDashboard, Loader2, Calendar, AlertTriangle, UserPlus, TrendingUp, Menu, X
+  LayoutDashboard, Loader2, Calendar, AlertTriangle, UserPlus, TrendingUp, Menu, X, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import DashboardKPI from '../components/DashboardKPI';
+import DateRangePicker from '../components/DateRangePicker';
 import { LISTA_SETORES, SETOR_TODOS } from '../data/setores';
 import * as api from '../services/supabaseSecure';
 import * as XLSX from 'xlsx';
 import { getSessionUser, isAdminUser } from '../lib/session';
+import AppBottomNav from '../components/AppBottomNav';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ const Admin = () => {
   const [loadingHistoricoAbertas, setLoadingHistoricoAbertas] = useState(false);
   const [historicoSubAba, setHistoricoSubAba] = useState('concluidas');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const intervaloInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
 
   const toggleTheme = () => {
@@ -248,25 +251,12 @@ const Admin = () => {
               </button>
             </div>
             <nav className="space-y-3">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
-                  className={`w-full min-h-12 flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[11px] uppercase tracking-wider text-left ${
-                    activeTab === item.id
-                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
-                      : `${s.sub} hover:bg-red-600/10 hover:text-red-600`
-                  }`}
-                >
-                  <item.icon size={20} /> {item.label}
-                </button>
-              ))}
-            </nav>
-            <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
               <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
                 <span className="text-[11px] font-black uppercase">Tema</span>
                 {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
               </button>
+            </nav>
+            <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
               <button
                 onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}
                 className={`w-full min-h-12 p-3 rounded-xl border font-black text-[11px] uppercase tracking-widest ${theme === 'dark' ? 'border-white/10 text-white bg-white/5' : 'border-slate-200 text-slate-900 bg-white'}`}
@@ -278,18 +268,23 @@ const Admin = () => {
         </div>
       )}
       
-      <aside className={`hidden md:flex w-72 ${s.sidebar} border-r p-8 flex-col z-20`}>
+      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-72'} ${s.sidebar} border-r p-6 flex-col z-20 transition-all duration-300`}>
         <div className="flex items-center justify-between mb-12">
-          <div className="flex items-center gap-3 text-red-600">
+          <div className="flex items-center gap-3 text-red-600 overflow-hidden">
             <ShieldCheck size={32} strokeWidth={2.5} />
-            <div>
+            {!sidebarCollapsed && <div>
               <h1 className="text-xl font-black tracking-tighter text-red-600 italic leading-none">ADMIN</h1>
               <span className={`text-[8px] font-bold uppercase tracking-widest ${s.sub}`}>Privileged Access</span>
-            </div>
+            </div>}
           </div>
-          <button onClick={toggleTheme} className={`p-2 rounded-xl border ${theme === 'dark' ? 'border-white/10' : 'border-slate-100'}`}>
-            {theme === 'dark' ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} className="text-red-600" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleTheme} className={`p-2 rounded-xl border ${theme === 'dark' ? 'border-white/10' : 'border-slate-100'}`}>
+              {theme === 'dark' ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} className="text-red-600" />}
+            </button>
+            <button onClick={() => setSidebarCollapsed((v) => !v)} className={`p-2 rounded-xl border ${theme === 'dark' ? 'border-white/10' : 'border-slate-100'}`}>
+              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+          </div>
         </div>
 
         <nav className="flex-1 space-y-3">
@@ -300,17 +295,31 @@ const Admin = () => {
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' 
                 : `${s.sub} hover:bg-red-600/5 hover:text-red-600`
               }`}>
-              <item.icon size={20} /> {item.label}
+              <item.icon size={20} /> {!sidebarCollapsed && item.label}
             </button>
           ))}
           <div className={`my-8 border-t ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`} />
           <button onClick={() => navigate('/dashboard')} className={`w-full flex items-center gap-3 p-4 ${s.sub} hover:text-red-600 transition-all font-black text-[10px] uppercase`}>
-            <LayoutDashboard size={20} /> Painel de Linha
+            <LayoutDashboard size={20} /> {!sidebarCollapsed && 'Painel de Linha'}
           </button>
         </nav>
       </aside>
 
-      <main className="flex-1 p-4 sm:p-6 md:p-12 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 md:p-12 pb-24 md:pb-12 overflow-y-auto">
+        <div className="md:hidden mb-5 flex gap-2 overflow-x-auto no-scrollbar">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveTab(item.id)}
+              className={`h-11 px-4 rounded-2xl whitespace-nowrap font-black text-[10px] uppercase tracking-widest transition-all ${
+                activeTab === item.id ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : `${s.card} ${s.sub}`
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
         {activeTab === 'usuarios' && (
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
             <header className="mb-10">
@@ -444,25 +453,15 @@ const Admin = () => {
                 <p className={s.sub}>Visualize ocorrências concluídas ou em aberto.</p>
               </div>
               <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-                <div className="flex gap-2">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase tracking-widest ml-1 opacity-50">De</span>
-                    <input
-                      type="date"
-                      value={dataInicio}
-                      onChange={(e) => setDataInicio(e.target.value)}
-                      className={`${s.input} px-4 py-2 rounded-2xl text-xs`}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase tracking-widest ml-1 opacity-50">Até</span>
-                    <input
-                      type="date"
-                      value={dataFim}
-                      onChange={(e) => setDataFim(e.target.value)}
-                      className={`${s.input} px-4 py-2 rounded-2xl text-xs`}
-                    />
-                  </div>
+                <div className="min-w-[250px]">
+                  <DateRangePicker
+                    dataInicio={dataInicio}
+                    dataFim={dataFim}
+                    setDataInicio={setDataInicio}
+                    setDataFim={setDataFim}
+                    theme={theme}
+                    compact
+                  />
                 </div>
                 {intervaloInvalido && (
                   <p className="text-[10px] font-black uppercase tracking-wider text-red-600">
@@ -679,6 +678,7 @@ const Admin = () => {
           border: 2px solid ${theme === 'dark' ? '#050505' : '#f8fafc'};
         }
       `}} />
+      <AppBottomNav isAdmin />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import DateRangePicker from './DateRangePicker';
 
 const CORES_PIE = ['#dc2626', '#16a34a'];
 
@@ -115,26 +116,14 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
           </h2>
           <p className={s.sub}>Indicadores de performance e análise de recorrência.</p>
         </div>
-        <div className="flex gap-2 items-end">
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-widest ml-1 opacity-50">De</span>
-            <input
-              type="date"
-              value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
-              className={`${s.input} px-4 py-2 rounded-2xl text-xs`}
-            />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-widest ml-1 opacity-50">Até</span>
-            <input
-              type="date"
-              value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
-              className={`${s.input} px-4 py-2 rounded-2xl text-xs`}
-            />
-          </div>
-        </div>
+        <DateRangePicker
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          setDataInicio={setDataInicio}
+          setDataFim={setDataFim}
+          theme={theme}
+          compact
+        />
       </header>
 
       {intervaloInvalido && (

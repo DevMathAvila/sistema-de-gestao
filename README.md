@@ -1,102 +1,72 @@
-📋 Funcionalidades Implementadas
-1. Inteligência Visual & Prevenção de Erros (Novo ✨)
-Mapeamento de Trave Neon: Identificação instantânea de pendências. Ao selecionar uma trave, o sistema aplica um efeito de brilho (Glow) vermelho neon caso existam chamados abertos.
+Aqui está um modelo de README.md profissional e direto, focado nas atualizações que acabamos de estruturar. Ele serve tanto para o seu controle quanto para mostrar o progresso do projeto (caso tenha outros envolvidos ou queira documentar para o futuro).
 
-Flags de Pontos (PT) em Tempo Real: Pontos com falhas são destacados com ícones de alerta e animações de pulsação, diferenciando-se visualmente de pontos livres.
+Update Log - Sistema de Gestão de Falhas (Run-in/Trave)
+Novas Implementações e Melhorias (Março 2026)
+Este documento detalha as atualizações recentes focadas em inteligência de dados, agilidade operacional e UX (Experiência do Usuário).
+
+1. Filtro de Datas Inteligente
+Correção de Range: Ajuste na lógica de busca para considerar o dia completo (00:00:00 às 23:59:59), evitando que falhas registradas durante o dia sejam omitidas.
+
+Filtros Seletivos: Liberdade para filtrar qualquer janela de tempo no passado, sem a obrigatoriedade de a data final ser "hoje".
+
+Acessibilidade: Expansão da área de clique nos campos de data ("De" e "Até"). Agora é possível abrir o calendário clicando em qualquer parte do bloco do input.
+
+Reset Rápido: Implementação do botão "Redefinir" que limpa instantaneamente os filtros e restaura a visualização de todos os registros.
+
+2. Manutenção Seletiva (Múltiplas Falhas)
+Desmembramento de Ocorrências: Caso um ponto apresente mais de uma falha (ex: RJ45 e VGA), o sistema agora permite selecionar individualmente qual está sendo concluída.
+
+Status Dinâmico: O ponto só retornará ao estado "Verde/Resolvido" após a conclusão de todas as falhas listadas.
+
+3. Histórico In-Loco (Memória do Ponto)
+Timeline de Manutenção: Ao abrir os detalhes de um ponto, o técnico agora visualiza as últimas 5 intervenções feitas naquele local específico.
+
+Rastreabilidade: Exibição de data, falha anterior e o técnico responsável, facilitando a identificação de problemas crônicos.
+
+4. Navegação e UI/UX (Mobile & Desk)
+Bottom Navigation (Mobile): Implementação de barra inferior para acesso rápido às funções principais, otimizando o uso com apenas um polegar.
+
+Sidebar Inteligente (Desk): Menu lateral colapsável para maior aproveitamento da área de trabalho em telas grandes.
+
+Observações e Próximos Passos
+[!IMPORTANT]
+Bug Conhecido - Layout do Menu:
+Identificamos que o botão de "Fechar Layout/Menu" está apresentando inconsistências visuais (saindo fora do alinhamento) em algumas telas de pendências específicas.
+
+Ações Futuras:
+
+O componente de fechamento do menu será reimplementado e modificado em uma atualização futura para garantir a responsividade total.
+
+Refinamento da lógica de reincidência automática (Modo Sniper).
+
+Status do Projeto: Ativo 
+
+Banco de Dados: Supabase (PostgreSQL)
+
+Tier: Free Tier (Monitoramento de Storage ativo)
 
 
-### 🛒 Carrinho de Ferramentas Inteligente (Smart Logistics)
-O sistema agora conta com um motor de cálculo de insumos por setor (Run In). 
+Com base no que estruturamos e no comportamento do seu Codex, as stacks que dão vida ao seu sistema de monitoramento de linha são as seguintes:
 
-- **Consolidação Automática:** Ao abrir um setor, o técnico visualiza instantaneamente o checklist de materiais necessários para sanar todas as falhas daquela linha.
-- **Cálculo de Volume:** A lógica diferencia falhas pontuais de falhas de "Trave Inteira", multiplicando automaticamente a quantidade de componentes (ex: 15 cabos para uma trave inteira vs 1 cabo para um ponto individual).
-- **Eficiência Operacional:** Reduz o tempo de deslocamento ao almoxarifado, garantindo que o técnico já chegue ao setor com o kit de reparo completo.
+Frontend (A Cara do Sistema)
+React.js: O coração da interface. É o que permite que o sistema seja rápido e que os componentes (como os cards de trave e o dashboard) atualizem sem precisar recarregar a página.
 
-Tooltips Acumulativos: Lógica inteligente que agrupa falhas. Ao passar o mouse sobre um ponto com erro, o sistema exibe um balão informando todos os problemas ativos (ex: "Rede (RJ45), VGA"), evitando registros duplicados.
+Vite: Provavelmente o "motor" que roda o desenvolvimento, garantindo que o sistema carregue instantaneamente.
 
-Persistência de Seleção: O técnico pode optar por abrir um novo chamado em um ponto já ocupado se o diagnóstico for diferente, garantindo total flexibilidade operacional.
+Tailwind CSS: Quase certeza que o Codex usou isso para a estilização. É o que permite criar esse menu mobile bonitão, os efeitos de backdrop-blur e a responsividade de um jeito prático.
 
-2. Painel Administrativo (Business Intelligence)
-Gráfico de Pareto Automatizado: Algoritmo que desmembra registros múltiplos para contabilizar a frequência individual de cada componente defeituoso por setor.
+Lucide React: A biblioteca de ícones que usamos nos prompts (como o ícone de relógio para o histórico e o de calendário).
 
-Gestão de Equipe (RBAC): Controle de acesso baseado em funções (Admin/Técnico) com permissões granulares para cadastro e exclusão de usuários.
+Backend & Database (O Cérebro e a Memória)
+Supabase: Sua plataforma de "Backend as a Service".
 
-Gestão de Segurança: Sistema de alteração de senhas integrado e validação de sessão em tempo real.
+PostgreSQL: O banco de dados relacional onde ficam as tabelas de falhas, histórico e usuários.
 
-3. Registro e Monitoramento
-Dashboard em Tempo Real: Visualização de 11 setores de teste com indicadores de anomalia dinâmicos.
+PostgREST: A tecnologia que o Supabase usa para que o seu JavaScript converse direto com o banco de dados via API.
 
-Multi-Seleção de Pontos: Ferramenta para selecionar toda a trave ou pontos individuais com um único clique.
+Supabase Auth: O sistema que controla quem é Admin e quem é técnico.
 
-🛠️ Stacks Utilizadas
-Frontend
-React.js (Vite): Core para renderização reativa e alta performance.
+Integração & Lógica
+JavaScript (ES6+): A linguagem principal que conecta tudo.
 
-Tailwind CSS: Design "Dark Mode" futurista com backdrops de desfoque (Glassmorphism).
-
-Lucide React: Iconografia minimalista e consistente.
-
-Framer Motion / Tailwind Animate: Transições suaves e feedback visual de estados.
-
-Backend & Database (BaaS)
-Supabase: Infraestrutura escalável operando com:
-
-PostgreSQL: Banco de dados relacional com consultas complexas.
-
-Real-time API: Sincronização instantânea do status da fábrica sem necessidade de refresh manual.
-
-🔧 Desafios Técnicos Superados
-Lógica de Detecção Acumulada: Implementação de busca em strings complexas para identificar pontos específicos dentro de registros múltiplos (ex: extrair "Ponto 1" de uma string "Ponto 1, Ponto 2").
-
-Normalização de Tipagem no DB: Resolução de conflitos de IDs alfanuméricos vs numéricos (UUID vs BigInt), garantindo integridade nas chaves estrangeiras.
-
-UX Industrial: Desenvolvimento de uma interface que prioriza a "escaneabilidade", permitindo que o técnico identifique problemas na linha com apenas um olhar.
-
-📦 Dependências Principais
-JSON
-{
-  "dependencies": {
-    "react": "^18.x",
-    "react-router-dom": "^6.x",
-    "@supabase/supabase-js": "^2.x",
-    "lucide-react": "latest",
-    "framer-motion": "latest",
-    "recharts": "latest"
-  }
-}
-🚀 Como Executar
-Clonagem: git clone [url-do-repositorio]
-
-Dependências: npm install
-
-Ambiente: Configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env.
-
-Deploy Local: npm run dev
-
-Desenvolvido para máxima eficiência e precisão técnica.
-
-# Lenovo Asset System - Refatoração e Qualidade
-
-Recentemente, o projeto passou por uma bateria de melhorias focadas em **Qualidade de Código** e conformidade com as métricas do **SonarQube**.
-
-## 🚀 Principais Melhorias Técnicas
-
-### 1. Performance & Hooks
-- **Memoização:** Implementação de `useCallback` nas funções de busca do Supabase (Admin/Dashboard) para evitar re-renderizações infinitas e garantir que o `useEffect` tenha dependências estáveis.
-- **Limpeza de Efeitos:** Ajuste nos intervalos de sincronização em tempo real (polling) para evitar vazamento de memória.
-
-### 2. Experiência do Usuário (UX)
-- **Fim dos Alertas Bloqueantes:** Substituição do `window.alert()` por estados de feedback visual (`feedbackMsg`), garantindo que a aplicação não trave a thread principal do JavaScript durante notificações de erro ou sucesso.
-- **Feedback em Tempo Real:** Adição de estados de "loading" e animações de transição para ações assíncronas (como troca de senha e criação de usuários).
-
-### 3. Segurança & Rotas
-- **PrivateRoute:** Centralização da lógica de autenticação no `App.jsx`, protegendo rotas administrativas e operacionais contra acessos não autorizados via URL.
-- **Sanitização:** Tratamento de IDs (UUID vs Number) para garantir compatibilidade com diferentes estruturas de banco de dados no Supabase.
-
-### 4. Manutenibilidade (Padrões Sonar)
-- **Redução de Complexidade:** Simplificação de funções com alta complexidade ciclomática.
-- **Remoção de Código Morto:** Faxina geral em imports não utilizados de bibliotecas como `lucide-react` e `react`.
-- **Template Literals:** Substituição de concatenações de strings (`"erro: " + err`) por interpolações modernas para melhor legibilidade.
-
----
-*Status do Projeto: 🟢 Estável / Em conformidade com SonarJS.*
+Supabase-js Client: A biblioteca que você usa dentro do arquivo supabaseSecure.js para fazer as queries de filtro de data e conclusão de falhas.

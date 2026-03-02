@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, HardDrive, Hash, ChevronDown,
   Eye, X, ShieldAlert, ArrowRight, Sun, Moon,
-  Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle, Menu, Clock3
+  Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle, Menu, Clock3, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { LISTA_SETORES } from '../data/setores';
 import { listarFalhasAbertas, fecharRegistros, listarHistoricoRecentePorPonto } from '../services/supabaseSecure';
-import { getSessionUser } from '../lib/session';
+import { getSessionUser, isAdminUser } from '../lib/session';
+import AppBottomNav from '../components/AppBottomNav';
 
 const VisualizarFalhas = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const VisualizarFalhas = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -37,6 +39,7 @@ const VisualizarFalhas = () => {
 
   const user = getSessionUser() || { username: 'Tecnico', role: 'colaborador' };
   const isColaborador = user.role === 'colaborador';
+  const isAdmin = isAdminUser(user);
   const setoresValidos = LISTA_SETORES;
 
   const normalizar = (texto) => String(texto || "").replace(/\s|-|_/g, '').toLowerCase().trim();
@@ -365,29 +368,34 @@ const VisualizarFalhas = () => {
         </div>
       )}
 
-      <aside className={`hidden md:flex w-56 border-r ${colors.sidebar} p-6 flex-col z-20 backdrop-blur-xl`}>
+      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-20' : 'w-56'} border-r ${colors.sidebar} p-4 flex-col z-20 backdrop-blur-xl transition-all duration-300`}>
         <div className="flex items-center gap-3 mb-10 cursor-pointer group" onClick={() => navigate('/dashboard')}>
           <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl shadow-xl text-white">L</div>
-          <div>
+          {!sidebarCollapsed && <div>
             <h1 className="text-md font-black italic tracking-tighter leading-none">LENOVO</h1>
             <span className="text-[8px] text-red-600 font-black tracking-widest uppercase">Live Pro</span>
-          </div>
+          </div>}
         </div>
         <nav className="flex-1 space-y-2">
           <button onClick={() => navigate('/dashboard')} className={`w-full flex items-center gap-3 p-3 ${colors.subtext} font-black text-[10px] ${colors.hover} rounded-xl transition-all`}>
-            <LayoutDashboard size={18} /> DASHBOARD
+            <LayoutDashboard size={18} /> {!sidebarCollapsed && 'DASHBOARD'}
           </button>
           <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black italic text-[10px] shadow-lg shadow-red-500/20">
-            <Eye size={18} /> LIVE MONITOR
+            <Eye size={18} /> {!sidebarCollapsed && 'LIVE MONITOR'}
           </div>
         </nav>
-        <button onClick={toggleTheme} className={`mt-auto flex items-center justify-between p-3 rounded-xl border ${colors.sidebar} ${colors.hover}`}>
-            <span className="text-[9px] font-black uppercase">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-            {theme === 'dark' ? <Moon size={16} className="text-red-500" /> : <Sun size={16} className="text-yellow-500" />}
-        </button>
+        <div className="mt-auto flex flex-col gap-2">
+          <button onClick={toggleTheme} className={`flex items-center justify-between p-3 rounded-xl border ${colors.sidebar} ${colors.hover}`}>
+              {!sidebarCollapsed && <span className="text-[9px] font-black uppercase">{theme === 'dark' ? 'Dark' : 'Light'}</span>}
+              {theme === 'dark' ? <Moon size={16} className="text-red-500" /> : <Sun size={16} className="text-yellow-500" />}
+          </button>
+          <button onClick={() => setSidebarCollapsed((v) => !v)} className={`p-3 rounded-xl border ${colors.sidebar} ${colors.hover}`}>
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+        </div>
       </aside>
 
-      <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto z-10">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 pb-24 md:pb-8 overflow-y-auto z-10">
         <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -770,6 +778,7 @@ const VisualizarFalhas = () => {
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #8883; border-radius: 10px; }
       `}} />
+      <AppBottomNav isAdmin={isAdmin} />
     </div>
   );
 };
