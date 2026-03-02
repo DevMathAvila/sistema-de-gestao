@@ -2,27 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, LogOut, HardDrive, User, Sun, Moon,
-  Settings, AlertTriangle, Eye, Key, Activity, Zap
+  Settings, AlertTriangle, Eye, Key, Activity, Zap, Menu, X
 } from 'lucide-react';
 import { LISTA_SETORES } from '../data/setores';
 import { listarFalhasAbertas, atualizarSenhaUsuario } from '../services/supabaseSecure';
+import { clearSessionData, getSessionUser, isAdminUser } from '../lib/session';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const user = (() => {
-    try {
-      const stored = localStorage.getItem('lenovo_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  })() || { username: 'Técnico' };
+  const user = getSessionUser() || { username: 'Tecnico', role: 'colaborador' };
+  const isAdmin = isAdminUser(user);
 
   const [setoresComFalha, setSetoresComFalha] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [showPassModal, setShowPassModal] = useState(false);
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [updatingSenha, setUpdatingSenha] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const regexSenhaForte = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -52,7 +49,9 @@ const Dashboard = () => {
       if (error) throw error;
       const registrosValidos = (data || []).filter(item => item.setor && item.trave && item.ponto);
       setSetoresComFalha([...new Set(registrosValidos.map(item => item.setor))]);
-    } catch { /* silencioso */ } finally { setLoading(false); }
+    } catch {
+      // silencioso
+    }
   };
 
   useEffect(() => {
@@ -61,6 +60,13 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
@@ -68,8 +74,20 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('lenovo_user');
-    navigate('/');
+    limparModalSenha();
+    setSetoresComFalha([]);
+    clearSessionData();
+    navigate('/', { replace: true });
+  };
+
+  const abrirModalSenha = () => {
+    setShowPassModal(true);
+    setMobileMenuOpen(false);
+  };
+
+  const navegar = (path) => {
+    setMobileMenuOpen(false);
+    navigate(path);
   };
 
   const limparModalSenha = () => {
@@ -109,11 +127,76 @@ const Dashboard = () => {
     navActive: theme === 'dark' ? 'bg-white/5 text-red-500' : 'bg-red-50 text-red-600',
   };
 
+  const navItems = [
+    { label: 'VISUALIZAR FALHAS', icon: Eye, path: '/visualizar' },
+    ...(isAdmin ? [{ label: 'PAINEL ADMIN', icon: Settings, path: '/admin' }] : []),
+    { label: 'ALTERAR SENHA', icon: Key, action: abrirModalSenha },
+  ];
+
   return (
     <div className={`min-h-screen ${styles.bg} ${styles.text} flex flex-col md:flex-row font-sans relative overflow-hidden transition-colors duration-500`}>
+      <header className={`md:hidden sticky top-0 z-40 px-4 py-3.5 border-b backdrop-blur-2xl ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white/70 border-slate-200'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-lg shadow-red-600/30">L</div>
+            <div>
+              <p className="text-sm font-black italic leading-none">LENOVO</p>
+              <p className={`text-[9px] font-black uppercase tracking-wider ${styles.subtext}`}>Core Dashboard</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white'}`}
+            aria-label="Abrir menu"
+          >
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </header>
+
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <button type="button" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Fechar menu" />
+          <aside className={`absolute right-0 top-0 h-full w-[88%] max-w-sm border-l p-6 flex flex-col shadow-2xl transition-transform duration-300 ${
+            theme === 'dark' ? 'bg-[#060606]/95 border-white/10 backdrop-blur-2xl' : 'bg-white/95 border-slate-200 backdrop-blur-2xl'
+          }`}>
+            <div className="flex items-center justify-between mb-8">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Navegação</p>
+              <button type="button" onClick={() => setMobileMenuOpen(false)} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}>
+                <X size={16} />
+              </button>
+            </div>
+            <nav className="space-y-3">
+              <div className={`flex items-center gap-3 p-4 rounded-2xl font-black italic border border-red-600/10 text-xs ${styles.navActive}`}>
+                <LayoutDashboard size={18} /> PAINEL PRINCIPAL
+              </div>
+              {navItems.map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={item.action || (() => navegar(item.path))}
+                  className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
+                >
+                  <item.icon size={18} className="group-hover:text-red-600 transition-all" /> {item.label}
+                </button>
+              ))}
+            </nav>
+            <div className="mt-auto space-y-3 pt-6 border-t border-white/10">
+              <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+                <span className="text-[11px] font-black uppercase">Tema</span>
+                {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
+              </button>
+              <button onClick={handleLogout} className="w-full min-h-12 p-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-[11px] uppercase tracking-widest transition-all">
+                Encerrar Sessão
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
       
       {/* Sidebar */}
-      <aside className={`w-full md:w-64 border-r ${styles.sidebar} p-6 flex flex-col z-20 backdrop-blur-xl`}>
+      <aside className={`hidden md:flex w-64 border-r ${styles.sidebar} p-6 flex-col z-20 backdrop-blur-xl`}>
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl text-white shadow-lg shadow-red-600/20">L</div>
@@ -131,11 +214,7 @@ const Dashboard = () => {
           <div className={`flex items-center gap-3 p-4 rounded-2xl font-black italic border border-red-600/10 text-xs ${styles.navActive}`}>
             <LayoutDashboard size={18} /> PAINEL PRINCIPAL
           </div>
-          {[
-            { label: 'VISUALIZAR FALHAS', icon: Eye, path: '/visualizar' },
-            { label: 'PAINEL ADMIN', icon: Settings, path: '/admin' },
-            { label: 'ALTERAR SENHA', icon: Key, action: () => setShowPassModal(true) }
-          ].map((item, idx) => (
+          {navItems.map((item, idx) => (
             <button key={idx} onClick={item.action || (() => navigate(item.path))} 
               className={`w-full flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 hover:translate-x-1 rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase`}>
               <item.icon size={18} className="group-hover:text-red-600 transition-all" /> {item.label}
@@ -158,14 +237,14 @@ const Dashboard = () => {
       </aside>
 
       {/* Conteúdo Principal */}
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto z-10">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 overflow-y-auto z-10">
         <header className="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <div className="h-[2px] w-8 bg-red-600"></div>
               <span className="text-red-600 text-[10px] font-black uppercase tracking-[0.3em]">Operational Status</span>
             </div>
-            <h2 className={`text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none ${styles.text}`}>
+            <h2 className={`text-4xl sm:text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none ${styles.text}`}>
               FÁBRICA <span className="text-red-600">STATUS</span>
             </h2>
           </div>
@@ -191,7 +270,7 @@ const Dashboard = () => {
         </header>
 
         {/* Grid de Setores */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
           {LISTA_SETORES.map((setorNome) => {
             const temFalha = setoresComFalha.includes(setorNome);
             return (
@@ -341,3 +420,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+

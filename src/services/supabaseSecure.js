@@ -1,10 +1,7 @@
-/**
- * Camada segura sobre o Supabase: valida e sanitiza antes de qualquer escrita.
- * Sempre use este módulo em vez de supabase.js direto para insert/update/delete.
- */
-import { supabase } from './supabase';
+﻿import { supabase } from './supabase';
 import { LISTA_SETORES } from '../data/setores';
 import { FALHAS_COMUNS } from '../data/falhasComuns';
+import { getSessionUser as getStoredSessionUser } from '../lib/session';
 import {
   sanitizeString,
   validateUsername,
@@ -18,106 +15,173 @@ import {
   LIMITS,
 } from '../lib/validation';
 
-function getSessionUser() {
-  try {
-    const stored = localStorage.getItem('lenovo_user');
-    if (!stored) return null;
-    const user = JSON.parse(stored);
-    return user && typeof user.username === 'string' ? user : null;
-  } catch {
-    return null;
-  }
+function normalizeDate(value) {
+  const s = sanitizeString(value, 20);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+
+  return null;
 }
 
-/**
- * Busca usuário para login — apenas SELECT por username.
- */
+function extractDateKey(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+
+  const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+
+  const dt = new Date(s.replace(' ', 'T'));
+  if (!Number.isNaN(dt.getTime())) {
+    const year = dt.getUTCFullYear();
+    const month = String(dt.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dt.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  return null;
+}
+
+function getDateBounds(dataInicio, dataFim) {
+  return {
+    inicio: dataInicio ? normalizeDate(dataInicio) : null,
+    fim: dataFim ? normalizeDate(dataFim) : null,
+  };
+}
+
+function isInRange(dateValue, inicio, fim) {
+  const key = extractDateKey(dateValue);
+  if (!key) return false;
+  if (inicio && key < inicio) return false;
+  if (fim && key > fim) return false;
+  return true;
+}
+function normalizeStatus(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function isConcludedRecord(item) {
+  const status = normalizeStatus(item?.status);
+  if (item?.resolvido_em) return true;
+  return status.includes('conclu');
+}
+
+function isOpenRecord(item) {
+  if (isConcludedRecord(item)) return false;
+  const status = normalizeStatus(item?.status);
+  if (!status) return true;
+  return status.includes('aberto');
+}
+
 export async function getUsuarioParaLogin(username, senha) {
-  if (!validateUsername(username) || !validateSenha(senha)) return { data: null, error: { message: 'Dados inválidos.' } };
+  if (!validateUsername(username) || !validateSenha(senha)) {
+    return { data: null, error: { message: 'Dados invalidos.' } };
+  }
+
   const clean = sanitizeString(username, LIMITS.MAX_USERNAME).toLowerCase();
   const { data, error } = await supabase
     .from('usuarios')
     .select('id, username, senha, role')
     .eq('username', clean)
     .maybeSingle();
+
   return { data, error };
 }
 
-/**
- * Lista usuários — apenas para admin.
- */
 export async function listarUsuarios() {
-  const { data, error } = await supabase.from('usuarios').select('id, username, senha, role').order('username');
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('id, username, senha, role')
+    .order('username');
+
   return { data: data || [], error };
 }
 
-/**
- * Atualiza senha do usuario pelo username (case-insensitive).
- */
-export const atualizarSenhaUsuario = async (username, novaSenha) => {
+export async function atualizarSenhaUsuario(username, novaSenha) {
   const usernameLimpo = sanitizeString(username, LIMITS.MAX_USERNAME).trim();
   const usernameNormalizado = usernameLimpo.toLowerCase();
   const senhaLimpa = String(novaSenha || '');
+
   if (!usernameLimpo || !senhaLimpa) {
     return { success: false, error: { message: 'Dados invalidos para atualizar senha.' } };
   }
 
-  const { data, error, count } = await supabase
-    .from('usuarios')
-    .update({ senha: senhaLimpa })
-    .ilike('username', usernameNormalizado)
-    .select('username', { count: 'exact' });
+  try {
+    const { data, error, count } = await supabase
+      .from('usuarios')
+      .update({ senha: senhaLimpa })
+      .ilike('username', usernameNormalizado)
+      .select('username', { count: 'exact' });
 
-  if (error) return { success: false, error };
-  if (typeof count === 'number' && count > 0) return { success: true };
-  if (Array.isArray(data) && data.length > 0) return { success: true };
-  return { success: false, error: { message: 'Nenhum usuario atualizado.' } };
-};
+    if (error) return { success: false, error };
+    if (typeof count === 'number' && count > 0) return { success: true };
+    if (Array.isArray(data) && data.length > 0) return { success: true };
 
-/**
- * Cria usuário — apenas admin; validação rigorosa.
- */
+    return { success: false, error: { message: 'Nenhum usuario atualizado.' } };
+  } catch (err) {
+    return { success: false, error: { message: err?.message || 'Erro ao atualizar senha.' } };
+  }
+}
+
 export async function criarUsuario(payload) {
-  const user = getSessionUser();
-  if (!user || user.role !== 'admin') return { data: null, error: { message: 'Não autorizado.' } };
+  const user = getStoredSessionUser();
+  if (!user || user.role !== 'admin') return { data: null, error: { message: 'Nao autorizado.' } };
+
   const username = sanitizeString(payload?.username, LIMITS.MAX_USERNAME).toLowerCase();
   const senha = String(payload?.senha ?? '').slice(0, LIMITS.MAX_SENHA);
-  const allowedRoles = ['admin', 'técnico', 'colaborador'];
-  const desiredRole = typeof payload?.role === 'string' ? payload.role : 'técnico';
-  const role = allowedRoles.includes(desiredRole) ? desiredRole : 'técnico';
-  if (!username || !senha) return { data: null, error: { message: 'Username e senha obrigatórios.' } };
-  const { data, error } = await supabase.from('usuarios').insert([{ username, senha, role }]).select().single();
-  return { data, error };
+  const allowedRoles = ['admin', 'tecnico', 'tÃ©cnico', 'colaborador'];
+  const desiredRole = typeof payload?.role === 'string' ? payload.role : 'tecnico';
+  const role = allowedRoles.includes(desiredRole) ? desiredRole : 'tecnico';
+  if (!username || !senha) return { data: null, error: { message: 'Username e senha obrigatorios.' } };
+
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .insert([{ username, senha, role }])
+      .select()
+      .single();
+
+    return { data, error };
+  } catch (err) {
+    return { data: null, error: { message: err?.message || 'Erro ao criar usuario.' } };
+  }
 }
 
-/**
- * Remove um único usuário por ID — apenas admin.
- */
 export async function removerUsuario(id) {
-  const user = getSessionUser();
-  if (!user || user.role !== 'admin') return { error: { message: 'Não autorizado.' } };
+  const user = getStoredSessionUser();
+  if (!user || user.role !== 'admin') return { error: { message: 'Nao autorizado.' } };
+
   const idVal = Number(id);
-  if (!Number.isInteger(idVal) && typeof id !== 'string') return { error: { message: 'ID inválido.' } };
-  const { error } = await supabase.from('usuarios').delete().eq('id', id);
-  return { error };
+  if (!Number.isInteger(idVal) && typeof id !== 'string') return { error: { message: 'ID invalido.' } };
+
+  try {
+    const { error } = await supabase.from('usuarios').delete().eq('id', id);
+    return { error };
+  } catch (err) {
+    return { error: { message: err?.message || 'Erro ao remover usuario.' } };
+  }
 }
 
-/**
- * Lista registros de falhas abertos.
- */
 export async function listarFalhasAbertas() {
   const { data, error } = await supabase
     .from('registros_falhas')
     .select('*')
     .eq('status', 'aberto');
+
   return { data: data || [], error };
 }
 
-/**
- * Lista chamados abertos de um setor (para tela Registrar).
- */
 export async function listarChamadosAbertosPorSetor(setor) {
   if (!validateSetor(setor, LISTA_SETORES)) return { data: [], error: null };
+
   const { data, error } = await supabase
     .from('registros_falhas')
     .select('trave, ponto, falha')
@@ -125,104 +189,91 @@ export async function listarChamadosAbertosPorSetor(setor) {
     .eq('status', 'aberto')
     .not('trave', 'is', null)
     .not('ponto', 'is', null);
+
   return { data: data || [], error };
 }
 
-/**
- * Lista todos os registros (para estatísticas/filtro por setor).
- */
 export async function listarRegistrosFalhas(filtroSetor = null) {
   let query = supabase.from('registros_falhas').select('falha');
   if (filtroSetor && filtroSetor !== 'TODOS' && validateSetor(filtroSetor, LISTA_SETORES)) {
     query = query.eq('setor', filtroSetor.trim());
   }
+
   const { data, error } = await query;
   return { data: data || [], error };
 }
 
-/**
- * Lista registros em aberto (status exatamente 'aberto') com filtro opcional por coluna data.
- */
 export async function listarRegistrosAbertos(dataInicio = null, dataFim = null) {
-  const normalizeDate = (value) => {
-    const s = sanitizeString(value, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
-  };
-  const inicio = dataInicio ? normalizeDate(dataInicio) : null;
-  const fim = dataFim ? normalizeDate(dataFim) : null;
+  const { inicio, fim } = getDateBounds(dataInicio, dataFim);
 
   let query = supabase
     .from('registros_falhas')
-    .select('id, usuario, setor, trave, ponto, falha, data')
-    .eq('status', 'aberto');
-
-  if (inicio) query = query.gte('data', `${inicio}T00:00:00.000Z`);
-  if (fim) query = query.lte('data', `${fim}T23:59:59.999Z`);
+    .select('id, usuario, setor, trave, ponto, falha, data, status, resolvido_em');
 
   const { data, error } = await query.order('data', { ascending: false });
-  return { data: data || [], error };
+  if (error) return { data: [], error };
+
+  const base = (data || []).filter((item) => isOpenRecord(item));
+  const dataFiltrada = inicio || fim
+    ? base.filter((item) => isInRange(item?.data, inicio, fim))
+    : base;
+
+  return { data: dataFiltrada, error: null };
 }
 
-/**
- * Lista todos os registros para Dashboard KPI. Busca registros_falhas com filtro opcional por data.
- * Sem filtros retorna todo o período. Campos: id, setor, status, falha, data, usuario.
- */
 export async function listarRegistrosParaKPI(dataInicio = null, dataFim = null) {
-  const normalizeDate = (value) => {
-    const s = sanitizeString(value, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
-  };
-  const inicio = dataInicio ? normalizeDate(dataInicio) : null;
-  const fim = dataFim ? normalizeDate(dataFim) : null;
+  const { inicio, fim } = getDateBounds(dataInicio, dataFim);
 
   let query = supabase
     .from('registros_falhas')
-    .select('id, setor, status, falha, data, usuario');
-
-  if (inicio) query = query.gte('data', `${inicio}T00:00:00.000Z`);
-  if (fim) query = query.lte('data', `${fim}T23:59:59.999Z`);
+    .select('id, setor, status, falha, data, resolvido_em, usuario');
 
   const { data, error } = await query.order('data', { ascending: false });
-  return { data: data || [], error };
+  if (error) return { data: [], error };
+
+  const dataFiltrada = inicio || fim
+    ? (data || []).filter((item) => {
+        const referenciaTempo = isConcludedRecord(item) ? (item?.resolvido_em || item?.data) : item?.data;
+        return isInRange(referenciaTempo, inicio, fim);
+      })
+    : (data || []);
+
+  return { data: dataFiltrada, error: null };
 }
 
-/**
- * Lista registros concluídos da tabela registros_falhas (status CONCLUÍDO) com filtro opcional por intervalo de datas.
- */
 export async function listarOcorrenciasConcluidas(dataInicio = null, dataFim = null) {
-  const normalizeDate = (value) => {
-    const s = sanitizeString(value, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
-  };
-
-  const inicio = dataInicio ? normalizeDate(dataInicio) : null;
-  const fim = dataFim ? normalizeDate(dataFim) : null;
+  const { inicio, fim } = getDateBounds(dataInicio, dataFim);
 
   let query = supabase
     .from('registros_falhas')
-    .select('id, usuario, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, status')
-    .eq('status', 'CONCLUÍDO');
-
-  if (inicio) query = query.gte('resolvido_em', `${inicio}T00:00:00.000Z`);
-  if (fim) query = query.lte('resolvido_em', `${fim}T23:59:59.999Z`);
+    .select('id, usuario, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, status, data');
 
   const { data, error } = await query.order('resolvido_em', { ascending: false });
-  return { data: data || [], error };
+  if (error) return { data: [], error };
+
+  const base = (data || []).filter((item) => isConcludedRecord(item));
+  const dataFiltrada = inicio || fim
+    ? base.filter((item) => isInRange(item?.resolvido_em || item?.data, inicio, fim))
+    : base;
+
+  return { data: dataFiltrada, error: null };
 }
 
-/**
- * Insere registros de falha — um setor por vez, validado.
- */
 export async function inserirRegistrosFalha(setor, trave, pontos, falhas) {
-  if (!validateSetor(setor, LISTA_SETORES)) return { error: { message: 'Setor inválido.' } };
-  if (!validateTrave(trave)) return { error: { message: 'Trave inválida.' } };
+  if (!validateSetor(setor, LISTA_SETORES)) return { error: { message: 'Setor invalido.' } };
+  if (!validateTrave(trave)) return { error: { message: 'Trave invalida.' } };
+
   const falhasSanit = sanitizeFalhasArray(falhas, FALHAS_COMUNS);
   const pontosSanit = sanitizePontosArray(pontos);
-  if (falhasSanit.length === 0 || pontosSanit.length === 0) return { error: { message: 'Selecione ao menos um ponto e uma falha.' } };
+  if (falhasSanit.length === 0 || pontosSanit.length === 0) {
+    return { error: { message: 'Selecione ao menos um ponto e uma falha.' } };
+  }
+
   const falhaTexto = falhasSanit.join(', ');
-  if (!validateFalhaTexto(falhaTexto)) return { error: { message: 'Texto de falha inválido.' } };
-  const usuario = getSessionUser();
-  const username = usuario?.username || 'Técnico';
+  if (!validateFalhaTexto(falhaTexto)) return { error: { message: 'Texto de falha invalido.' } };
+
+  const usuario = getStoredSessionUser();
+  const username = usuario?.username || 'Tecnico';
   const setorTrim = String(setor).trim();
   const traveNum = Number(trave);
   const listaPontos = [...Array(15)].map((_, i) => i + 1);
@@ -237,39 +288,43 @@ export async function inserirRegistrosFalha(setor, trave, pontos, falhas) {
         falha: falhaTexto,
         status: 'aberto',
       }));
-  const { error } = await supabase.from('registros_falhas').insert(inserts);
-  return { error };
+
+  try {
+    const { error } = await supabase.from('registros_falhas').insert(inserts);
+    return { error };
+  } catch (err) {
+    return { error: { message: err?.message || 'Erro ao registrar falha.' } };
+  }
 }
 
-/**
- * Atualiza registros para CONCLUÍDO (resolver) — apenas por IDs explícitos.
- */
-export async function fecharRegistros(ids, solucao, resolvidoPor) {
-  if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatórios.' } };
-  if (!validateSolucao(solucao)) return { error: { message: 'Solução inválida.' } };
+export async function fecharRegistros(ids, solucao) {
+  if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatorios.' } };
+  if (!validateSolucao(solucao)) return { error: { message: 'Solucao invalida.' } };
 
-  const sessionUser = getSessionUser();
+  const sessionUser = getStoredSessionUser();
   if (!sessionUser || sessionUser.role === 'colaborador') {
-    return { error: { message: 'Não autorizado.' } };
+    return { error: { message: 'Nao autorizado.' } };
   }
 
   const idList = ids.filter((id) => id != null && id !== '');
-  if (idList.length === 0) return { error: { message: 'Nenhum ID válido.' } };
+  if (idList.length === 0) return { error: { message: 'Nenhum ID valido.' } };
   const resolvidoPorSanit = sanitizeString(sessionUser.username, LIMITS.MAX_USERNAME) || 'Sistema';
-  const { error } = await supabase
-    .from('registros_falhas')
-    .update({
-      status: 'CONCLUÍDO',
-      solucao: sanitizeString(solucao, LIMITS.MAX_SOLUCAO),
-      resolvido_por: resolvidoPorSanit,
-      resolvido_em: new Date().toISOString(),
-    })
-    .in('id', idList);
-  return { error };
+
+  try {
+    const { error } = await supabase
+      .from('registros_falhas')
+      .update({
+        status: 'CONCLUIDO',
+        solucao: sanitizeString(solucao, LIMITS.MAX_SOLUCAO),
+        resolvido_por: resolvidoPorSanit,
+        resolvido_em: new Date().toISOString(),
+      })
+      .in('id', idList);
+
+    return { error };
+  } catch (err) {
+    return { error: { message: err?.message || 'Erro ao fechar chamado.' } };
+  }
 }
 
-/**
- * Leitura bruta para telas que precisam de todos os campos (ex.: Monitor TV).
- * Não expõe operações de escrita.
- */
-export { supabase } from './supabase';
+

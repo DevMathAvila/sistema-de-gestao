@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, HardDrive, Hash, ChevronDown,
   Eye, X, ShieldAlert, ArrowRight, Sun, Moon,
-  Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle
+  Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle, Menu
 } from 'lucide-react';
 import { LISTA_SETORES } from '../data/setores';
 import { listarFalhasAbertas, fecharRegistros } from '../services/supabaseSecure';
+import { getSessionUser } from '../lib/session';
 
 const VisualizarFalhas = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const VisualizarFalhas = () => {
   const [modoLote, setModoLote] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -28,12 +30,7 @@ const VisualizarFalhas = () => {
     localStorage.setItem('theme', newTheme);
   };
 
-  const user = (() => {
-    try {
-      const stored = localStorage.getItem('lenovo_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  })() || { username: 'Técnico' };
+  const user = getSessionUser() || { username: 'Tecnico', role: 'colaborador' };
   const isColaborador = user.role === 'colaborador';
   const setoresValidos = LISTA_SETORES;
 
@@ -52,6 +49,13 @@ const VisualizarFalhas = () => {
     const interval = setInterval(buscarFalhas, 5000);
     return () => clearInterval(interval);
   }, [buscarFalhas]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const getStatusTrave = (chamados) => {
     const temTraveParada = chamados.some(f => normalizar(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15'));
@@ -139,7 +143,7 @@ const VisualizarFalhas = () => {
     setEnviando(true);
     try {
       const idsParaFechar = modoLote ? modalData.ids : [modalData.id];
-      const { error } = await fecharRegistros(idsParaFechar, solucaoTexto, user.username);
+      const { error } = await fecharRegistros(idsParaFechar, solucaoTexto);
       if (error) throw error;
       fecharModal();
       buscarFalhas();
@@ -195,6 +199,57 @@ const VisualizarFalhas = () => {
 
   return (
     <div className={`min-h-screen ${colors.bg} ${colors.text} flex flex-col md:flex-row font-sans relative overflow-hidden transition-colors duration-500`}>
+      <header className={`md:hidden sticky top-0 z-40 px-4 py-3.5 border-b backdrop-blur-2xl ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white/70 border-slate-200'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center font-black text-sm text-white shadow-lg shadow-red-600/30">L</div>
+            <div>
+              <p className="text-sm font-black italic leading-none">LENOVO LIVE</p>
+              <p className={`text-[9px] font-black uppercase tracking-widest ${colors.subtext}`}>Monitor</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white'}`}
+            aria-label="Abrir menu"
+          >
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </header>
+
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <button type="button" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Fechar menu" />
+          <aside className={`absolute right-0 top-0 h-full w-[88%] max-w-sm border-l p-6 flex flex-col shadow-2xl ${
+            theme === 'dark' ? 'bg-[#080808]/95 border-white/10 backdrop-blur-2xl' : 'bg-white/95 border-slate-200 backdrop-blur-2xl'
+          }`}>
+            <div className="flex items-center justify-between mb-8">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Navegação</p>
+              <button type="button" onClick={() => setMobileMenuOpen(false)} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}>
+                <X size={16} />
+              </button>
+            </div>
+            <nav className="space-y-3">
+              <button
+                onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}
+                className={`w-full min-h-12 flex items-center gap-3 p-3 ${colors.subtext} font-black text-[11px] ${colors.hover} rounded-xl transition-all text-left`}
+              >
+                <LayoutDashboard size={18} /> DASHBOARD
+              </button>
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black italic text-[10px] shadow-lg shadow-red-500/20">
+                <Eye size={18} /> LIVE MONITOR
+              </div>
+            </nav>
+            <button onClick={toggleTheme} className={`mt-auto min-h-12 flex items-center justify-between p-3 rounded-xl border ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+              <span className="text-[9px] font-black uppercase">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+              {theme === 'dark' ? <Moon size={16} className="text-red-500" /> : <Sun size={16} className="text-yellow-500" />}
+            </button>
+          </aside>
+        </div>
+      )}
+
       <aside className={`hidden md:flex w-56 border-r ${colors.sidebar} p-6 flex-col z-20 backdrop-blur-xl`}>
         <div className="flex items-center gap-3 mb-10 cursor-pointer group" onClick={() => navigate('/dashboard')}>
           <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl shadow-xl text-white">L</div>
@@ -217,7 +272,7 @@ const VisualizarFalhas = () => {
         </button>
       </aside>
 
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto z-10">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto z-10">
         <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">

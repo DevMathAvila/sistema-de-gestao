@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -14,6 +14,19 @@ import {
 } from 'recharts';
 
 const CORES_PIE = ['#dc2626', '#16a34a'];
+
+function normalizeStatus(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function isConcludedRecord(item) {
+  if (item?.resolvido_em) return true;
+  return normalizeStatus(item?.status).includes('conclu');
+}
 
 export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s, api, Loader2 }) {
   const [kpiData, setKpiData] = useState([]);
@@ -33,8 +46,8 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
 
   const { totalGeral, totalPendentes, totalConcluidas, porSetor, porStatus, top5 } = useMemo(() => {
     const totalGeral = kpiData.length;
-    const totalPendentes = kpiData.filter((r) => String(r.status).toLowerCase() === 'aberto').length;
-    const totalConcluidas = kpiData.filter((r) => String(r.status) === 'CONCLUÍDO').length;
+    const totalPendentes = kpiData.filter((r) => !isConcludedRecord(r) && normalizeStatus(r.status).includes('aberto')).length;
+    const totalConcluidas = kpiData.filter((r) => isConcludedRecord(r)).length;
 
     const setorCount = {};
     kpiData.forEach((r) => {
@@ -45,7 +58,7 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
 
     const porStatus = [
       { name: 'Pendentes', value: totalPendentes, fill: CORES_PIE[0] },
-      { name: 'Concluídas', value: totalConcluidas, fill: CORES_PIE[1] },
+      { name: 'ConcluÃ­das', value: totalConcluidas, fill: CORES_PIE[1] },
     ].filter((d) => d.value > 0);
 
     const falhaCount = {};
@@ -65,7 +78,7 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
     return { totalGeral, totalPendentes, totalConcluidas, porSetor, porStatus, top5 };
   }, [kpiData]);
 
-  const periodoLabel = dataInicio || dataFim ? `${dataInicio || '...'} a ${dataFim || '...'}` : 'Todo o Período';
+  const periodoLabel = dataInicio || dataFim ? `${dataInicio || '...'} a ${dataFim || '...'}` : 'Todo o PerÃ­odo';
 
   if (loadingKpi) {
     return (
@@ -84,7 +97,7 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
           <h2 className="text-4xl font-black uppercase italic tracking-tighter">
             Dashboard <span className="text-red-600">KPI</span>
           </h2>
-          <p className={s.sub}>Indicadores de performance e análise de recorrência.</p>
+          <p className={s.sub}>Indicadores de performance e anÃ¡lise de recorrÃªncia.</p>
         </div>
         <div className="flex gap-2 items-end">
           <div className="flex flex-col">
@@ -97,7 +110,7 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-widest ml-1 opacity-50">Até</span>
+            <span className="text-[9px] font-black uppercase tracking-widest ml-1 opacity-50">AtÃ©</span>
             <input
               type="date"
               value={dataFim}
@@ -109,7 +122,7 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
       </header>
 
       <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-6`}>
-        Período: {periodoLabel}
+        PerÃ­odo: {periodoLabel}
       </p>
 
       {/* 3 Cards de Resumo */}
@@ -123,18 +136,18 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
           <p className="text-4xl font-black text-amber-500 italic">{totalPendentes}</p>
         </div>
         <div className={`${s.card} p-6 rounded-[2rem] border-l-4 border-emerald-500`}>
-          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Total Concluídas</p>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Total ConcluÃ­das</p>
           <p className="text-4xl font-black text-emerald-500 italic">{totalConcluidas}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-        {/* Gráfico de Barras - Volume por Setor */}
+        {/* GrÃ¡fico de Barras - Volume por Setor */}
         <div className={`${s.card} p-6 rounded-[2.5rem]`}>
           <h3 className="text-lg font-black uppercase italic text-red-600 mb-6">Volume por Setor</h3>
           <div className="h-80">
             {porSetor.length === 0 ? (
-              <div className={`h-full flex items-center justify-center ${s.sub} text-sm`}>Sem dados no período</div>
+              <div className={`h-full flex items-center justify-center ${s.sub} text-sm`}>Sem dados no perÃ­odo</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={porSetor} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -156,12 +169,12 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
           </div>
         </div>
 
-        {/* Gráfico de Pizza - Status */}
+        {/* GrÃ¡fico de Pizza - Status */}
         <div className={`${s.card} p-6 rounded-[2.5rem]`}>
-          <h3 className="text-lg font-black uppercase italic text-red-600 mb-6">Status (aberto vs CONCLUÍDO)</h3>
+          <h3 className="text-lg font-black uppercase italic text-red-600 mb-6">Status (aberto vs CONCLUÃDO)</h3>
           <div className="h-80">
             {porStatus.length === 0 ? (
-              <div className={`h-full flex items-center justify-center ${s.sub} text-sm`}>Sem dados no período</div>
+              <div className={`h-full flex items-center justify-center ${s.sub} text-sm`}>Sem dados no perÃ­odo</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -193,11 +206,11 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
         </div>
       </div>
 
-      {/* Top 5 - Ranking de Recorrência */}
+      {/* Top 5 - Ranking de RecorrÃªncia */}
       <div className={`${s.card} p-8 rounded-[2.5rem]`}>
-        <h3 className="text-lg font-black uppercase italic text-red-600 mb-6">Ranking de Recorrência (Top 5)</h3>
+        <h3 className="text-lg font-black uppercase italic text-red-600 mb-6">Ranking de RecorrÃªncia (Top 5)</h3>
         {top5.length === 0 ? (
-          <p className={`${s.sub} text-sm`}>Nenhuma falha registrada no período.</p>
+          <p className={`${s.sub} text-sm`}>Nenhuma falha registrada no perÃ­odo.</p>
         ) : (
           <div className="space-y-4">
             {top5.map((item, idx) => {
@@ -209,7 +222,7 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between mb-1">
                       <span className="font-bold truncate">{item.nome}</span>
-                      <span className="text-red-600 font-black text-sm">{item.total} ocorrências</span>
+                      <span className="text-red-600 font-black text-sm">{item.total} ocorrÃªncias</span>
                     </div>
                     <div className={`h-3 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-100'}`}>
                       <div
@@ -227,3 +240,4 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
     </section>
   );
 }
+

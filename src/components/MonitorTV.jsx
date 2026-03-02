@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../services/supabase';
-import { AlertTriangle, Octagon } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 const MonitorTV = () => {
   const [falhas, setFalhas] = useState([]);
@@ -24,8 +24,8 @@ const MonitorTV = () => {
       }).length;
 
       setStats({ total: listaAbertos.length, criticas });
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // silencioso
     }
   }, []);
 

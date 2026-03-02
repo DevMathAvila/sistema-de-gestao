@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShieldCheck, Users, BarChart3, Trash2, Sun, Moon,
-  LayoutDashboard, Loader2, Calendar, AlertTriangle, UserPlus, TrendingUp
+  LayoutDashboard, Loader2, Calendar, AlertTriangle, UserPlus, TrendingUp, Menu, X
 } from 'lucide-react';
 import DashboardKPI from '../components/DashboardKPI';
 import { LISTA_SETORES, SETOR_TODOS } from '../data/setores';
 import * as api from '../services/supabaseSecure';
 import * as XLSX from 'xlsx';
+import { getSessionUser, isAdminUser } from '../lib/session';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ const Admin = () => {
   const [loadingHistorico, setLoadingHistorico] = useState(false);
   const [loadingHistoricoAbertas, setLoadingHistoricoAbertas] = useState(false);
   const [historicoSubAba, setHistoricoSubAba] = useState('concluidas');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -91,18 +93,16 @@ const Admin = () => {
   }, [dataInicio, dataFim]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('lenovo_user');
-      if (!stored) { navigate('/', { replace: true }); return; }
-      const user = JSON.parse(stored);
-      if (!user || user.role !== 'admin') {
-        navigate('/dashboard', { replace: true });
-      } else {
-        setLoading(false);
-      }
-    } catch {
+    const user = getSessionUser();
+    if (!user) {
       navigate('/', { replace: true });
+      return;
     }
+    if (!isAdminUser(user)) {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+    setLoading(false);
   }, [navigate]);
 
   useEffect(() => {
@@ -115,6 +115,13 @@ const Admin = () => {
       }
     }
   }, [activeTab, loading, historicoSubAba, buscarUsuarios, buscarEstatisticas, buscarHistorico, buscarHistoricoAbertas]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const formatarDataBR = (isoStr) => {
     if (!isoStr) return '';
@@ -184,6 +191,13 @@ const Admin = () => {
     sub: theme === 'dark' ? 'text-gray-500' : 'text-slate-400'
   };
 
+  const navItems = [
+    { id: 'indicadores', label: 'Dashboard KPI', icon: TrendingUp },
+    { id: 'usuarios', label: 'Gestão de Equipe', icon: Users },
+    { id: 'estatisticas', label: 'Pareto de Falhas', icon: BarChart3 },
+    { id: 'historico', label: 'Histórico Geral', icon: Calendar },
+  ];
+
   if (loading) return (
     <div className={`min-h-screen ${s.bg} flex items-center justify-center`}>
       <Loader2 className="animate-spin text-red-600" size={48} />
@@ -192,8 +206,70 @@ const Admin = () => {
 
   return (
     <div className={`min-h-screen ${s.bg} ${s.text} flex flex-col md:flex-row font-sans transition-colors duration-500`}>
+      <header className={`md:hidden sticky top-0 z-40 px-4 py-3.5 border-b backdrop-blur-2xl ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white/70 border-slate-200'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 text-red-600">
+            <ShieldCheck size={22} strokeWidth={2.5} />
+            <div>
+              <p className="text-sm font-black italic leading-none">ADMIN</p>
+              <p className={`text-[9px] font-black uppercase tracking-widest ${s.sub}`}>Privileged Access</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            className={`p-2.5 rounded-xl border transition-all ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white'}`}
+            aria-label="Abrir menu"
+          >
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </header>
+
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <button type="button" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Fechar menu" />
+          <aside className={`absolute left-0 top-0 h-full w-[88%] max-w-sm border-r p-6 flex flex-col shadow-2xl ${
+            theme === 'dark' ? 'bg-[#080808]/95 border-white/10 backdrop-blur-2xl' : 'bg-white/95 border-slate-200 backdrop-blur-2xl'
+          }`}>
+            <div className="flex items-center justify-between mb-8">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Menu Admin</p>
+              <button type="button" onClick={() => setMobileMenuOpen(false)} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}>
+                <X size={16} />
+              </button>
+            </div>
+            <nav className="space-y-3">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                  className={`w-full min-h-12 flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[11px] uppercase tracking-wider text-left ${
+                    activeTab === item.id
+                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                      : `${s.sub} hover:bg-red-600/10 hover:text-red-600`
+                  }`}
+                >
+                  <item.icon size={20} /> {item.label}
+                </button>
+              ))}
+            </nav>
+            <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
+              <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+                <span className="text-[11px] font-black uppercase">Tema</span>
+                {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
+              </button>
+              <button
+                onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}
+                className={`w-full min-h-12 p-3 rounded-xl border font-black text-[11px] uppercase tracking-widest ${theme === 'dark' ? 'border-white/10 text-white bg-white/5' : 'border-slate-200 text-slate-900 bg-white'}`}
+              >
+                Painel de Linha
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
       
-      <aside className={`w-full md:w-72 ${s.sidebar} border-r p-8 flex flex-col z-20`}>
+      <aside className={`hidden md:flex w-72 ${s.sidebar} border-r p-8 flex-col z-20`}>
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-3 text-red-600">
             <ShieldCheck size={32} strokeWidth={2.5} />
@@ -208,12 +284,7 @@ const Admin = () => {
         </div>
 
         <nav className="flex-1 space-y-3">
-          {[
-            { id: 'indicadores', label: 'Dashboard KPI', icon: TrendingUp },
-            { id: 'usuarios', label: 'Gestão de Equipe', icon: Users },
-            { id: 'estatisticas', label: 'Pareto de Falhas', icon: BarChart3 },
-            { id: 'historico', label: 'Histórico Geral', icon: Calendar }
-          ].map((item) => (
+          {navItems.map((item) => (
             <button key={item.id} onClick={() => setActiveTab(item.id)} 
               className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-wider ${
                 activeTab === item.id 
@@ -230,7 +301,7 @@ const Admin = () => {
         </nav>
       </aside>
 
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 md:p-12 overflow-y-auto">
         {activeTab === 'usuarios' && (
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
             <header className="mb-10">
@@ -263,7 +334,7 @@ const Admin = () => {
             </div>
 
             <div className={`${s.card} rounded-[2.5rem] overflow-hidden`}>
-              <table className="w-full text-left">
+              <table className="hidden md:table w-full text-left">
                 <thead>
                   <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'} text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
                     <th className="p-6 text-red-600">Nível</th>
@@ -290,6 +361,28 @@ const Admin = () => {
                   ))}
                 </tbody>
               </table>
+              <div className="md:hidden p-4 space-y-3">
+                {usuarios.map((u) => (
+                  <div key={u.id} className={`${theme === 'dark' ? 'bg-white/[0.03] border-white/10' : 'bg-white border-slate-200'} border rounded-2xl p-4 shadow-sm`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.role === 'admin' ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{u.role}</span>
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm('Remover acesso deste usuário?')) return;
+                          const { error } = await api.removerUsuario(u.id);
+                          if (!error) await buscarUsuarios();
+                          else alert(error.message);
+                        }}
+                        className="h-11 w-11 rounded-xl bg-red-600/10 text-red-600 flex items-center justify-center active:scale-95 transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    <p className="text-sm font-black">{u.username}</p>
+                    <p className="text-[11px] font-mono opacity-60 mt-1">{u.senha}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -389,7 +482,7 @@ const Admin = () => {
             </header>
 
             {/* Abas estilo Chrome */}
-            <div className="flex border-b border-slate-200 dark:border-white/10 mb-6">
+            <div className="flex border-b border-slate-200 dark:border-white/10 mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
               <button
                 type="button"
                 onClick={() => setHistoricoSubAba('concluidas')}
@@ -430,7 +523,8 @@ const Admin = () => {
                       <p className={`${s.sub} text-xs max-w-sm`}>Ajuste o intervalo de datas ou aguarde novas ocorrências concluídas.</p>
                     </div>
                   ) : (
-                    <table className="w-full text-left">
+                    <>
+                    <table className="hidden md:table w-full text-left">
                       <thead>
                         <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'} text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
                           <th className="p-4 md:p-5 text-red-600">Run In</th>
@@ -456,6 +550,25 @@ const Admin = () => {
                         ))}
                       </tbody>
                     </table>
+                    <div className="md:hidden p-4 space-y-3">
+                      {historico.map((item) => (
+                        <div key={item.id} className={`${theme === 'dark' ? 'bg-white/[0.03] border-white/10' : 'bg-white border-slate-200'} border rounded-2xl p-4`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="font-black text-sm">{item.setor}</p>
+                            <span className="text-[10px] font-mono opacity-70">{item.resolvido_em ? formatarDataBR(item.resolvido_em) : '-'}</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                            <p><span className="opacity-50">Trave:</span> {item.trave}</p>
+                            <p><span className="opacity-50">Ponto:</span> {item.ponto}</p>
+                          </div>
+                          <p className="mt-3">
+                            <span className="inline-flex px-3 py-1 rounded-full bg-red-600/10 text-red-600 font-black text-[10px] uppercase tracking-widest">{item.falha}</span>
+                          </p>
+                          <p className="mt-3 text-[11px]"><span className="opacity-50">Quem resolveu:</span> <span className="font-bold">{item.resolvido_por || '-'}</span></p>
+                        </div>
+                      ))}
+                    </div>
+                    </>
                   )}
                 </>
               )}
@@ -474,7 +587,8 @@ const Admin = () => {
                       <p className={`${s.sub} text-xs max-w-sm`}>Ajuste o intervalo de datas ou não há falhas abertas no período.</p>
                     </div>
                   ) : (
-                    <table className="w-full text-left">
+                    <>
+                    <table className="hidden md:table w-full text-left">
                       <thead>
                         <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'} text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
                           <th className="p-4 md:p-5 text-red-600">Run In</th>
@@ -500,6 +614,25 @@ const Admin = () => {
                         ))}
                       </tbody>
                     </table>
+                    <div className="md:hidden p-4 space-y-3">
+                      {historicoAbertas.map((item) => (
+                        <div key={item.id} className={`${theme === 'dark' ? 'bg-white/[0.03] border-white/10' : 'bg-white border-slate-200'} border rounded-2xl p-4`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="font-black text-sm">{item.setor}</p>
+                            <span className="text-[10px] font-mono opacity-70">{item.data ? formatarDataBR(item.data) : '-'}</span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                            <p><span className="opacity-50">Trave:</span> {item.trave}</p>
+                            <p><span className="opacity-50">Ponto:</span> {item.ponto}</p>
+                          </div>
+                          <p className="mt-3">
+                            <span className="inline-flex px-3 py-1 rounded-full bg-red-600/10 text-red-600 font-black text-[10px] uppercase tracking-widest">{item.falha}</span>
+                          </p>
+                          <p className="mt-3 text-[11px]"><span className="opacity-50">Solicitante:</span> <span className="font-bold">{item.usuario || '-'}</span></p>
+                        </div>
+                      ))}
+                    </div>
+                    </>
                   )}
                 </>
               )}
@@ -522,6 +655,8 @@ const Admin = () => {
       </main>
 
       <style dangerouslySetInnerHTML={{ __html: `
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { 

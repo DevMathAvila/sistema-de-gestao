@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUsuarioParaLogin } from '../services/supabaseSecure';
 import { Loader2 } from 'lucide-react';
+import { getUsuarioParaLogin } from '../services/supabaseSecure';
+import { setSessionUser } from '../lib/session';
 
 const Login = () => {
   const [username, setUsername] = useState(() => {
     try { return localStorage.getItem('lenovo_remember_user') || ''; } catch { return ''; }
   });
-  const [password, setPassword] = useState(() => {
-    try { return localStorage.getItem('lenovo_remember_pass') || ''; } catch { return ''; }
-  });
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('lenovo_remember_user'));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,19 +23,19 @@ const Login = () => {
       if (apiError) throw apiError;
       if (!user || user.senha !== password) {
         setError('Usuário ou senha incorretos.');
-        setLoading(false);
         return;
       }
-      localStorage.removeItem('lenovo_user');
-      const sessaoFormatada = { id: user.id, username: user.username, senha: user.senha, role: user.role };
-      localStorage.setItem('lenovo_user', JSON.stringify(sessaoFormatada));
+
+      const saved = setSessionUser({ id: user.id, username: user.username, role: user.role });
+      if (!saved) throw new Error('Não foi possível criar a sessão.');
+
       if (rememberMe) {
         localStorage.setItem('lenovo_remember_user', user.username);
-        localStorage.setItem('lenovo_remember_pass', password);
       } else {
         localStorage.removeItem('lenovo_remember_user');
-        localStorage.removeItem('lenovo_remember_pass');
       }
+      localStorage.removeItem('lenovo_remember_pass');
+
       navigate('/dashboard');
     } catch (err) {
       setError(err?.message || 'Falha na conexão.');
@@ -65,21 +64,21 @@ const Login = () => {
 
           <div>
             <label className="text-gray-300 text-[10px] uppercase font-black ml-1 tracking-widest">Usuário</label>
-            <input 
+            <input
               required
-              type="text" 
+              type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#E2231A] transition-all placeholder:text-gray-600"
               placeholder="Seu login"
             />
           </div>
-          
+
           <div>
             <label className="text-gray-300 text-[10px] uppercase font-black ml-1 tracking-widest">Senha</label>
-            <input 
+            <input
               required
-              type="password" 
+              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#E2231A] transition-all placeholder:text-gray-600 font-mono"
@@ -88,8 +87,8 @@ const Login = () => {
           </div>
 
           <div className="flex items-center gap-2 ml-1">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               id="remember"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
@@ -100,7 +99,7 @@ const Login = () => {
             </label>
           </div>
 
-          <button 
+          <button
             disabled={loading}
             className="w-full bg-[#E2231A] hover:bg-[#c11e16] disabled:bg-gray-700 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-red-900/20 uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-2"
           >

@@ -12,8 +12,3 @@ export const FALHAS_COMUNS = [
   'DisplayPort',
   'Monitor',
 ];
-
-export function isFalhaPermitida(falha) {
-  if (!falha || typeof falha !== 'string') return false;
-  return FALHAS_COMUNS.includes(falha.trim());
-}

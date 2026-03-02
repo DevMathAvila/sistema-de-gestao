@@ -10,9 +10,3 @@ export const LISTA_SETORES = [
 ];
 
 export const SETOR_TODOS = 'TODOS';
-
-export function isSetorValido(setor) {
-  if (!setor || typeof setor !== 'string') return false;
-  const s = setor.trim();
-  return LISTA_SETORES.includes(s);
-}
