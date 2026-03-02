@@ -19,6 +19,7 @@ const VisualizarFalhas = () => {
   const [etapaFechamento, setEtapaFechamento] = useState(false);
   const [solucaoTexto, setSolucaoTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [falhasSelecionadas, setFalhasSelecionadas] = useState([]);
   const [modoLote, setModoLote] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
@@ -35,6 +36,29 @@ const VisualizarFalhas = () => {
   const setoresValidos = LISTA_SETORES;
 
   const normalizar = (texto) => String(texto || "").replace(/\s|-|_/g, '').toLowerCase().trim();
+  const parseFalhas = (rawFalhas) => {
+    if (Array.isArray(rawFalhas)) {
+      return rawFalhas.map((f) => String(f || '').trim()).filter(Boolean);
+    }
+    return String(rawFalhas || '')
+      .split(/[,+]/)
+      .map((f) => f.trim())
+      .filter(Boolean);
+  };
+
+  const buildFalhasDoChamado = (chamados) => {
+    const seen = new Set();
+    const out = [];
+    chamados.forEach((c) => {
+      parseFalhas(c.falha).forEach((nomeFalha) => {
+        const key = `${c.id}::${nomeFalha}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push({ id: c.id, falha: nomeFalha, key });
+      });
+    });
+    return out;
+  };
 
   const buscarFalhas = useCallback(async () => {
     try {
@@ -63,12 +87,8 @@ const VisualizarFalhas = () => {
     // Incrementação: Conta cada falha individual dentro da string (ex: "VGA + Rede" conta como 2)
     let totalFalhasReais = 0;
     chamados.forEach(f => {
-      if (f.falha) {
-        const partes = f.falha.split(/[+,]/).filter(p => p.trim() !== "");
-        totalFalhasReais += partes.length;
-      } else {
-        totalFalhasReais += 1;
-      }
+      const partes = parseFalhas(f.falha);
+      totalFalhasReais += partes.length || 1;
     });
 
     if (temTraveParada) return { label: 'TRAVE PARADA', color: 'bg-purple-600', textColor: 'text-white', level: 4 };
@@ -89,7 +109,7 @@ const VisualizarFalhas = () => {
         grupos[chave] = { setor: f.setor, trave: f.trave, count: 0, isTraveToda: false };
       }
       
-      const numFalhasNoRegistro = (f.falha || "").split(/[+,]/).filter(p => p.trim() !== "").length || 1;
+      const numFalhasNoRegistro = parseFalhas(f.falha).length || 1;
       grupos[chave].count += numFalhasNoRegistro;
 
       if (normalizar(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15')) {
@@ -119,23 +139,21 @@ const VisualizarFalhas = () => {
     const falhasDoSetor = falhas.filter(f => normalizar(f.setor) === normalizar(nomeSetor));
     const contagem = {};
     falhasDoSetor.forEach(f => {
-      if (f.falha) {
-        f.falha.split(/[,+]/).forEach(p => {
-          let item = p.trim();
-          if (item) {
-            if (item.includes("Rede")) item = "Rede";
-            if (item.includes("VGA")) item = "VGA";
-            if (item.includes("Energia")) item = "Energia Y";
-            contagem[item] = (contagem[item] || 0) + 1;
-          }
-        });
-      }
+      parseFalhas(f.falha).forEach((p) => {
+        let item = p.trim();
+        if (!item) return;
+        if (item.includes("Rede")) item = "Rede";
+        if (item.includes("VGA")) item = "VGA";
+        if (item.includes("Energia")) item = "Energia Y";
+        contagem[item] = (contagem[item] || 0) + 1;
+      });
     });
     return Object.entries(contagem).sort((a, b) => b[1] - a[1]);
   };
 
   const handleFinalizarChamado = async () => {
     if (!solucaoTexto.trim()) return;
+    if (falhasSelecionadas.length === 0) return;
     if (isColaborador) {
       alert('Colaborador não tem permissão para concluir falhas.');
       return;
@@ -143,7 +161,8 @@ const VisualizarFalhas = () => {
     setEnviando(true);
     try {
       const idsParaFechar = modoLote ? modalData.ids : [modalData.id];
-      const { error } = await fecharRegistros(idsParaFechar, solucaoTexto);
+      const payloadFalhas = falhasSelecionadas.map((item) => ({ id: item.id, falha: item.falha }));
+      const { error } = await fecharRegistros(idsParaFechar, solucaoTexto, payloadFalhas);
       if (error) throw error;
       fecharModal();
       buscarFalhas();
@@ -152,11 +171,28 @@ const VisualizarFalhas = () => {
 
   const abrirModalLote = (s, t) => {
     const chamadosDaTrave = falhas.filter(f => normalizar(f.setor) === normalizar(s) && String(f.trave) === String(t));
-    setModalData({ ids: chamadosDaTrave.map(f => f.id), setor: s, trave: t, ponto: "Todos", falha: "Reparo Geral da Trave", usuario: "Equipe" });
+    const falhasDoChamado = buildFalhasDoChamado(chamadosDaTrave);
+    setEtapaFechamento(false);
+    setSolucaoTexto('');
+    setModalData({
+      ids: chamadosDaTrave.map(f => f.id),
+      setor: s,
+      trave: t,
+      ponto: "Todos",
+      falha: falhasDoChamado.map((item) => item.falha).join(', '),
+      falhasDisponiveis: falhasDoChamado,
+      usuario: "Equipe",
+    });
     setModoLote(true);
   };
 
-  const fecharModal = () => { setModalData(null); setEtapaFechamento(false); setSolucaoTexto(''); setModoLote(false); };
+  const fecharModal = () => {
+    setModalData(null);
+    setEtapaFechamento(false);
+    setSolucaoTexto('');
+    setModoLote(false);
+    setFalhasSelecionadas([]);
+  };
 
   const getDadosPonto = (s, t, p) => {
     const chamadosNoPonto = falhas.filter(f => {
@@ -168,14 +204,33 @@ const VisualizarFalhas = () => {
       return isInteira || isEstePonto;
     });
     if (chamadosNoPonto.length > 0) {
-      const falhaConcatenada = chamadosNoPonto.map(f => f.falha).join(' + ');
+      const falhasDoChamado = buildFalhasDoChamado(chamadosNoPonto);
+      const falhaConcatenada = falhasDoChamado.map((item) => item.falha).join(', ');
       return {
         id: chamadosNoPonto[0].id, ids: chamadosNoPonto.map(f => f.id),
         setor: s, trave: t, ponto: p, falha: falhaConcatenada,
+        falhasDisponiveis: falhasDoChamado,
         isMonitor: falhaConcatenada.toLowerCase().includes('monitor')
       };
     }
     return null;
+  };
+
+  useEffect(() => {
+    if (!modalData) {
+      setFalhasSelecionadas([]);
+      return;
+    }
+    const disponiveis = Array.isArray(modalData.falhasDisponiveis) ? modalData.falhasDisponiveis : [];
+    setFalhasSelecionadas(disponiveis);
+  }, [modalData]);
+
+  const toggleFalhaSelecionada = (item) => {
+    setFalhasSelecionadas((prev) => {
+      const exists = prev.some((f) => f.key === item.key);
+      if (exists) return prev.filter((f) => f.key !== item.key);
+      return [...prev, item];
+    });
   };
 
   const countTravesComFalha = (s) => new Set(falhas.filter(f => normalizar(f.setor) === normalizar(s)).map(f => String(f.trave))).size;
@@ -466,7 +521,14 @@ const VisualizarFalhas = () => {
                                   return (
                                     <div key={pNum} className="relative group">
                                       <button
-                                        onClick={() => { if (dadosPonto && !isColaborador) { setModalData(dadosPonto); setModoLote(false); } }}
+                                        onClick={() => {
+                                          if (dadosPonto && !isColaborador) {
+                                            setEtapaFechamento(false);
+                                            setSolucaoTexto('');
+                                            setModalData(dadosPonto);
+                                            setModoLote(false);
+                                          }
+                                        }}
                                         className={`w-full aspect-square rounded-lg flex flex-col items-center justify-center text-[9px] font-black transition-all duration-300 group-hover:z-10 ${bgClass} ${pulseClass}`}
                                       >
                                         <span className="text-[5px] opacity-50 mb-0">PT</span>
@@ -514,24 +576,64 @@ const VisualizarFalhas = () => {
                 <div className="text-center space-y-6">
                   <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'} p-4 rounded-xl`}>
                     <span className="text-[8px] text-gray-500 font-bold uppercase block mb-1">Causa da Falha:</span>
-                    <h4 className="text-lg font-black italic uppercase text-red-600 leading-tight">"{modalData.falha}"</h4>
+                    <h4 className="text-sm font-black italic uppercase text-red-600 leading-tight break-words">"{modalData.falha}"</h4>
+                  </div>
+                  <div className="text-left space-y-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Selecionar falhas para concluir</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {(modalData.falhasDisponiveis || []).map((item) => {
+                        const checked = falhasSelecionadas.some((f) => f.key === item.key);
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => toggleFalhaSelecionada(item)}
+                            className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-all ${
+                              checked
+                                ? 'border-red-600 bg-red-600/10'
+                                : (theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50')
+                            }`}
+                          >
+                            <span className="text-[10px] font-black uppercase">{item.falha}</span>
+                            <span className={`text-[9px] font-black px-2 py-1 rounded-full ${checked ? 'bg-red-600 text-white' : (theme === 'dark' ? 'bg-white/10' : 'bg-slate-200')}`}>
+                              {checked ? 'Selecionada' : 'Pendente'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <button
                     onClick={() => setEtapaFechamento(true)}
-                    disabled={isColaborador}
+                    disabled={isColaborador || falhasSelecionadas.length === 0}
                     className={`w-full py-4 ${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} font-black rounded-xl flex items-center justify-center gap-2 uppercase text-[10px] hover:scale-[1.02] transition-all shadow-xl disabled:opacity-40 disabled:cursor-not-allowed`}
                   >
-                    Reparar Falha <ArrowRight size={14} />
+                    Reparar Selecionadas <ArrowRight size={14} />
                   </button>
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'} rounded-xl p-3`}>
+                    <p className="text-[8px] font-black uppercase opacity-60 mb-2">Falhas selecionadas</p>
+                    <div className="flex flex-wrap gap-2">
+                      {falhasSelecionadas.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => toggleFalhaSelecionada(item)}
+                          className="px-2.5 py-1 rounded-full bg-red-600 text-white text-[9px] font-black uppercase"
+                        >
+                          {item.falha} <span className="opacity-80">x</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <textarea autoFocus placeholder="Relatório de solução..." className={`w-full ${colors.input} p-4 rounded-xl outline-none min-h-[100px] text-[11px] resize-none transition-all`} value={solucaoTexto} onChange={(e) => setSolucaoTexto(e.target.value)} />
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setEtapaFechamento(false)} className={`py-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} text-[9px] font-black uppercase rounded-xl`}>Voltar</button>
                     <button
                       onClick={handleFinalizarChamado}
-                      disabled={enviando || !solucaoTexto.trim() || isColaborador}
+                      disabled={enviando || !solucaoTexto.trim() || isColaborador || falhasSelecionadas.length === 0}
                       className="py-3 bg-green-600 text-white rounded-xl font-black uppercase text-[9px] shadow-lg disabled:opacity-30"
                     >
                       {enviando ? '...' : 'Concluir'}

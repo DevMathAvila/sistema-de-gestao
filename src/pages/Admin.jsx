@@ -27,6 +27,7 @@ const Admin = () => {
   const [loadingHistoricoAbertas, setLoadingHistoricoAbertas] = useState(false);
   const [historicoSubAba, setHistoricoSubAba] = useState('concluidas');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const intervaloInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -65,6 +66,10 @@ const Admin = () => {
   }, [setorFiltro]);
 
   const buscarHistorico = useCallback(async () => {
+    if (intervaloInvalido) {
+      setHistorico([]);
+      return;
+    }
     try {
       setLoadingHistorico(true);
       const { data, error } = await api.listarOcorrenciasConcluidas(
@@ -76,9 +81,13 @@ const Admin = () => {
     } catch { /* silencioso */ } finally {
       setLoadingHistorico(false);
     }
-  }, [dataInicio, dataFim]);
+  }, [dataInicio, dataFim, intervaloInvalido]);
 
   const buscarHistoricoAbertas = useCallback(async () => {
+    if (intervaloInvalido) {
+      setHistoricoAbertas([]);
+      return;
+    }
     try {
       setLoadingHistoricoAbertas(true);
       const { data, error } = await api.listarRegistrosAbertos(
@@ -90,7 +99,7 @@ const Admin = () => {
     } catch { /* silencioso */ } finally {
       setLoadingHistoricoAbertas(false);
     }
-  }, [dataInicio, dataFim]);
+  }, [dataInicio, dataFim, intervaloInvalido]);
 
   useEffect(() => {
     const user = getSessionUser();
@@ -455,6 +464,11 @@ const Admin = () => {
                     />
                   </div>
                 </div>
+                {intervaloInvalido && (
+                  <p className="text-[10px] font-black uppercase tracking-wider text-red-600">
+                    Intervalo inválido: a data inicial deve ser menor ou igual à final.
+                  </p>
+                )}
                 {historicoSubAba === 'concluidas' ? (
                   <button
                     type="button"

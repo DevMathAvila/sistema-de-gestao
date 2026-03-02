@@ -25,39 +25,62 @@ function normalizeDate(value) {
   return null;
 }
 
-function extractDateKey(value) {
+function getLocalDayStartUtcIso(dateKey) {
+  const normalized = normalizeDate(dateKey);
+  if (!normalized) return null;
+  const dt = new Date(`${normalized}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toISOString();
+}
+
+function getNextLocalDayStartUtcIso(dateKey) {
+  const normalized = normalizeDate(dateKey);
+  if (!normalized) return null;
+  const dt = new Date(`${normalized}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return null;
+  dt.setDate(dt.getDate() + 1);
+  return dt.toISOString();
+}
+
+function toEpochMs(value) {
   if (value == null) return null;
   const s = String(value).trim();
+  if (!s) return null;
 
-  const iso = s.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (iso) return iso[1];
-
-  const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
-
-  const dt = new Date(s.replace(' ', 'T'));
-  if (!Number.isNaN(dt.getTime())) {
-    const year = dt.getUTCFullYear();
-    const month = String(dt.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(dt.getUTCDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  const onlyDate = normalizeDate(s);
+  if (onlyDate) {
+    const dt = new Date(`${onlyDate}T00:00:00`);
+    return Number.isNaN(dt.getTime()) ? null : dt.getTime();
   }
 
+  const dt = new Date(s.replace(' ', 'T'));
+  if (!Number.isNaN(dt.getTime())) return dt.getTime();
   return null;
 }
 
 function getDateBounds(dataInicio, dataFim) {
+  const inicio = dataInicio ? normalizeDate(dataInicio) : null;
+  const fim = dataFim ? normalizeDate(dataFim) : null;
+  const inicioIso = inicio ? getLocalDayStartUtcIso(inicio) : null;
+  const fimExclusiveIso = fim ? getNextLocalDayStartUtcIso(fim) : null;
+  const inicioMs = inicioIso ? toEpochMs(inicioIso) : null;
+  const fimExclusiveMs = fimExclusiveIso ? toEpochMs(fimExclusiveIso) : null;
+
   return {
-    inicio: dataInicio ? normalizeDate(dataInicio) : null,
-    fim: dataFim ? normalizeDate(dataFim) : null,
+    inicio,
+    fim,
+    inicioIso,
+    fimExclusiveIso,
+    inicioMs,
+    fimExclusiveMs,
   };
 }
 
-function isInRange(dateValue, inicio, fim) {
-  const key = extractDateKey(dateValue);
-  if (!key) return false;
-  if (inicio && key < inicio) return false;
-  if (fim && key > fim) return false;
+function isInRange(dateValue, inicioMs, fimExclusiveMs) {
+  const timestamp = toEpochMs(dateValue);
+  if (timestamp == null) return false;
+  if (inicioMs != null && timestamp < inicioMs) return false;
+  if (fimExclusiveMs != null && timestamp >= fimExclusiveMs) return false;
   return true;
 }
 function normalizeStatus(value) {
@@ -70,15 +93,44 @@ function normalizeStatus(value) {
 
 function isConcludedRecord(item) {
   const status = normalizeStatus(item?.status);
-  if (item?.resolvido_em) return true;
   return status.includes('conclu');
 }
 
 function isOpenRecord(item) {
-  if (isConcludedRecord(item)) return false;
   const status = normalizeStatus(item?.status);
-  if (!status) return true;
   return status.includes('aberto');
+}
+
+function splitFalhas(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeString(item, LIMITS.MAX_FALHA_TEXTO))
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return sanitizeString(value, LIMITS.MAX_FALHA_TEXTO)
+    .split(/[,+]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function removeFalhasSelecionadas(originais, selecionadas) {
+  const counts = {};
+  selecionadas.forEach((falha) => {
+    counts[falha] = (counts[falha] || 0) + 1;
+  });
+
+  const restante = [];
+  originais.forEach((falha) => {
+    if (counts[falha] > 0) {
+      counts[falha] -= 1;
+      return;
+    }
+    restante.push(falha);
+  });
+
+  return restante;
 }
 
 export async function getUsuarioParaLogin(username, senha) {
@@ -174,7 +226,7 @@ export async function listarFalhasAbertas() {
   const { data, error } = await supabase
     .from('registros_falhas')
     .select('*')
-    .eq('status', 'aberto');
+    .ilike('status', '%aberto%');
 
   return { data: data || [], error };
 }
@@ -186,7 +238,7 @@ export async function listarChamadosAbertosPorSetor(setor) {
     .from('registros_falhas')
     .select('trave, ponto, falha')
     .eq('setor', String(setor).trim())
-    .eq('status', 'aberto')
+    .ilike('status', '%aberto%')
     .not('trave', 'is', null)
     .not('ponto', 'is', null);
 
@@ -204,25 +256,26 @@ export async function listarRegistrosFalhas(filtroSetor = null) {
 }
 
 export async function listarRegistrosAbertos(dataInicio = null, dataFim = null) {
-  const { inicio, fim } = getDateBounds(dataInicio, dataFim);
+  const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
 
   let query = supabase
     .from('registros_falhas')
-    .select('id, usuario, setor, trave, ponto, falha, data, status, resolvido_em');
+    .select('id, usuario, setor, trave, ponto, falha, data, status, resolvido_em')
+    .ilike('status', '%aberto%');
 
   const { data, error } = await query.order('data', { ascending: false });
   if (error) return { data: [], error };
 
   const base = (data || []).filter((item) => isOpenRecord(item));
-  const dataFiltrada = inicio || fim
-    ? base.filter((item) => isInRange(item?.data, inicio, fim))
+  const dataFiltrada = inicioMs != null || fimExclusiveMs != null
+    ? base.filter((item) => isInRange(item?.data, inicioMs, fimExclusiveMs))
     : base;
 
   return { data: dataFiltrada, error: null };
 }
 
 export async function listarRegistrosParaKPI(dataInicio = null, dataFim = null) {
-  const { inicio, fim } = getDateBounds(dataInicio, dataFim);
+  const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
 
   let query = supabase
     .from('registros_falhas')
@@ -231,10 +284,10 @@ export async function listarRegistrosParaKPI(dataInicio = null, dataFim = null) 
   const { data, error } = await query.order('data', { ascending: false });
   if (error) return { data: [], error };
 
-  const dataFiltrada = inicio || fim
+  const dataFiltrada = inicioMs != null || fimExclusiveMs != null
     ? (data || []).filter((item) => {
         const referenciaTempo = isConcludedRecord(item) ? (item?.resolvido_em || item?.data) : item?.data;
-        return isInRange(referenciaTempo, inicio, fim);
+        return isInRange(referenciaTempo, inicioMs, fimExclusiveMs);
       })
     : (data || []);
 
@@ -242,7 +295,7 @@ export async function listarRegistrosParaKPI(dataInicio = null, dataFim = null) 
 }
 
 export async function listarOcorrenciasConcluidas(dataInicio = null, dataFim = null) {
-  const { inicio, fim } = getDateBounds(dataInicio, dataFim);
+  const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
 
   let query = supabase
     .from('registros_falhas')
@@ -252,8 +305,8 @@ export async function listarOcorrenciasConcluidas(dataInicio = null, dataFim = n
   if (error) return { data: [], error };
 
   const base = (data || []).filter((item) => isConcludedRecord(item));
-  const dataFiltrada = inicio || fim
-    ? base.filter((item) => isInRange(item?.resolvido_em || item?.data, inicio, fim))
+  const dataFiltrada = inicioMs != null || fimExclusiveMs != null
+    ? base.filter((item) => isInRange(item?.resolvido_em || item?.data, inicioMs, fimExclusiveMs))
     : base;
 
   return { data: dataFiltrada, error: null };
@@ -297,7 +350,7 @@ export async function inserirRegistrosFalha(setor, trave, pontos, falhas) {
   }
 }
 
-export async function fecharRegistros(ids, solucao) {
+export async function fecharRegistros(ids, solucao, falhasSelecionadas = null) {
   if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatorios.' } };
   if (!validateSolucao(solucao)) return { error: { message: 'Solucao invalida.' } };
 
@@ -308,20 +361,115 @@ export async function fecharRegistros(ids, solucao) {
 
   const idList = ids.filter((id) => id != null && id !== '');
   if (idList.length === 0) return { error: { message: 'Nenhum ID valido.' } };
+  const idSet = new Set(idList.map((id) => String(id)));
   const resolvidoPorSanit = sanitizeString(sessionUser.username, LIMITS.MAX_USERNAME) || 'Sistema';
+  const solucaoSanit = sanitizeString(solucao, LIMITS.MAX_SOLUCAO);
+  const resolvidoEmIso = new Date().toISOString();
+
+  const selecaoValida = Array.isArray(falhasSelecionadas)
+    ? falhasSelecionadas
+        .map((item) => ({
+          id: item?.id,
+          falha: sanitizeString(item?.falha, LIMITS.MAX_FALHA_TEXTO).trim(),
+        }))
+        .filter((item) => item.id != null && item.id !== '' && item.falha)
+        .filter((item) => idSet.has(String(item.id)))
+    : [];
+
+  if (selecaoValida.length === 0) {
+    try {
+      const { error } = await supabase
+        .from('registros_falhas')
+        .update({
+          status: 'CONCLUIDO',
+          solucao: solucaoSanit,
+          resolvido_por: resolvidoPorSanit,
+          resolvido_em: resolvidoEmIso,
+        })
+        .in('id', idList);
+
+      return { error };
+    } catch (err) {
+      return { error: { message: err?.message || 'Erro ao fechar chamado.' } };
+    }
+  }
 
   try {
-    const { error } = await supabase
+    const idsSelecao = [...new Set(selecaoValida.map((item) => item.id))];
+    const idsConsulta = [...new Set([...idList, ...idsSelecao])];
+    const { data: registros, error: errorFetch } = await supabase
       .from('registros_falhas')
-      .update({
-        status: 'CONCLUIDO',
-        solucao: sanitizeString(solucao, LIMITS.MAX_SOLUCAO),
-        resolvido_por: resolvidoPorSanit,
-        resolvido_em: new Date().toISOString(),
-      })
-      .in('id', idList);
+      .select('id, usuario, setor, trave, ponto, falha, data, status')
+      .in('id', idsConsulta);
 
-    return { error };
+    if (errorFetch) return { error: errorFetch };
+    const rows = Array.isArray(registros) ? registros : [];
+    if (rows.length === 0) return { error: { message: 'Nenhum registro encontrado para concluir.' } };
+
+    const selecaoPorId = new Map();
+    selecaoValida.forEach((item) => {
+      const bucket = selecaoPorId.get(item.id) || [];
+      bucket.push(item.falha);
+      selecaoPorId.set(item.id, bucket);
+    });
+
+    for (const row of rows) {
+      const falhasRow = splitFalhas(row?.falha);
+      const falhasDesejadas = selecaoPorId.get(row.id) || [];
+      if (falhasDesejadas.length === 0 || falhasRow.length === 0) continue;
+
+      const setDesejadas = new Set(falhasDesejadas);
+      const falhasResolvidas = falhasRow.filter((falha) => setDesejadas.has(falha));
+      if (falhasResolvidas.length === 0) continue;
+
+      const falhasRestantes = removeFalhasSelecionadas(falhasRow, falhasResolvidas);
+      const falhasResolvidasTexto = falhasResolvidas.join(', ');
+
+      if (falhasRestantes.length === 0) {
+        const { error: errorUpdateConcluido } = await supabase
+          .from('registros_falhas')
+          .update({
+            status: 'CONCLUIDO',
+            falha: falhasResolvidasTexto,
+            solucao: solucaoSanit,
+            resolvido_por: resolvidoPorSanit,
+            resolvido_em: resolvidoEmIso,
+          })
+          .eq('id', row.id);
+        if (errorUpdateConcluido) return { error: errorUpdateConcluido };
+        continue;
+      }
+
+      const { error: errorUpdateAberto } = await supabase
+        .from('registros_falhas')
+        .update({
+          status: 'aberto',
+          falha: falhasRestantes.join(', '),
+          solucao: null,
+          resolvido_por: null,
+          resolvido_em: null,
+        })
+        .eq('id', row.id);
+      if (errorUpdateAberto) return { error: errorUpdateAberto };
+
+      const { error: errorInsertConcluido } = await supabase
+        .from('registros_falhas')
+        .insert([{
+          usuario: row.usuario || 'Tecnico',
+          setor: row.setor,
+          trave: row.trave,
+          ponto: row.ponto,
+          falha: falhasResolvidasTexto,
+          data: row.data,
+          status: 'CONCLUIDO',
+          solucao: solucaoSanit,
+          resolvido_por: resolvidoPorSanit,
+          resolvido_em: resolvidoEmIso,
+        }]);
+      if (errorInsertConcluido) return { error: errorInsertConcluido };
+    }
+
+    return { error: null };
   } catch (err) {
     return { error: { message: err?.message || 'Erro ao fechar chamado.' } };
   }
