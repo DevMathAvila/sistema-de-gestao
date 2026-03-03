@@ -3,11 +3,13 @@ import { LIMITS, sanitizeString } from './validation';
 const SESSION_KEY = 'lenovo_user';
 const REMEMBER_USER_KEY = 'lenovo_remember_user';
 const REMEMBER_PASS_KEY = 'lenovo_remember_pass';
-const ALLOWED_ROLES = new Set(['admin', 'tecnico', 'técnico', 'tÃ©cnico', 'colaborador']);
+const ALLOWED_ROLES = new Set(['master', 'admin', 'tecnico', 'técnico', 'tÃ©cnico', 'colaborador']);
 
 function normalizeRole(role) {
   const value = sanitizeString(role, 20).toLowerCase();
-  return ALLOWED_ROLES.has(value) ? value : 'colaborador';
+  if (!ALLOWED_ROLES.has(value)) return 'colaborador';
+  if (value === 'técnico' || value === 'tÃ©cnico') return 'tecnico';
+  return value;
 }
 
 export function getSessionUser() {
@@ -57,6 +59,11 @@ export function clearSessionData() {
 }
 
 export function isAdminUser(user) {
-  return user?.role === 'admin';
+  return user?.role === 'admin' || user?.role === 'master';
 }
+
+export function isMasterUser(user) {
+  return user?.role === 'master';
+}
+
 

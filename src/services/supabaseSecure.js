@@ -1,4 +1,4 @@
-﻿import { supabase } from './supabase';
+import { supabase } from './supabase';
 import { LISTA_SETORES } from '../data/setores';
 import { FALHAS_COMUNS } from '../data/falhasComuns';
 import { getSessionUser as getStoredSessionUser } from '../lib/session';
@@ -185,13 +185,23 @@ export async function atualizarSenhaUsuario(username, novaSenha) {
 
 export async function criarUsuario(payload) {
   const user = getStoredSessionUser();
-  if (!user || user.role !== 'admin') return { data: null, error: { message: 'Nao autorizado.' } };
+  const roleSolicitante = String(user?.role || '').toLowerCase();
+  if (roleSolicitante !== 'admin' && roleSolicitante !== 'master') {
+    return { data: null, error: { message: 'Nao autorizado.' } };
+  }
 
   const username = sanitizeString(payload?.username, LIMITS.MAX_USERNAME).toLowerCase();
   const senha = String(payload?.senha ?? '').slice(0, LIMITS.MAX_SENHA);
-  const allowedRoles = ['admin', 'tecnico', 'tÃ©cnico', 'colaborador'];
-  const desiredRole = typeof payload?.role === 'string' ? payload.role : 'tecnico';
-  const role = allowedRoles.includes(desiredRole) ? desiredRole : 'tecnico';
+  const desiredRole = String(payload?.role || 'tecnico').toLowerCase();
+
+  const rolesPermitidas = roleSolicitante === 'master'
+    ? ['master', 'admin', 'tecnico', 't�cnico', 'técnico', 'colaborador']
+    : ['tecnico', 't�cnico', 'técnico', 'colaborador'];
+  const roleNormalizada = desiredRole === 't�cnico' || desiredRole === 'técnico' ? 'tecnico' : desiredRole;
+  const role = rolesPermitidas.includes(desiredRole) || rolesPermitidas.includes(roleNormalizada)
+    ? roleNormalizada
+    : 'tecnico';
+
   if (!username || !senha) return { data: null, error: { message: 'Username e senha obrigatorios.' } };
 
   try {
@@ -209,7 +219,7 @@ export async function criarUsuario(payload) {
 
 export async function removerUsuario(id) {
   const user = getStoredSessionUser();
-  if (!user || user.role !== 'admin') return { error: { message: 'Nao autorizado.' } };
+  if (!user || user.role !== 'master') return { error: { message: 'Nao autorizado.' } };
 
   const idVal = Number(id);
   if (!Number.isInteger(idVal) && typeof id !== 'string') return { error: { message: 'ID invalido.' } };
@@ -537,5 +547,6 @@ export async function fecharRegistros(ids, solucao, falhasSelecionadas = null) {
     return { error: { message: err?.message || 'Erro ao fechar chamado.' } };
   }
 }
+
 
 

@@ -2,9 +2,11 @@ import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import FabricaStatus from './pages/FabricaStatus';
 import Registrar from './pages/Registrar';
 import VisualizarFalhas from './pages/VisualizarFalhas';
 import Admin from './pages/Admin';
+import AlterarSenha from './pages/AlterarSenha';
 import MonitorTV from './components/MonitorTV';
 import { getSessionUser, isAdminUser } from './lib/session';
 
@@ -37,9 +39,11 @@ function App() {
 
         <Route element={<ProtectedLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/abrir-chamado" element={<FabricaStatus />} />
           <Route path="/registrar" element={<Registrar />} />
           <Route path="/visualizar" element={<VisualizarFalhas />} />
           <Route path="/monitor-tv" element={<MonitorTV />} />
+          <Route path="/alterar-senha" element={<AlterarSenha />} />
         </Route>
 
         <Route element={<AdminLayout />}>
@@ -53,3 +57,6 @@ function App() {
 }
 
 export default App;
+
+
+

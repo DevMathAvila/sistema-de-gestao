@@ -9,7 +9,7 @@ import DateRangePicker from '../components/DateRangePicker';
 import { LISTA_SETORES, SETOR_TODOS } from '../data/setores';
 import * as api from '../services/supabaseSecure';
 import * as XLSX from 'xlsx';
-import { getSessionUser, isAdminUser } from '../lib/session';
+import { getSessionUser, isAdminUser, isMasterUser } from '../lib/session';
 import AppBottomNav from '../components/AppBottomNav';
 
 const Admin = () => {
@@ -20,7 +20,7 @@ const Admin = () => {
   const [setorFiltro, setSetorFiltro] = useState(SETOR_TODOS);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-  const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'técnico' });
+  const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'tecnico' });
   const [historico, setHistorico] = useState([]);
   const [historicoAbertas, setHistoricoAbertas] = useState([]);
   const [dataInicio, setDataInicio] = useState('');
@@ -30,7 +30,22 @@ const Admin = () => {
   const [historicoSubAba, setHistoricoSubAba] = useState('concluidas');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [hoveredMenu, setHoveredMenu] = useState(null);
+  const [hoverMenuTop, setHoverMenuTop] = useState(0);
   const intervaloInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
+  const currentUser = getSessionUser() || { role: 'colaborador' };
+  const isMaster = isMasterUser(currentUser);
+  const roleOptions = isMaster
+    ? [
+        { value: 'master', label: 'Master' },
+        { value: 'admin', label: 'Administrador' },
+        { value: 'tecnico', label: 'Tecnico Operador' },
+        { value: 'colaborador', label: 'Colaborador' },
+      ]
+    : [
+        { value: 'tecnico', label: 'Tecnico Operador' },
+        { value: 'colaborador', label: 'Colaborador' },
+      ];
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -181,17 +196,21 @@ const Admin = () => {
   const handleCriarUsuario = async (e) => {
     e.preventDefault();
     if (!novoUser.username || !novoUser.senha) return;
+    const roleSelecionada = String(novoUser.role || '').toLowerCase();
+    const rolePermitida = roleOptions.some((opt) => opt.value === roleSelecionada)
+      ? roleSelecionada
+      : roleOptions[0].value;
     setLoading(true);
     try {
       const { error } = await api.criarUsuario({
         username: novoUser.username,
         senha: novoUser.senha,
-        role: novoUser.role,
+        role: rolePermitida,
       });
       if (error) throw error;
-      setNovoUser({ username: '', senha: '', role: 'técnico' });
+      setNovoUser({ username: '', senha: '', role: roleOptions[0].value });
       await buscarUsuarios();
-    } catch (err) { alert(err?.message || 'Erro ao criar usuário'); } finally { setLoading(false); }
+    } catch (err) { alert(err?.message || 'Erro ao criar usuario'); } finally { setLoading(false); }
   };
 
   const s = {
@@ -210,6 +229,27 @@ const Admin = () => {
     { id: 'historico', label: 'Histórico Geral', icon: Calendar },
   ];
 
+  const hoverMenus = [
+    {
+      id: 'conteudo',
+      label: 'Conteudo',
+      icon: ShieldCheck,
+      items: navItems.map((item) => ({
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        action: () => setActiveTab(item.id),
+      })),
+    },
+    {
+      id: 'navegacao',
+      label: 'Navegacao',
+      icon: LayoutDashboard,
+      items: [
+        { id: 'dashboard', label: 'Painel de Linha', icon: LayoutDashboard, action: () => navigate('/dashboard') },
+      ],
+    },
+  ];
   if (loading) return (
     <div className={`min-h-screen ${s.bg} flex items-center justify-center`}>
       <Loader2 className="animate-spin text-red-600" size={48} />
@@ -268,7 +308,10 @@ const Admin = () => {
         </div>
       )}
       
-      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-72'} ${s.sidebar} border-r p-6 flex-col z-20 transition-all duration-300`}>
+      <aside
+        onMouseLeave={() => setHoveredMenu(null)}
+        className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-72'} ${s.sidebar} border-r p-6 flex-col z-20 transition-all duration-300 relative`}
+      >
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-3 text-red-600 overflow-hidden">
             <ShieldCheck size={32} strokeWidth={2.5} />
@@ -277,32 +320,69 @@ const Admin = () => {
               <span className={`text-[8px] font-bold uppercase tracking-widest ${s.sub}`}>Privileged Access</span>
             </div>}
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={toggleTheme} className={`p-2 rounded-xl border ${theme === 'dark' ? 'border-white/10' : 'border-slate-100'}`}>
-              {theme === 'dark' ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} className="text-red-600" />}
-            </button>
-            <button onClick={() => setSidebarCollapsed((v) => !v)} className={`p-2 rounded-xl border ${theme === 'dark' ? 'border-white/10' : 'border-slate-100'}`}>
-              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-            </button>
-          </div>
+          <button onClick={() => setSidebarCollapsed((v) => !v)} className={`p-2 rounded-xl border ${theme === 'dark' ? 'border-white/10' : 'border-slate-100'}`}>
+            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
 
         <nav className="flex-1 space-y-3">
-          {navItems.map((item) => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} 
-              className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-wider ${
-                activeTab === item.id 
-                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' 
-                : `${s.sub} hover:bg-red-600/5 hover:text-red-600`
-              }`}>
-              <item.icon size={20} /> {!sidebarCollapsed && item.label}
+          {hoverMenus.map((menu) => (
+            <button
+              key={menu.id}
+              type="button"
+              onMouseEnter={(e) => {
+                setHoveredMenu(menu.id);
+                setHoverMenuTop(e.currentTarget.offsetTop);
+              }}
+              className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-wider ${s.sub} hover:bg-red-600/5 hover:text-red-600 text-left`}
+            >
+              <menu.icon size={20} /> {!sidebarCollapsed && menu.label}
             </button>
           ))}
-          <div className={`my-8 border-t ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`} />
-          <button onClick={() => navigate('/dashboard')} className={`w-full flex items-center gap-3 p-4 ${s.sub} hover:text-red-600 transition-all font-black text-[10px] uppercase`}>
-            <LayoutDashboard size={20} /> {!sidebarCollapsed && 'Painel de Linha'}
-          </button>
         </nav>
+
+        {hoveredMenu && (
+          <div
+            onMouseEnter={() => setHoveredMenu(hoveredMenu)}
+            style={{ top: hoverMenuTop }}
+            className={`absolute ${sidebarCollapsed ? 'left-24' : 'left-72'} w-72 p-3 rounded-2xl border z-50 ${theme === 'dark' ? 'bg-[#090909] border-white/10 shadow-2xl shadow-black/50' : 'bg-white border-slate-200 shadow-2xl shadow-slate-300/40'}`}
+          >
+            <div className="space-y-1">
+              {hoverMenus
+                .find((menu) => menu.id === hoveredMenu)
+                ?.items.map((item) => {
+                  const active = item.id === activeTab;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={item.action}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left font-black text-[10px] uppercase tracking-wider transition-all ${
+                        active
+                          ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
+                          : (theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-800')
+                      }`}
+                    >
+                      <item.icon size={16} className={active ? 'text-white' : 'text-red-600'} /> {item.label}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
+          <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+            {!sidebarCollapsed && <span className="text-[11px] font-black uppercase">Tema</span>}
+            {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
+          </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className={`w-full min-h-12 p-3 rounded-xl border font-black text-[11px] uppercase tracking-widest ${theme === 'dark' ? 'border-white/10 text-white bg-white/5' : 'border-slate-200 text-slate-900 bg-white'}`}
+          >
+            {!sidebarCollapsed ? 'Painel de Linha' : 'Inicio'}
+          </button>
+        </div>
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 md:p-12 pb-24 md:pb-12 overflow-y-auto">
@@ -338,11 +418,11 @@ const Admin = () => {
                   <input type="text" placeholder="••••" className={`${s.input} w-full p-4 rounded-2xl focus:ring-2 ring-red-600/20 outline-none text-sm font-mono transition-all`} value={novoUser.senha} onChange={e => setNovoUser({...novoUser, senha: e.target.value})} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase ml-2 opacity-50">Nível</label>
+                  <label className="text-[10px] font-black uppercase ml-2 opacity-50">Nivel</label>
                   <select className={`${s.input} w-full p-4 rounded-2xl outline-none text-sm`} value={novoUser.role} onChange={e => setNovoUser({...novoUser, role: e.target.value})}>
-                    <option value="técnico">Técnico Operador</option>
-                    <option value="admin">Administrador</option>
-                    <option value="colaborador">Colaborador</option>
+                    {roleOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                   </select>
                 </div>
                 <button className="mt-6 h-[52px] bg-red-600 text-white font-black rounded-2xl hover:bg-red-700 transition-all uppercase text-xs flex items-center justify-center gap-2">
@@ -358,7 +438,7 @@ const Admin = () => {
                     <th className="p-6 text-red-600">Nível</th>
                     <th className="p-6 text-current">Usuário</th>
                     <th className="p-6 text-current">Credencial</th>
-                    <th className="p-6 text-right">Ação</th>
+                    {isMaster && <th className="p-6 text-right">Acao</th>}
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-100'}`}>
@@ -367,14 +447,16 @@ const Admin = () => {
                       <td className="p-6"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.role === 'admin' ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{u.role}</span></td>
                       <td className="p-6 font-bold">{u.username}</td>
                       <td className="p-6 font-mono text-xs opacity-50">{u.senha}</td>
-                      <td className="p-6 text-right">
-                        <button onClick={async () => {
-                          if (!window.confirm('Remover acesso deste usuário?')) return;
-                          const { error } = await api.removerUsuario(u.id);
-                          if (!error) await buscarUsuarios();
-                          else alert(error.message);
-                        }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
-                      </td>
+                      {isMaster && (
+                        <td className="p-6 text-right">
+                          <button onClick={async () => {
+                            if (!window.confirm('Remover acesso deste usuario?')) return;
+                            const { error } = await api.removerUsuario(u.id);
+                            if (!error) await buscarUsuarios();
+                            else alert(error.message);
+                          }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -384,17 +466,19 @@ const Admin = () => {
                   <div key={u.id} className={`${theme === 'dark' ? 'bg-white/[0.03] border-white/10' : 'bg-white border-slate-200'} border rounded-2xl p-4 shadow-sm`}>
                     <div className="flex items-center justify-between mb-3">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${u.role === 'admin' ? 'bg-red-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{u.role}</span>
-                      <button
-                        onClick={async () => {
-                          if (!window.confirm('Remover acesso deste usuário?')) return;
-                          const { error } = await api.removerUsuario(u.id);
-                          if (!error) await buscarUsuarios();
-                          else alert(error.message);
-                        }}
-                        className="h-11 w-11 rounded-xl bg-red-600/10 text-red-600 flex items-center justify-center active:scale-95 transition-all"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {isMaster && (
+                        <button
+                          onClick={async () => {
+                            if (!window.confirm('Remover acesso deste usuario?')) return;
+                            const { error } = await api.removerUsuario(u.id);
+                            if (!error) await buscarUsuarios();
+                            else alert(error.message);
+                          }}
+                          className="h-11 w-11 rounded-xl bg-red-600/10 text-red-600 flex items-center justify-center active:scale-95 transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                     <p className="text-sm font-black">{u.username}</p>
                     <p className="text-[11px] font-mono opacity-60 mt-1">{u.senha}</p>
@@ -684,3 +768,14 @@ const Admin = () => {
 };
 
 export default Admin;
+
+
+
+
+
+
+
+
+
+
+

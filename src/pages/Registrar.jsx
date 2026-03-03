@@ -89,7 +89,7 @@ const Registrar = () => {
       );
       if (error) throw error;
       setIsSuccess(true);
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => navigate('/abrir-chamado'), 1500);
     } catch (err) {
       alert(err?.message || 'Erro ao registrar.');
       setLoading(false);
@@ -127,7 +127,7 @@ const Registrar = () => {
       <div className="relative z-10 max-w-4xl mx-auto">
         {/* Header Navigation */}
         <div className="flex justify-between items-center mb-12">
-          <button onClick={() => navigate('/dashboard')} className={`group flex items-center gap-3 ${colors.subtext} hover:text-red-600 transition-all`}>
+          <button onClick={() => navigate('/abrir-chamado')} className={`group flex items-center gap-3 ${colors.subtext} hover:text-red-600 transition-all`}>
             <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} border group-hover:bg-red-600 group-hover:border-red-600 group-hover:text-white transition-all`}>
               <ArrowLeft size={18} />
             </div>
