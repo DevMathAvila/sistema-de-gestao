@@ -15,8 +15,6 @@ const Dashboard = () => {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [hoveredGroup, setHoveredGroup] = useState(null);
-  const [hoverMenuTop, setHoverMenuTop] = useState(0);
 
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
@@ -49,22 +47,16 @@ const Dashboard = () => {
     card: theme === 'dark' ? 'bg-white/[0.02] border-white/10' : 'bg-white border-slate-200 shadow-xl shadow-slate-200/40',
   };
 
-  const sidebarGroups = [
-    {
-      id: 'operacao',
-      label: 'Operacao',
-      icon: LayoutDashboard,
-      items: [
-        { label: 'Abrir chamado', icon: HardDrive, action: () => navigate('/abrir-chamado') },
-        { label: 'Visualizar Falhas', icon: Eye, action: () => navigate('/visualizar') },
-      ],
-    },
+  const sidebarLinks = [
+    { id: 'abrir', label: 'Abrir chamado', icon: HardDrive, action: () => navigate('/abrir-chamado') },
+    { id: 'visualizar', label: 'Visualizar Falhas', icon: Eye, action: () => navigate('/visualizar') },
     ...(isAdmin
       ? [{
           id: 'admin',
           label: 'Administracao',
           icon: Settings,
-          items: [{ label: 'Painel Admin', icon: Settings, action: () => navigate('/admin') }],
+          action: () => navigate('/admin?tab=indicadores'),
+          helper: 'Dashboard KPI | Gestao de Equipe',
         }]
       : []),
   ];
@@ -121,10 +113,14 @@ const Dashboard = () => {
               {isAdmin && (
                 <button
                   type="button"
-                  onClick={() => navigateAndCloseMobile('/admin')}
-                  className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
+                  onClick={() => navigateAndCloseMobile('/admin?tab=indicadores')}
+                  className={`w-full min-h-12 flex items-start gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
                 >
-                  <Settings size={18} className="group-hover:text-red-600 transition-all" /> Painel Admin
+                  <Settings size={18} className="group-hover:text-red-600 transition-all mt-0.5" />
+                  <span>
+                    <span className="block">Administracao</span>
+                    <span className="block text-[9px] tracking-wide normal-case opacity-70">Dashboard KPI | Gestao de equipe</span>
+                  </span>
                 </button>
               )}
               <button
@@ -133,6 +129,13 @@ const Dashboard = () => {
                 className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
               >
                 <Shield size={18} className="group-hover:text-red-600 transition-all" /> Seguranca
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateAndCloseMobile('/dashboard')}
+                className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
+              >
+                <LayoutDashboard size={18} className="group-hover:text-red-600 transition-all" /> Voltar ao inicio
               </button>
             </nav>
             <div className="mt-auto space-y-3 pt-6 border-t border-white/10">
@@ -148,10 +151,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      <aside
-        onMouseLeave={() => setHoveredGroup(null)}
-        className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${styles.sidebar} p-4 flex-col z-20 backdrop-blur-xl transition-all duration-300 relative`}
-      >
+      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${styles.sidebar} p-4 flex-col z-20 backdrop-blur-xl transition-all duration-300`}>
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl text-white shadow-lg shadow-red-600/20">L</div>
@@ -169,43 +169,23 @@ const Dashboard = () => {
         </div>
 
         <nav className="flex-1 space-y-2">
-          {sidebarGroups.map((group) => (
+          {sidebarLinks.map((group) => (
             <button
               key={group.id}
               type="button"
-              onMouseEnter={(e) => {
-                setHoveredGroup(group.id);
-                setHoverMenuTop(e.currentTarget.offsetTop);
-              }}
+              onClick={group.action}
               className={`w-full flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 hover:translate-x-1 rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase text-left`}
             >
-              <group.icon size={18} className="group-hover:text-red-600 transition-all" /> {!sidebarCollapsed && group.label}
+              <group.icon size={18} className="group-hover:text-red-600 transition-all" />
+              {!sidebarCollapsed && (
+                <span className="leading-tight">
+                  <span className="block">{group.label}</span>
+                  {group.helper && <span className="block text-[8px] tracking-wide normal-case opacity-60">{group.helper}</span>}
+                </span>
+              )}
             </button>
           ))}
         </nav>
-
-        {hoveredGroup && (
-          <div
-            onMouseEnter={() => setHoveredGroup(hoveredGroup)}
-            style={{ top: hoverMenuTop }}
-            className={`absolute ${sidebarCollapsed ? 'left-24' : 'left-64'} w-64 p-3 rounded-2xl border z-50 ${theme === 'dark' ? 'bg-[#090909] border-white/10 shadow-2xl shadow-black/50' : 'bg-white border-slate-200 shadow-2xl shadow-slate-300/40'}`}
-          >
-            <div className="space-y-1">
-              {sidebarGroups
-                .find((group) => group.id === hoveredGroup)
-                ?.items.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={item.action}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-left font-black text-[10px] uppercase tracking-wider transition-all ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-800'}`}
-                  >
-                    <item.icon size={16} className="text-red-600" /> {item.label}
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
 
         <div className="mt-auto pt-6 border-t border-white/5 space-y-3">
           <button onClick={toggleTheme} className={`w-full p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
@@ -238,7 +218,7 @@ const Dashboard = () => {
               Bem-vindo ao <span className="text-red-600">Centro Lenovo</span>
             </h2>
             <p className={`mt-6 text-sm md:text-base max-w-2xl ${styles.subtext}`}>
-              Ambiente principal de operacao. Use o menu Operacao para abrir chamados e acompanhar falhas em tempo real.
+              Ambiente principal de operacao. Use os atalhos diretos para abrir chamados e acompanhar falhas em tempo real.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <button

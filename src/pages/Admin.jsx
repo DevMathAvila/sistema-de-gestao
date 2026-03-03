@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ShieldCheck, Users, BarChart3, Trash2, Sun, Moon,
-  LayoutDashboard, Loader2, Calendar, AlertTriangle, UserPlus, TrendingUp, Menu, X, PanelLeftClose, PanelLeftOpen
+  Loader2, Calendar, AlertTriangle, UserPlus, TrendingUp, Menu, X, PanelLeftClose, PanelLeftOpen, ArrowLeft
 } from 'lucide-react';
 import DashboardKPI from '../components/DashboardKPI';
 import DateRangePicker from '../components/DateRangePicker';
@@ -14,7 +14,11 @@ import AppBottomNav from '../components/AppBottomNav';
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('usuarios');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return ['indicadores', 'usuarios', 'estatisticas', 'historico'].includes(tab) ? tab : 'indicadores';
+  });
   const [usuarios, setUsuarios] = useState([]);
   const [falhasStats, setFalhasStats] = useState([]);
   const [setorFiltro, setSetorFiltro] = useState(SETOR_TODOS);
@@ -30,8 +34,6 @@ const Admin = () => {
   const [historicoSubAba, setHistoricoSubAba] = useState('concluidas');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [hoveredMenu, setHoveredMenu] = useState(null);
-  const [hoverMenuTop, setHoverMenuTop] = useState(0);
   const intervaloInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
   const currentUser = getSessionUser() || { role: 'colaborador' };
   const isMaster = isMasterUser(currentUser);
@@ -118,6 +120,13 @@ const Admin = () => {
       setLoadingHistoricoAbertas(false);
     }
   }, [dataInicio, dataFim, intervaloInvalido]);
+
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab && ['indicadores', 'usuarios', 'estatisticas', 'historico'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const user = getSessionUser();
@@ -229,27 +238,6 @@ const Admin = () => {
     { id: 'historico', label: 'Histórico Geral', icon: Calendar },
   ];
 
-  const hoverMenus = [
-    {
-      id: 'conteudo',
-      label: 'Conteudo',
-      icon: ShieldCheck,
-      items: navItems.map((item) => ({
-        id: item.id,
-        label: item.label,
-        icon: item.icon,
-        action: () => setActiveTab(item.id),
-      })),
-    },
-    {
-      id: 'navegacao',
-      label: 'Navegacao',
-      icon: LayoutDashboard,
-      items: [
-        { id: 'dashboard', label: 'Painel de Linha', icon: LayoutDashboard, action: () => navigate('/dashboard') },
-      ],
-    },
-  ];
   if (loading) return (
     <div className={`min-h-screen ${s.bg} flex items-center justify-center`}>
       <Loader2 className="animate-spin text-red-600" size={48} />
@@ -291,27 +279,34 @@ const Admin = () => {
               </button>
             </div>
             <nav className="space-y-3">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full min-h-12 p-3 rounded-xl border font-black text-[10px] uppercase tracking-wider flex items-center gap-3 text-left transition-all ${
+                    activeTab === item.id
+                      ? 'bg-red-600 text-white border-red-500'
+                      : (theme === 'dark' ? 'border-white/10 text-white bg-white/5' : 'border-slate-200 text-slate-900 bg-white')
+                  }`}
+                >
+                  <item.icon size={16} className={activeTab === item.id ? 'text-white' : 'text-red-600'} />
+                  {item.label}
+                </button>
+              ))}
               <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
                 <span className="text-[11px] font-black uppercase">Tema</span>
                 {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
               </button>
             </nav>
-            <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
-              <button
-                onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}
-                className={`w-full min-h-12 p-3 rounded-xl border font-black text-[11px] uppercase tracking-widest ${theme === 'dark' ? 'border-white/10 text-white bg-white/5' : 'border-slate-200 text-slate-900 bg-white'}`}
-              >
-                Painel de Linha
-              </button>
-            </div>
           </aside>
         </div>
       )}
       
-      <aside
-        onMouseLeave={() => setHoveredMenu(null)}
-        className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-72'} ${s.sidebar} border-r p-6 flex-col z-20 transition-all duration-300 relative`}
-      >
+      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-72'} ${s.sidebar} border-r p-6 flex-col z-20 transition-all duration-300 relative`}>
         <div className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-3 text-red-600 overflow-hidden">
             <ShieldCheck size={32} strokeWidth={2.5} />
@@ -326,66 +321,45 @@ const Admin = () => {
         </div>
 
         <nav className="flex-1 space-y-3">
-          {hoverMenus.map((menu) => (
+          {navItems.map((item) => (
             <button
-              key={menu.id}
+              key={item.id}
               type="button"
-              onMouseEnter={(e) => {
-                setHoveredMenu(menu.id);
-                setHoverMenuTop(e.currentTarget.offsetTop);
-              }}
-              className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-wider ${s.sub} hover:bg-red-600/5 hover:text-red-600 text-left`}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-wider text-left ${
+                activeTab === item.id
+                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
+                  : `${s.sub} hover:bg-red-600/5 hover:text-red-600`
+              }`}
             >
-              <menu.icon size={20} /> {!sidebarCollapsed && menu.label}
+              <item.icon size={20} className={activeTab === item.id ? 'text-white' : ''} />
+              {!sidebarCollapsed && item.label}
             </button>
           ))}
         </nav>
-
-        {hoveredMenu && (
-          <div
-            onMouseEnter={() => setHoveredMenu(hoveredMenu)}
-            style={{ top: hoverMenuTop }}
-            className={`absolute ${sidebarCollapsed ? 'left-24' : 'left-72'} w-72 p-3 rounded-2xl border z-50 ${theme === 'dark' ? 'bg-[#090909] border-white/10 shadow-2xl shadow-black/50' : 'bg-white border-slate-200 shadow-2xl shadow-slate-300/40'}`}
-          >
-            <div className="space-y-1">
-              {hoverMenus
-                .find((menu) => menu.id === hoveredMenu)
-                ?.items.map((item) => {
-                  const active = item.id === activeTab;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={item.action}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left font-black text-[10px] uppercase tracking-wider transition-all ${
-                        active
-                          ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
-                          : (theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-800')
-                      }`}
-                    >
-                      <item.icon size={16} className={active ? 'text-white' : 'text-red-600'} /> {item.label}
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
-        )}
 
         <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
           <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
             {!sidebarCollapsed && <span className="text-[11px] font-black uppercase">Tema</span>}
             {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
           </button>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className={`w-full min-h-12 p-3 rounded-xl border font-black text-[11px] uppercase tracking-widest ${theme === 'dark' ? 'border-white/10 text-white bg-white/5' : 'border-slate-200 text-slate-900 bg-white'}`}
-          >
-            {!sidebarCollapsed ? 'Painel de Linha' : 'Inicio'}
-          </button>
         </div>
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 md:p-12 pb-24 md:pb-12 overflow-y-auto">
+        <div className="mb-5 flex justify-end">
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            className={`h-11 px-4 rounded-2xl border flex items-center gap-2 font-black text-[10px] uppercase tracking-widest transition-all ${
+              theme === 'dark'
+                ? 'border-white/10 bg-white/5 text-white hover:bg-white/10'
+                : 'border-slate-300 bg-white text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <ArrowLeft size={14} /> Voltar ao inicio
+          </button>
+        </div>
         <div className="md:hidden mb-5 flex gap-2 overflow-x-auto no-scrollbar">
           {navItems.map((item) => (
             <button

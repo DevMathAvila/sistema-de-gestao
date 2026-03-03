@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, LogOut, HardDrive, User, Sun, Moon,
-  Settings, AlertTriangle, Eye, Activity, Zap, Menu, X, PanelLeftClose, PanelLeftOpen, Shield
+  ShieldAlert, AlertTriangle, Eye, Activity, Zap, Menu, X, PanelLeftClose, PanelLeftOpen, Shield
 } from 'lucide-react';
 import { LISTA_SETORES } from '../data/setores';
 import { listarFalhasAbertas } from '../services/supabaseSecure';
@@ -18,8 +18,6 @@ const FabricaStatus = () => {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [hoveredGroup, setHoveredGroup] = useState(null);
-  const [hoverMenuTop, setHoverMenuTop] = useState(0);
 
   const buscarFalhas = async () => {
     try {
@@ -71,24 +69,19 @@ const FabricaStatus = () => {
     navActive: theme === 'dark' ? 'bg-white/5 text-red-500' : 'bg-red-50 text-red-600',
   };
 
-  const sidebarGroups = [
-    {
-      id: 'operacao',
-      label: 'Operacao',
-      icon: LayoutDashboard,
-      items: [
-        { label: 'Abrir chamado', icon: HardDrive, action: () => navigate('/abrir-chamado') },
-        { label: 'Visualizar Falhas', icon: Eye, action: () => navigate('/visualizar') },
-      ],
-    },
+  const sidebarLinks = [
+    { id: 'abrir', label: 'Abrir chamado', icon: HardDrive, action: () => navigate('/abrir-chamado') },
+    { id: 'visualizar', label: 'Visualizar Falhas', icon: Eye, action: () => navigate('/visualizar') },
     ...(isAdmin
       ? [{
           id: 'admin',
           label: 'Administracao',
-          icon: Settings,
-          items: [{ label: 'Painel Admin', icon: Settings, action: () => navigate('/admin') }],
+          icon: ShieldAlert,
+          action: () => navigate('/admin?tab=indicadores'),
+          helper: 'Dashboard KPI | Gestao de Equipe',
         }]
       : []),
+    { id: 'inicio', label: 'Voltar ao inicio', icon: LayoutDashboard, action: () => navigate('/dashboard') },
   ];
 
   return (
@@ -128,6 +121,13 @@ const FabricaStatus = () => {
             <nav className="space-y-3">
               <button
                 type="button"
+                onClick={() => navigateAndCloseMobile('/abrir-chamado')}
+                className="w-full min-h-12 flex items-center gap-3 p-4 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left"
+              >
+                <HardDrive size={18} className="text-white transition-all" /> Abrir chamado
+              </button>
+              <button
+                type="button"
                 onClick={() => navigateAndCloseMobile('/visualizar')}
                 className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
               >
@@ -136,18 +136,22 @@ const FabricaStatus = () => {
               {isAdmin && (
                 <button
                   type="button"
-                  onClick={() => navigateAndCloseMobile('/admin')}
-                  className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
+                  onClick={() => navigateAndCloseMobile('/admin?tab=indicadores')}
+                  className={`w-full min-h-12 flex items-start gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
                 >
-                  <Settings size={18} className="group-hover:text-red-600 transition-all" /> Painel Admin
+                  <ShieldAlert size={18} className="group-hover:text-red-600 transition-all mt-0.5" />
+                  <span>
+                    <span className="block">Administracao</span>
+                    <span className="block text-[9px] tracking-wide normal-case opacity-70">Dashboard KPI | Gestao de equipe</span>
+                  </span>
                 </button>
               )}
               <button
                 type="button"
-                onClick={() => navigateAndCloseMobile('/alterar-senha')}
+                onClick={() => navigateAndCloseMobile('/dashboard')}
                 className={`w-full min-h-12 flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
               >
-                <Shield size={18} className="group-hover:text-red-600 transition-all" /> Seguranca
+                <LayoutDashboard size={18} className="group-hover:text-red-600 transition-all" /> Voltar ao inicio
               </button>
             </nav>
             <div className="mt-auto space-y-3 pt-6 border-t border-white/10">
@@ -163,10 +167,7 @@ const FabricaStatus = () => {
         </div>
       )}
 
-      <aside
-        onMouseLeave={() => setHoveredGroup(null)}
-        className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${styles.sidebar} p-4 flex-col z-20 backdrop-blur-xl transition-all duration-300 relative`}
-      >
+      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${styles.sidebar} p-4 flex-col z-20 backdrop-blur-xl transition-all duration-300`}>
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl text-white shadow-lg shadow-red-600/20">L</div>
@@ -184,43 +185,25 @@ const FabricaStatus = () => {
         </div>
 
         <nav className="flex-1 space-y-2">
-          {sidebarGroups.map((group) => (
+          {sidebarLinks.map((group) => (
             <button
               key={group.id}
               type="button"
-              onMouseEnter={(e) => {
-                setHoveredGroup(group.id);
-                setHoverMenuTop(e.currentTarget.offsetTop);
-              }}
-              className={`w-full flex items-center gap-3 p-4 ${styles.subtext} hover:text-red-600 hover:translate-x-1 rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase text-left`}
+              onClick={group.action}
+              className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase text-left ${
+                group.id === 'abrir' ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-500/20' : `${styles.subtext} hover:text-red-600 hover:translate-x-1`
+              }`}
             >
-              <group.icon size={18} className="group-hover:text-red-600 transition-all" /> {!sidebarCollapsed && group.label}
+              <group.icon size={18} className={group.id === 'abrir' ? 'text-white' : 'group-hover:text-red-600 transition-all'} />
+              {!sidebarCollapsed && (
+                <span className="leading-tight">
+                  <span className="block">{group.label}</span>
+                  {group.helper && <span className="block text-[8px] tracking-wide normal-case opacity-60">{group.helper}</span>}
+                </span>
+              )}
             </button>
           ))}
         </nav>
-
-        {hoveredGroup && (
-          <div
-            onMouseEnter={() => setHoveredGroup(hoveredGroup)}
-            style={{ top: hoverMenuTop }}
-            className={`absolute ${sidebarCollapsed ? 'left-24' : 'left-64'} w-64 p-3 rounded-2xl border z-50 ${theme === 'dark' ? 'bg-[#090909] border-white/10 shadow-2xl shadow-black/50' : 'bg-white border-slate-200 shadow-2xl shadow-slate-300/40'}`}
-          >
-            <div className="space-y-1">
-              {sidebarGroups
-                .find((group) => group.id === hoveredGroup)
-                ?.items.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={item.action}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-left font-black text-[10px] uppercase tracking-wider transition-all ${theme === 'dark' ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-800'}`}
-                  >
-                    <item.icon size={16} className="text-red-600" /> {item.label}
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
 
         <div className="mt-auto pt-6 border-t border-white/5 space-y-3">
           <button onClick={toggleTheme} className={`w-full p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>

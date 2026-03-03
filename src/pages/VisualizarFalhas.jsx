@@ -2,12 +2,12 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, HardDrive, Hash, ChevronDown,
-  Eye, X, ShieldAlert, ArrowRight, Sun, Moon,
+  Eye, X, ShieldAlert, ArrowRight, Sun, Moon, LogOut, User,
   Box, Zap, Activity, Bell, BellRing, Octagon, Monitor, AlertTriangle, Menu, Clock3, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { LISTA_SETORES } from '../data/setores';
 import { listarFalhasAbertas, fecharRegistros, listarHistoricoRecentePorPonto } from '../services/supabaseSecure';
-import { getSessionUser, isAdminUser } from '../lib/session';
+import { clearSessionData, getSessionUser, isAdminUser } from '../lib/session';
 import AppBottomNav from '../components/AppBottomNav';
 
 const VisualizarFalhas = () => {
@@ -35,6 +35,16 @@ const VisualizarFalhas = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
+  };
+
+  const handleLogout = () => {
+    clearSessionData();
+    navigate('/', { replace: true });
+  };
+
+  const navigateAndCloseMobile = (path) => {
+    setMobileMenuOpen(false);
+    navigate(path);
   };
 
   const user = getSessionUser() || { username: 'Tecnico', role: 'colaborador' };
@@ -351,46 +361,105 @@ const VisualizarFalhas = () => {
             </div>
             <nav className="space-y-3">
               <button
-                onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}
-                className={`w-full min-h-12 flex items-center gap-3 p-3 ${colors.subtext} font-black text-[11px] ${colors.hover} rounded-xl transition-all text-left`}
+                type="button"
+                onClick={() => navigateAndCloseMobile('/abrir-chamado')}
+                className={`w-full min-h-12 flex items-center gap-3 p-4 ${colors.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
               >
-                <LayoutDashboard size={18} /> DASHBOARD
+                <HardDrive size={18} className="group-hover:text-red-600 transition-all" /> Abrir chamado
               </button>
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black italic text-[10px] shadow-lg shadow-red-500/20">
-                <Eye size={18} /> LIVE MONITOR
-              </div>
+              <button
+                type="button"
+                onClick={() => navigateAndCloseMobile('/visualizar')}
+                className="w-full min-h-12 flex items-center gap-3 p-4 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left"
+              >
+                <Eye size={18} /> Visualizar falhas
+              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigateAndCloseMobile('/admin?tab=indicadores')}
+                  className={`w-full min-h-12 flex items-start gap-3 p-4 ${colors.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
+                >
+                  <ShieldAlert size={18} className="group-hover:text-red-600 transition-all mt-0.5" />
+                  <span>
+                    <span className="block">Administracao</span>
+                    <span className="block text-[9px] tracking-wide normal-case opacity-70">Dashboard KPI | Gestao de equipe</span>
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => navigateAndCloseMobile('/dashboard')}
+                className={`w-full min-h-12 flex items-center gap-3 p-4 ${colors.subtext} hover:text-red-600 rounded-2xl transition-all group font-black text-[11px] tracking-widest uppercase text-left`}
+              >
+                <LayoutDashboard size={18} className="group-hover:text-red-600 transition-all" /> Voltar ao inicio
+              </button>
             </nav>
-            <button onClick={toggleTheme} className={`mt-auto min-h-12 flex items-center justify-between p-3 rounded-xl border ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
-              <span className="text-[9px] font-black uppercase">{theme === 'dark' ? 'Dark' : 'Light'}</span>
-              {theme === 'dark' ? <Moon size={16} className="text-red-500" /> : <Sun size={16} className="text-yellow-500" />}
-            </button>
+            <div className="mt-auto space-y-3 pt-6 border-t border-white/10">
+              <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+                <span className="text-[11px] font-black uppercase">Tema</span>
+                {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
+              </button>
+              <button onClick={handleLogout} className="w-full min-h-12 p-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-[11px] uppercase tracking-widest transition-all">
+                Encerrar Sessao
+              </button>
+            </div>
           </aside>
         </div>
       )}
 
-      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-20' : 'w-56'} border-r ${colors.sidebar} p-4 flex-col z-20 backdrop-blur-xl transition-all duration-300`}>
-        <div className="flex items-center gap-3 mb-10 cursor-pointer group" onClick={() => navigate('/dashboard')}>
-          <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl shadow-xl text-white">L</div>
-          {!sidebarCollapsed && <div>
-            <h1 className="text-md font-black italic tracking-tighter leading-none">LENOVO</h1>
-            <span className="text-[8px] text-red-600 font-black tracking-widest uppercase">Live Pro</span>
-          </div>}
+      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${colors.sidebar} p-4 flex-col z-20 backdrop-blur-xl transition-all duration-300`}>
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-3 cursor-pointer group overflow-hidden" onClick={() => navigate('/dashboard')}>
+            <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl shadow-xl text-white">L</div>
+            {!sidebarCollapsed && <div>
+              <h1 className="text-md font-black italic tracking-tighter leading-none">LENOVO</h1>
+              <span className="text-[8px] text-red-600 font-black tracking-widest uppercase">Live Pro</span>
+            </div>}
+          </div>
+          <button
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            className={`p-2 rounded-lg border ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
         </div>
         <nav className="flex-1 space-y-2">
-          <button onClick={() => navigate('/dashboard')} className={`w-full flex items-center gap-3 p-3 ${colors.subtext} font-black text-[10px] ${colors.hover} rounded-xl transition-all`}>
-            <LayoutDashboard size={18} /> {!sidebarCollapsed && 'DASHBOARD'}
+          <button onClick={() => navigate('/abrir-chamado')} className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase text-left ${colors.subtext} hover:text-red-600 hover:translate-x-1`}>
+            <HardDrive size={18} className="group-hover:text-red-600 transition-all" /> {!sidebarCollapsed && 'ABRIR CHAMADO'}
           </button>
-          <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black italic text-[10px] shadow-lg shadow-red-500/20">
-            <Eye size={18} /> {!sidebarCollapsed && 'LIVE MONITOR'}
-          </div>
+          <button onClick={() => navigate('/visualizar')} className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase text-left shadow-lg shadow-red-500/20">
+            <Eye size={18} /> {!sidebarCollapsed && 'VISUALIZAR FALHAS'}
+          </button>
+          {isAdmin && (
+            <button onClick={() => navigate('/admin?tab=indicadores')} className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase text-left ${colors.subtext} hover:text-red-600 hover:translate-x-1`}>
+              <ShieldAlert size={18} className="group-hover:text-red-600 transition-all" />
+              {!sidebarCollapsed && (
+                <span className="leading-tight">
+                  <span className="block">ADMINISTRACAO</span>
+                  <span className="block text-[8px] tracking-wide normal-case opacity-60">Dashboard KPI | Gestao de equipe</span>
+                </span>
+              )}
+            </button>
+          )}
+          <button onClick={() => navigate('/dashboard')} className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all group font-black text-[10px] tracking-widest uppercase text-left ${colors.subtext} hover:text-red-600 hover:translate-x-1`}>
+            <LayoutDashboard size={18} className="group-hover:text-red-600 transition-all" /> {!sidebarCollapsed && 'VOLTAR AO INICIO'}
+          </button>
         </nav>
         <div className="mt-auto flex flex-col gap-2">
-          <button onClick={toggleTheme} className={`flex items-center justify-between p-3 rounded-xl border ${colors.sidebar} ${colors.hover}`}>
-              {!sidebarCollapsed && <span className="text-[9px] font-black uppercase">{theme === 'dark' ? 'Dark' : 'Light'}</span>}
-              {theme === 'dark' ? <Moon size={16} className="text-red-500" /> : <Sun size={16} className="text-yellow-500" />}
+          <button onClick={toggleTheme} className={`w-full p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
+            {!sidebarCollapsed && <span className="text-[10px] font-black uppercase">Tema</span>}
+            {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
           </button>
-          <button onClick={() => setSidebarCollapsed((v) => !v)} className={`p-3 rounded-xl border ${colors.sidebar} ${colors.hover}`}>
-            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          <div className={`flex items-center gap-4 p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}`}>
+            <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center text-red-600"><User size={20} /></div>
+            {!sidebarCollapsed && <div className="overflow-hidden">
+              <p className={`text-[8px] font-black uppercase ${colors.subtext}`}>Usuario:</p>
+              <p className="text-sm font-black truncate italic leading-none">{user.username}</p>
+            </div>}
+          </div>
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 p-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl transition-all uppercase text-xs">
+            <LogOut size={16} /> {!sidebarCollapsed && 'Encerrar Sessao'}
           </button>
         </div>
       </aside>
