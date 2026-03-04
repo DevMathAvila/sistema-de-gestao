@@ -294,20 +294,15 @@ export function useVisualizarFalhasPage() {
     const idsParaEncaminhar = modalData?.ids || (modalData?.id ? [modalData.id] : []);
     if (!idsParaEncaminhar.length) return;
 
-    const popup = window.open('', '_blank', 'noopener,noreferrer');
+    // Abre o portal em gesto direto de clique para evitar bloqueio/pop-up em branco.
+    window.open(SIGA_PORTAL_URL, '_blank', 'noopener,noreferrer');
 
     setEnviando(true);
     try {
       await enviarFalhasParaSiga({ ids: idsParaEncaminhar });
       fecharModal();
       await buscarFalhas();
-      if (popup && !popup.closed) {
-        popup.location.href = SIGA_PORTAL_URL;
-      } else {
-        window.open(SIGA_PORTAL_URL, '_blank', 'noopener,noreferrer');
-      }
     } catch (err) {
-      if (popup && !popup.closed) popup.close();
       alert(err?.message || 'Erro ao enviar para SIGA');
     } finally {
       setEnviando(false);
