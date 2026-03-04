@@ -14,8 +14,10 @@ export default function SigaDeskOverlay({
   finalizados,
   drafts,
   updateDraft,
+  saveSigaItem,
   finalizeSigaItem,
   submittingId,
+  savingId,
   loading,
 }) {
   const [confirmItem, setConfirmItem] = useState(null);
@@ -108,8 +110,10 @@ export default function SigaDeskOverlay({
                       item={item}
                       draft={drafts[item.id]}
                       onDraftChange={updateDraft}
+                      onSave={saveSigaItem}
                       onFinalize={handleAskFinalize}
                       isSubmitting={submittingId === item.id}
+                      isSaving={savingId === item.id}
                       theme={theme}
                       isFinalizado={activeTab === 'finalizados'}
                     />

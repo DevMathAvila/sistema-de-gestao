@@ -8,6 +8,7 @@ import {
   listarFalhasSigaFinalizados,
   listarHistoricoRecentePorPonto,
   marcarFalhasParaSiga,
+  salvarDadosSigaAguardando,
 } from '../../../core/api/supabaseSecure';
 
 const OPEN_FAILURES_CACHE_TTL_MS = 4000;
@@ -89,6 +90,11 @@ export async function fetchSigaFinalizados() {
 
 export async function concluirSiga({ id, diaAbertura, codigoChamado }) {
   const { error } = await finalizarFalhaViaSiga({ id, diaAbertura, codigoChamado });
+  if (error) throw error;
+}
+
+export async function salvarRascunhoSiga({ id, diaAbertura, codigoChamado }) {
+  const { error } = await salvarDadosSigaAguardando({ id, diaAbertura, codigoChamado });
   if (error) throw error;
 }
 

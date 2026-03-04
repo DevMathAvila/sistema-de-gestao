@@ -213,11 +213,12 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
         <td>${escapeHtml(item.setor)}</td>
         <td>${escapeHtml(item.trave)}</td>
         <td>${escapeHtml(item.ponto)}</td>
+        <td>${escapeHtml(item.codigoChamado)}</td>
         <td>${escapeHtml(item.fechadoEmLabel)}</td>
         <td>${escapeHtml(item.atendimentoLabel)}</td>
       </tr>`,
     'Sem chamados SIGA finalizados no periodo.',
-    6
+    7
   );
   const sigaPendentes = Number(metrics?.sigaResumo?.chamadosPendentes || 0);
   const sigaFechados = Number(metrics?.sigaResumo?.chamadosFechados || 0);
@@ -317,7 +318,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
           <tbody>${sigaRows}</tbody>
         </table>
         <table class="section">
-          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Finalizado</th><th>Atendimento</th></tr></thead>
+          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Codigo</th><th>Finalizado</th><th>Atendimento</th></tr></thead>
           <tbody>${sigaFinalizadosRows}</tbody>
         </table>
       </div>`

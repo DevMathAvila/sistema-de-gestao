@@ -20,10 +20,17 @@ import {
   normalizeText,
   splitFalhas,
   traveTemParada,
+  salvarRascunhoSiga,
 } from '../services/failuresService';
 import { getFailureTheme } from '../styles/failureTheme';
 
 const SIGA_PORTAL_URL = 'https://siga.auvo.com.br/Ticket/Novo';
+
+function notifyKpiRefresh() {
+  const version = String(Date.now());
+  localStorage.setItem('kpiDataVersion', version);
+  window.dispatchEvent(new Event('kpi:refresh-requested'));
+}
 
 function isPointMatch(recordPoint, pointNum) {
   const pStr = String(recordPoint || '');
@@ -57,6 +64,7 @@ export function useVisualizarFalhasPage() {
   const [sigaFinalizados, setSigaFinalizados] = useState([]);
   const [sigaDrafts, setSigaDrafts] = useState({});
   const [sigaSubmittingId, setSigaSubmittingId] = useState(null);
+  const [sigaSavingId, setSigaSavingId] = useState(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [mostrarHistoricoCompleto, setMostrarHistoricoCompleto] = useState(false);
 
@@ -302,6 +310,7 @@ export function useVisualizarFalhasPage() {
       await enviarFalhasParaSiga({ ids: idsParaEncaminhar });
       fecharModal();
       await buscarFalhas();
+      notifyKpiRefresh();
     } catch (err) {
       alert(err?.message || 'Erro ao enviar para SIGA');
     } finally {
@@ -371,6 +380,7 @@ export function useVisualizarFalhasPage() {
       });
       await loadSigaDeskData();
       await buscarFalhas();
+      notifyKpiRefresh();
       setSigaTab('finalizados');
     } catch (err) {
       alert(err?.message || 'Erro ao finalizar via SIGA');
@@ -378,6 +388,37 @@ export function useVisualizarFalhasPage() {
       setSigaSubmittingId(null);
     }
   }, [buscarFalhas, loadSigaDeskData, sigaDrafts]);
+
+  const saveSigaItem = useCallback(async (item) => {
+    const draft = sigaDrafts[item.id] || {};
+    if (!draft.diaAbertura || !draft.codigoChamado) {
+      alert('Preencha dia da abertura e codigo do chamado.');
+      return;
+    }
+
+    setSigaSavingId(item.id);
+    try {
+      await salvarRascunhoSiga({
+        id: item.id,
+        diaAbertura: draft.diaAbertura,
+        codigoChamado: draft.codigoChamado,
+      });
+      setSigaAguardando((prev) => prev.map((row) => (
+        row.id === item.id
+          ? {
+              ...row,
+              siga_data_abertura: draft.diaAbertura,
+              siga_codigo_chamado: draft.codigoChamado,
+            }
+          : row
+      )));
+      notifyKpiRefresh();
+    } catch (err) {
+      alert(err?.message || 'Erro ao salvar dados do chamado SIGA');
+    } finally {
+      setSigaSavingId(null);
+    }
+  }, [sigaDrafts]);
 
   const irParaTraveRecorrente = useCallback((setor, trave) => {
     setSetorAberto(setor);
@@ -424,8 +465,10 @@ export function useVisualizarFalhasPage() {
     sigaFinalizados,
     sigaDrafts,
     updateSigaDraft,
+    saveSigaItem,
     finalizeSigaItem,
     sigaSubmittingId,
+    sigaSavingId,
     irParaTraveRecorrente,
     mobileMenuOpen,
     setMobileMenuOpen,

@@ -17,6 +17,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
   });
   const [loadingKpi, setLoadingKpi] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [datasetVersion, setDatasetVersion] = useState(() => localStorage.getItem('kpiDataVersion') || '0');
   const intervaloInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
 
   useEffect(() => {
@@ -27,6 +28,23 @@ export function useDashboardKpi(dataInicio, dataFim) {
   }, []);
 
   useEffect(() => {
+    const onLocalRefresh = () => {
+      setDatasetVersion(localStorage.getItem('kpiDataVersion') || String(Date.now()));
+    };
+    const onStorage = (event) => {
+      if (event.key === 'kpiDataVersion') {
+        setDatasetVersion(event.newValue || '0');
+      }
+    };
+    window.addEventListener('kpi:refresh-requested', onLocalRefresh);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('kpi:refresh-requested', onLocalRefresh);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     if (intervaloInvalido) {
       setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [] });
       setLoadingKpi(false);
@@ -34,7 +52,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
     }
 
     let cancelled = false;
-    const cacheKey = buildDatasetCacheKey(dataInicio, dataFim);
+    const cacheKey = buildDatasetCacheKey(dataInicio, dataFim) + `__${datasetVersion}`;
     const cached = dashboardDatasetCache.get(cacheKey);
     const cacheIsValid = cached && Date.now() - cached.cachedAt < DASHBOARD_DATASET_CACHE_TTL_MS;
 
@@ -84,7 +102,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
     return () => {
       cancelled = true;
     };
-  }, [dataInicio, dataFim, intervaloInvalido]);
+  }, [dataInicio, dataFim, intervaloInvalido, datasetVersion]);
 
   const computed = useMemo(
     () => computeDashboardMetrics(dataset.kpiRows, dataset.concluidasRows, dataset.abertasRows, new Date(nowTick)),

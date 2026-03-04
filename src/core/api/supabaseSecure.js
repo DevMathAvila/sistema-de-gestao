@@ -712,6 +712,35 @@ export async function finalizarFalhaViaSiga({ id, diaAbertura, codigoChamado }) 
   }
 }
 
+export async function salvarDadosSigaAguardando({ id, diaAbertura, codigoChamado }) {
+  if (id == null || id === '') return { error: { message: 'ID obrigatorio.' } };
+  const codigo = sanitizeString(codigoChamado, 120).trim();
+  const dia = normalizeDate(diaAbertura);
+  if (!codigo || !dia) return { error: { message: 'Dia da abertura e codigo do chamado sao obrigatorios.' } };
+
+  const sessionUser = getStoredSessionUser();
+  if (!sessionUser || sessionUser.role === 'colaborador') {
+    return { error: { message: 'Nao autorizado.' } };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('registros_falhas')
+      .update({
+        siga_status: 'AGUARDANDO',
+        siga_codigo_chamado: codigo,
+        siga_data_abertura: dia,
+      })
+      .eq('id', id)
+      .eq('siga_enviado', true)
+      .ilike('status', '%aberto%');
+
+    return { error: withSigaSchemaHint(error) };
+  } catch (err) {
+    return { error: withSigaSchemaHint({ message: err?.message || 'Erro ao salvar dados SIGA.' }) };
+  }
+}
+
 
 
 

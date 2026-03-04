@@ -431,6 +431,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
                         <th className="p-3">Run In</th>
                         <th className="p-3">Trave</th>
                         <th className="p-3">Ponto</th>
+                        <th className="p-3">Codigo SIGA</th>
                         <th className="p-3">Fechado em</th>
                         <th className="p-3">Atendimento</th>
                       </tr>
@@ -441,6 +442,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
                           <td className="p-3 font-bold">{item.setor}</td>
                           <td className="p-3 font-mono">{item.trave}</td>
                           <td className="p-3 font-mono">{item.ponto}</td>
+                          <td className="p-3 font-mono">{item.codigoChamado}</td>
                           <td className="p-3 font-mono">{item.fechadoEmLabel}</td>
                           <td className="p-3">
                             <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-500">

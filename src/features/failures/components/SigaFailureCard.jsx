@@ -1,13 +1,16 @@
 import React from 'react';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import Save from 'lucide-react/dist/esm/icons/save';
 import SendHorizontal from 'lucide-react/dist/esm/icons/send-horizontal';
 
 export default function SigaFailureCard({
   item,
   draft,
   onDraftChange,
+  onSave,
   onFinalize,
   isSubmitting,
+  isSaving,
   theme,
   isFinalizado = false,
 }) {
@@ -74,14 +77,28 @@ export default function SigaFailureCard({
             />
           </label>
         </div>
-        <button
-          type="button"
-          onClick={() => onFinalize(item)}
-          disabled={isSubmitting}
-          className="mt-3 h-11 w-full rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          <SendHorizontal size={14} /> {isSubmitting ? 'FINALIZANDO...' : 'FINALIZAR'}
-        </button>
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onSave(item)}
+            disabled={isSaving || isSubmitting}
+            className={`h-11 w-full rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 ${
+              theme === 'dark'
+                ? 'bg-white/10 border border-white/20 hover:bg-white/20 text-white'
+                : 'bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-800'
+            }`}
+          >
+            <Save size={14} /> {isSaving ? 'SALVANDO...' : 'SALVAR'}
+          </button>
+          <button
+            type="button"
+            onClick={() => onFinalize(item)}
+            disabled={isSubmitting || isSaving}
+            className="h-11 w-full rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <SendHorizontal size={14} /> {isSubmitting ? 'FINALIZANDO...' : 'FINALIZAR'}
+          </button>
+        </div>
       </div>
     </article>
   );

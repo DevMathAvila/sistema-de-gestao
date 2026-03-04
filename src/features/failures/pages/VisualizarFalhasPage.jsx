@@ -254,8 +254,10 @@ export default function VisualizarFalhasPage() {
         finalizados={vm.sigaFinalizados}
         drafts={vm.sigaDrafts}
         updateDraft={vm.updateSigaDraft}
+        saveSigaItem={vm.saveSigaItem}
         finalizeSigaItem={vm.finalizeSigaItem}
         submittingId={vm.sigaSubmittingId}
+        savingId={vm.sigaSavingId}
         loading={vm.sigaLoading}
       />
 
