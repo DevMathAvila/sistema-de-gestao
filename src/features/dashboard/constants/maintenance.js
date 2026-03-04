@@ -1,0 +1,1 @@
+export const EXPECTED_MAINTENANCE_DAYS = 0.1;

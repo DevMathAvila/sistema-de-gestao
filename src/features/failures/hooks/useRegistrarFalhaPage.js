@@ -1,0 +1,119 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getSessionUser, isAdminUser } from '../../../core/auth/session';
+import { FALHAS_COMUNS } from '../../../shared/constants/falhasComuns';
+import { LISTA_SETORES } from '../../../shared/constants/setores';
+import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
+import { PONTOS } from '../constants/failureConstants';
+import { createFalhaRegistro, fetchChamadosAbertosPorSetor } from '../services/failuresService';
+import { getFailureTheme } from '../styles/failureTheme';
+
+export function useRegistrarFalhaPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = usePersistentTheme();
+  const styles = useMemo(() => getFailureTheme(theme), [theme]);
+
+  const setor = useMemo(() => {
+    const s = location.state?.setor;
+    return s && LISTA_SETORES.includes(s) ? s : LISTA_SETORES[0] ?? 'Setor nao selecionado';
+  }, [location.state]);
+
+  const [loading, setLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [chamadosAbertos, setChamadosAbertos] = useState([]);
+  const [formData, setFormData] = useState({ trave: '', pontos: [], falhas: [] });
+  const isAdmin = isAdminUser(getSessionUser() || { role: 'colaborador' });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchChamadosAbertosPorSetor(setor)
+      .then((data) => {
+        if (!cancelled) setChamadosAbertos(data);
+      })
+      .catch(() => {
+        if (!cancelled) setChamadosAbertos([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setor]);
+
+  const traveTemErro = (numTrave) => chamadosAbertos.some((c) => String(c.trave) === String(numTrave));
+
+  const getInfoPonto = (numPonto) => {
+    if (!formData.trave) return null;
+    const chamadosDestePonto = chamadosAbertos.filter((c) => {
+      if (String(c.trave) !== String(formData.trave)) return false;
+      const pStr = String(c.ponto || '');
+      if (pStr === '1-15 (Inteira)') return true;
+      const pontosArray = pStr.split(',').map((p) => p.replace('Ponto ', '').trim());
+      return pontosArray.includes(String(numPonto));
+    });
+    if (chamadosDestePonto.length === 0) return null;
+    const todasFalhas = chamadosDestePonto.map((c) => c.falha).join(', ');
+    return [...new Set(todasFalhas.split(', ').map((f) => f.trim()))].join(', ');
+  };
+
+  const togglePonto = (ponto) => {
+    setFormData((prev) => ({
+      ...prev,
+      pontos: prev.pontos.includes(ponto) ? prev.pontos.filter((p) => p !== ponto) : [...prev.pontos, ponto],
+    }));
+  };
+
+  const toggleFalha = (falha) => {
+    setFormData((prev) => ({
+      ...prev,
+      falhas: prev.falhas.includes(falha) ? prev.falhas.filter((f) => f !== falha) : [...prev.falhas, falha],
+    }));
+  };
+
+  const selecionarTodosPontos = () => {
+    setFormData((prev) => ({
+      ...prev,
+      pontos: prev.pontos.length === PONTOS.length ? [] : PONTOS,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (formData.falhas.length === 0 || formData.pontos.length === 0 || !formData.trave) return;
+    setLoading(true);
+    try {
+      await createFalhaRegistro({
+        setor,
+        trave: formData.trave,
+        pontos: formData.pontos,
+        falhas: formData.falhas,
+      });
+      setIsSuccess(true);
+      setTimeout(() => navigate('/abrir-chamado'), 1500);
+    } catch (err) {
+      alert(err?.message || 'Erro ao registrar.');
+      setLoading(false);
+    }
+  };
+
+  return {
+    setor,
+    loading,
+    isSuccess,
+    chamadosAbertos,
+    formData,
+    setFormData,
+    isAdmin,
+    theme,
+    styles,
+    toggleTheme,
+    traveTemErro,
+    getInfoPonto,
+    togglePonto,
+    toggleFalha,
+    selecionarTodosPontos,
+    handleSubmit,
+    navigate,
+    pontos: PONTOS,
+    falhasComuns: FALHAS_COMUNS,
+  };
+}

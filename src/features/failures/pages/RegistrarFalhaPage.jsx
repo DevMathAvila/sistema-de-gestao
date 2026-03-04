@@ -1,0 +1,194 @@
+import React from 'react';
+import { ArrowLeft, Check, CheckCircle2, Cpu, Hash, Layout, Loader2, Moon, Save, Sun, Zap } from 'lucide-react';
+import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
+import { TRAVES } from '../constants/failureConstants';
+import { useRegistrarFalhaPage } from '../hooks/useRegistrarFalhaPage';
+
+export default function RegistrarFalhaPage() {
+  const {
+    setor,
+    loading,
+    isSuccess,
+    formData,
+    setFormData,
+    isAdmin,
+    theme,
+    styles,
+    toggleTheme,
+    traveTemErro,
+    getInfoPonto,
+    togglePonto,
+    toggleFalha,
+    selecionarTodosPontos,
+    handleSubmit,
+    navigate,
+    pontos,
+    falhasComuns,
+  } = useRegistrarFalhaPage();
+
+  return (
+    <div className={`min-h-screen ${styles.bg} ${styles.text} p-4 md:p-10 pb-24 md:pb-10 font-sans relative transition-colors duration-500 overflow-x-hidden`}>
+      {isSuccess && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-24 h-24 bg-gradient-to-tr from-green-500 to-emerald-400 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <Check size={48} className="text-black stroke-[3px]" />
+            </div>
+            <h2 className="text-4xl font-black uppercase tracking-tighter italic">Registro Finalizado</h2>
+          </div>
+        </div>
+      )}
+
+      <div className="relative z-10 max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-12">
+          <button onClick={() => navigate('/abrir-chamado')} className={`group flex items-center gap-3 ${styles.subtext} hover:text-red-600 transition-all`}>
+            <div className={`p-2 rounded-full ${styles.mutedCard} border group-hover:bg-red-600 group-hover:border-red-600 group-hover:text-white transition-all`}>
+              <ArrowLeft size={18} />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Voltar ao Inicio</span>
+          </button>
+          <button onClick={toggleTheme} className={`p-3 rounded-2xl border ${styles.card}`}>
+            {theme === 'dark' ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-red-600" />}
+          </button>
+        </div>
+
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-[2px] w-12 bg-red-600" />
+              <span className="text-red-600 text-[11px] font-black uppercase tracking-[0.2em]">Diagnostic Terminal</span>
+            </div>
+            <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter italic leading-none">{setor}</h2>
+          </div>
+          <div className={`flex items-center gap-4 ${styles.mutedCard} border px-6 py-3 rounded-3xl`}>
+            <Cpu size={20} className="text-red-600" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-wider">Lenovo System</span>
+              <span className={`text-[8px] font-bold ${styles.subtext} uppercase`}>Hardware Engine v3.0</span>
+            </div>
+          </div>
+        </header>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7 space-y-8">
+            <div className={`${styles.card} p-8 rounded-[3rem]`}>
+              <div className="flex items-center justify-between mb-8 px-2">
+                <label className={`flex items-center gap-3 text-[11px] font-black ${styles.subtext} uppercase tracking-widest`}>
+                  <Hash size={18} className="text-red-600" /> Identificacao da Trave
+                </label>
+                {formData.trave && <span className="text-[10px] font-black bg-red-600 text-white px-3 py-1 rounded-lg">TRAVE {formData.trave} SELECIONADA</span>}
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                {TRAVES.map((num) => {
+                  const erro = traveTemErro(num);
+                  const isSelected = String(formData.trave) === String(num);
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, trave: num, pontos: [] })}
+                      className={`h-16 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center relative overflow-hidden font-black text-xl ${
+                        isSelected
+                          ? 'bg-red-600 border-red-500 text-white'
+                          : erro
+                            ? theme === 'dark'
+                              ? 'bg-red-950/30 border-red-600/50 text-red-500'
+                              : 'bg-red-50 border-red-200 text-red-600'
+                            : `${styles.mutedCard} hover:border-slate-300`
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className={`${styles.card} p-8 rounded-[3rem] ${!formData.trave ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
+              <div className="flex justify-between items-center mb-8 px-2">
+                <label className={`flex items-center gap-3 text-[11px] font-black ${styles.subtext} uppercase tracking-widest`}>
+                  <Layout size={18} className="text-blue-500" /> Slots da Unidade
+                </label>
+                <button type="button" onClick={selecionarTodosPontos} className="text-[10px] font-black text-blue-600 uppercase hover:text-red-600">
+                  {formData.pontos.length === pontos.length ? '[ Desmarcar Todos ]' : '[ Selecionar Todos ]'}
+                </button>
+              </div>
+              <div className="grid grid-cols-5 gap-3">
+                {pontos.map((p) => {
+                  const selecionado = formData.pontos.includes(p);
+                  const falhasNoPonto = getInfoPonto(p);
+                  return (
+                    <div key={p} className="relative group">
+                      <button
+                        type="button"
+                        onClick={() => togglePonto(p)}
+                        className={`h-14 w-full rounded-2xl border-2 transition-all duration-300 flex items-center justify-center font-black ${
+                          selecionado
+                            ? 'bg-blue-600 border-blue-500 text-white'
+                            : falhasNoPonto
+                              ? theme === 'dark'
+                                ? 'bg-red-900/20 border-red-600 text-red-500'
+                                : 'bg-red-50 border-red-300 text-red-600'
+                              : `${styles.mutedCard} hover:border-slate-300`
+                        }`}
+                      >
+                        {p}
+                      </button>
+                      {falhasNoPonto && (
+                        <div className={`pointer-events-none absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl border p-2 opacity-0 group-hover:opacity-100 transition-all ${
+                          theme === 'dark' ? 'bg-black/95 border-white/10' : 'bg-white border-slate-200 shadow-xl'
+                        }`}>
+                          <p className={`text-[10px] font-black uppercase leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                            {falhasNoPonto}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 space-y-8 flex flex-col">
+            <div className={`${styles.card} p-8 rounded-[3rem] flex-1`}>
+              <label className={`flex items-center gap-3 text-[11px] font-black ${styles.subtext} uppercase tracking-widest mb-10`}>
+                <Zap size={18} className="text-yellow-500" /> Tipos de Ocorrencia
+              </label>
+              <div className="space-y-3">
+                {falhasComuns.map((falha) => {
+                  const isSelected = formData.falhas.includes(falha);
+                  return (
+                    <button
+                      key={falha}
+                      type="button"
+                      onClick={() => toggleFalha(falha)}
+                      className={`w-full p-5 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between font-black uppercase tracking-tighter text-sm ${
+                        isSelected ? 'bg-gradient-to-r from-red-600 to-rose-500 border-red-400 text-white' : `${styles.mutedCard} hover:bg-slate-200/50`
+                      }`}
+                    >
+                      {falha}
+                      {isSelected ? <CheckCircle2 size={20} /> : <div className={`w-6 h-6 rounded-full border-2 ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={formData.falhas.length === 0 || !formData.trave || formData.pontos.length === 0 || loading}
+              className={`w-full p-10 rounded-[2.5rem] font-black text-2xl flex items-center justify-center gap-4 transition-all duration-500 ${
+                loading ? 'bg-slate-800' : `${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} hover:bg-red-600 hover:text-white disabled:opacity-20`
+              }`}
+            >
+              {loading ? <Loader2 className="animate-spin" size={36} /> : <><Save size={32} /><span className="italic uppercase tracking-tighter">Registrar Falha</span></>}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <AppBottomNav isAdmin={isAdmin} />
+    </div>
+  );
+}

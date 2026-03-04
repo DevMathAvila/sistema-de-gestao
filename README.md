@@ -1,72 +1,336 @@
-Aqui está um modelo de README.md profissional e direto, focado nas atualizações que acabamos de estruturar. Ele serve tanto para o seu controle quanto para mostrar o progresso do projeto (caso tenha outros envolvidos ou queira documentar para o futuro).
+﻿# Sistema de Gestao de Falhas - Changelog de Refatoracao
 
-Update Log - Sistema de Gestão de Falhas (Run-in/Trave)
-Novas Implementações e Melhorias (Março 2026)
-Este documento detalha as atualizações recentes focadas em inteligência de dados, agilidade operacional e UX (Experiência do Usuário).
+Este README documenta, de forma tecnica, **tudo que foi refatorado** no projeto para adotar Separation of Concerns (SoC) e arquitetura limpa por dominios.
 
-1. Filtro de Datas Inteligente
-Correção de Range: Ajuste na lógica de busca para considerar o dia completo (00:00:00 às 23:59:59), evitando que falhas registradas durante o dia sejam omitidas.
+## 1. Objetivo da refatoracao
 
-Filtros Seletivos: Liberdade para filtrar qualquer janela de tempo no passado, sem a obrigatoriedade de a data final ser "hoje".
+O projeto saiu de um modelo monolitico (pages gigantes com UI + estado + chamadas de API no mesmo arquivo) para um modelo em camadas:
 
-Acessibilidade: Expansão da área de clique nos campos de data ("De" e "Até"). Agora é possível abrir o calendário clicando em qualquer parte do bloco do input.
+- `core`: infraestrutura e regras transversais
+- `shared`: componentes e hooks reutilizaveis
+- `features`: modulos por dominio (admin, failures, dashboard, auth, home, monitoring)
+- `app`: roteamento e guardas de acesso
 
-Reset Rápido: Implementação do botão "Redefinir" que limpa instantaneamente os filtros e restaura a visualização de todos os registros.
+---
 
-2. Manutenção Seletiva (Múltiplas Falhas)
-Desmembramento de Ocorrências: Caso um ponto apresente mais de uma falha (ex: RJ45 e VGA), o sistema agora permite selecionar individualmente qual está sendo concluída.
+## 2. Nova estrutura de pastas
 
-Status Dinâmico: O ponto só retornará ao estado "Verde/Resolvido" após a conclusão de todas as falhas listadas.
+```txt
+src/
+  app/
+    router/
+      AppRouter.jsx
 
-3. Histórico In-Loco (Memória do Ponto)
-Timeline de Manutenção: Ao abrir os detalhes de um ponto, o técnico agora visualiza as últimas 5 intervenções feitas naquele local específico.
+  core/
+    api/
+      supabaseClient.js
+      supabaseSecure.js
+    auth/
+      session.js
+    theme/
+      theme.jsx
+      theme.js
+    validation/
+      validation.js
 
-Rastreabilidade: Exibição de data, falha anterior e o técnico responsável, facilitando a identificação de problemas crônicos.
+  shared/
+    components/
+      filters/
+        DateRangePicker.jsx
+      layout/
+        AppBottomNav.jsx
+    constants/
+      setores.js
+      falhasComuns.js
+    hooks/
+      usePersistentTheme.js
+      useBodyScrollLock.js
 
-4. Navegação e UI/UX (Mobile & Desk)
-Bottom Navigation (Mobile): Implementação de barra inferior para acesso rápido às funções principais, otimizando o uso com apenas um polegar.
+  features/
+    admin/
+      components/
+      constants/
+      hooks/
+      pages/
+      services/
+      styles/
+    auth/
+      hooks/
+      pages/
+      services/
+    dashboard/
+      components/
+      hooks/
+      pages/
+    failures/
+      components/
+      constants/
+      hooks/
+      pages/
+      services/
+      styles/
+    home/
+      hooks/
+      pages/
+      services/
+    monitoring/
+      hooks/
+      pages/
+      services/
+```
 
-Sidebar Inteligente (Desk): Menu lateral colapsável para maior aproveitamento da área de trabalho em telas grandes.
+---
 
-Observações e Próximos Passos
-[!IMPORTANT]
-Bug Conhecido - Layout do Menu:
-Identificamos que o botão de "Fechar Layout/Menu" está apresentando inconsistências visuais (saindo fora do alinhamento) em algumas telas de pendências específicas.
+## 3. Mapa de migracao (arquivos movidos)
 
-Ações Futuras:
+### 3.1 Core
 
-O componente de fechamento do menu será reimplementado e modificado em uma atualização futura para garantir a responsividade total.
+- `src/services/supabase.js` -> `src/core/api/supabaseClient.js`
+- `src/services/supabaseSecure.js` -> `src/core/api/supabaseSecure.js`
+- `src/lib/session.js` -> `src/core/auth/session.js`
+- `src/lib/validation.js` -> `src/core/validation/validation.js`
+- `src/lib/theme.jsx` -> `src/core/theme/theme.jsx`
+- `src/lib/theme.js` -> `src/core/theme/theme.js`
 
-Refinamento da lógica de reincidência automática (Modo Sniper).
+### 3.2 Shared
 
-Status do Projeto: Ativo 
+- `src/data/setores.js` -> `src/shared/constants/setores.js`
+- `src/data/falhasComuns.js` -> `src/shared/constants/falhasComuns.js`
+- `src/components/AppBottomNav.jsx` -> `src/shared/components/layout/AppBottomNav.jsx`
+- `src/components/DateRangePicker.jsx` -> `src/shared/components/filters/DateRangePicker.jsx`
 
-Banco de Dados: Supabase (PostgreSQL)
+### 3.3 Features
 
-Tier: Free Tier (Monitoramento de Storage ativo)
+- `src/pages/Admin.jsx` -> `src/features/admin/pages/AdminPage.jsx`
+- `src/pages/AdminCockpit.jsx` -> `src/features/admin/pages/AdminCockpitPage.jsx`
+- `src/pages/Dashboard.jsx` -> `src/features/dashboard/pages/DashboardPage.jsx`
+- `src/components/DashboardKPI.jsx` -> `src/features/dashboard/components/DashboardKPI.jsx`
+- `src/pages/FabricaStatus.jsx` -> `src/features/failures/pages/FabricaStatusPage.jsx`
+- `src/pages/Registrar.jsx` -> `src/features/failures/pages/RegistrarFalhaPage.jsx`
+- `src/pages/VisualizarFalhas.jsx` -> `src/features/failures/pages/VisualizarFalhasPage.jsx`
+- `src/pages/Login.jsx` -> `src/features/auth/pages/LoginPage.jsx`
+- `src/pages/AlterarSenha.jsx` -> `src/features/auth/pages/AlterarSenhaPage.jsx`
+- `src/pages/Home.jsx` -> `src/features/home/pages/HomePage.jsx`
+- `src/pages/FaleConosco.jsx` -> `src/features/home/pages/FaleConoscoPage.jsx`
+- `src/components/MonitorTV.jsx` -> `src/features/monitoring/pages/MonitorTvPage.jsx`
 
+---
 
-Com base no que estruturamos e no comportamento do seu Codex, as stacks que dão vida ao seu sistema de monitoramento de linha são as seguintes:
+## 4. Quebras de paginas grandes (refatoracao interna)
 
-Frontend (A Cara do Sistema)
-React.js: O coração da interface. É o que permite que o sistema seja rápido e que os componentes (como os cards de trave e o dashboard) atualizem sem precisar recarregar a página.
+## Admin
 
-Vite: Provavelmente o "motor" que roda o desenvolvimento, garantindo que o sistema carregue instantaneamente.
+Arquivo principal foi reduzido e dividido em modulo:
 
-Tailwind CSS: Quase certeza que o Codex usou isso para a estilização. É o que permite criar esse menu mobile bonitão, os efeitos de backdrop-blur e a responsividade de um jeito prático.
+- `src/features/admin/pages/AdminPage.jsx` (composicao da tela)
+- `src/features/admin/hooks/useAdminPage.js` (estado/efeitos/orquestracao)
+- `src/features/admin/services/adminService.js` (API + regras + export Excel)
+- `src/features/admin/styles/adminTheme.js` (tokens/estilo)
+- `src/features/admin/constants/adminConfig.js` (abas, roles)
+- `src/features/admin/components/AdminUsersTab.jsx`
+- `src/features/admin/components/AdminStatsTab.jsx`
+- `src/features/admin/components/AdminHistoryTab.jsx`
+- `src/features/admin/hooks/useAdminCockpit.js`
+- `src/features/admin/pages/AdminCockpitPage.jsx`
 
-Lucide React: A biblioteca de ícones que usamos nos prompts (como o ícone de relógio para o histórico e o de calendário).
+## Failures
 
-Backend & Database (O Cérebro e a Memória)
-Supabase: Sua plataforma de "Backend as a Service".
+- `src/features/failures/services/failuresService.js` (backend + regras de dominio)
+- `src/features/failures/hooks/useFabricaStatusPage.js`
+- `src/features/failures/hooks/useRegistrarFalhaPage.js`
+- `src/features/failures/hooks/useVisualizarFalhasPage.js`
+- `src/features/failures/components/FailureSectorBoard.jsx`
+- `src/features/failures/components/CloseFailureModal.jsx`
+- `src/features/failures/constants/failureConstants.js`
+- `src/features/failures/styles/failureTheme.js`
 
-PostgreSQL: O banco de dados relacional onde ficam as tabelas de falhas, histórico e usuários.
+## Dashboard
 
-PostgREST: A tecnologia que o Supabase usa para que o seu JavaScript converse direto com o banco de dados via API.
+- `src/features/dashboard/hooks/useDashboardPage.js`
+- `src/features/dashboard/hooks/useDashboardKpi.js`
+- `src/features/dashboard/pages/DashboardPage.jsx`
+- `src/features/dashboard/components/DashboardKPI.jsx`
 
-Supabase Auth: O sistema que controla quem é Admin e quem é técnico.
+## Auth
 
-Integração & Lógica
-JavaScript (ES6+): A linguagem principal que conecta tudo.
+- `src/features/auth/services/authService.js`
+- `src/features/auth/hooks/useLoginPage.js`
+- `src/features/auth/hooks/useChangePasswordPage.js`
+- `src/features/auth/pages/LoginPage.jsx`
+- `src/features/auth/pages/AlterarSenhaPage.jsx`
 
-Supabase-js Client: A biblioteca que você usa dentro do arquivo supabaseSecure.js para fazer as queries de filtro de data e conclusão de falhas.
+## Home
+
+- `src/features/home/services/homeService.js`
+- `src/features/home/hooks/useHomePage.js`
+- `src/features/home/pages/HomePage.jsx`
+
+## Monitoring
+
+- `src/features/monitoring/services/monitorService.js`
+- `src/features/monitoring/hooks/useMonitorTvPage.js`
+- `src/features/monitoring/pages/MonitorTvPage.jsx`
+
+---
+
+## 5. Imports: como ficaram as ligacoes
+
+## Regra de dependencia aplicada
+
+- `app` -> `features`, `core`
+- `features/pages` -> `features/hooks`, `features/components`, `shared/components`
+- `features/hooks` -> `features/services`, `core`, `shared/hooks`, `shared/constants`
+- `features/services` -> `core/api`
+- `shared` nao depende de `features`
+
+## Exemplos reais de import apos refatoracao
+
+- Router consumindo features e auth core:
+  - `src/app/router/AppRouter.jsx`
+- Hook de admin consumindo service + core auth:
+  - `src/features/admin/hooks/useAdminPage.js`
+- Service de failures consumindo apenas API core:
+  - `src/features/failures/services/failuresService.js`
+- Paginas de failures consumindo hook + componentes:
+  - `src/features/failures/pages/VisualizarFalhasPage.jsx`
+- Dashboard KPI desacoplado de API direta:
+  - `src/features/dashboard/components/DashboardKPI.jsx` -> `src/features/dashboard/hooks/useDashboardKpi.js`
+
+---
+
+## 6. Rotas e navegacao alteradas
+
+Arquivo central: `src/app/router/AppRouter.jsx`
+
+Rotas ativas:
+
+- Publica:
+  - `/` -> `LoginPage`
+
+- Protegidas:
+  - `/dashboard` -> `DashboardPage`
+  - `/home` -> `HomePage`
+  - `/fale-conosco` -> `FaleConoscoPage`
+  - `/abrir-chamado` -> `FabricaStatusPage`
+  - `/registrar` -> `RegistrarFalhaPage`
+  - `/visualizar` -> `VisualizarFalhasPage`
+  - `/monitor-tv` -> `MonitorTvPage`
+  - `/alterar-senha` -> `AlterarSenhaPage`
+
+- Admin:
+  - `/admin` -> `AdminPage`
+  - `/admin/cockpit` -> `AdminCockpitPage`
+
+- Fallback:
+  - `*` -> redirect `/`
+
+---
+
+## 7. Novos hooks compartilhados
+
+- `src/shared/hooks/usePersistentTheme.js`
+  - centraliza persistencia de tema em `localStorage`
+- `src/shared/hooks/useBodyScrollLock.js`
+  - bloqueio/liberacao de scroll ao abrir menus/modais
+
+Tambem foi ligado `ThemeProvider` no bootstrap:
+
+- `src/main.jsx`
+
+---
+
+## 8. Correcoes funcionais adicionais
+
+Foi identificado e corrigido ponto funcional quebrado:
+
+- `HomePage` chamava `criarAviso/listarAvisos` sem implementacao em `supabaseSecure`.
+- Funcoes implementadas em `src/core/api/supabaseSecure.js`.
+
+---
+
+## 9. Codigo removido por estar morto/nao referenciado
+
+Arquivos removidos:
+
+- `src/shared/components/layout/AppShell.jsx`
+- `src/shared/components/layout/TopHeaderNav.jsx`
+- `src/shared/components/common/GlassCard.jsx`
+
+Motivo: nao havia referencias de import apos a nova arquitetura.
+
+---
+
+## 10. Status atual
+
+- Arquitetura reorganizada por dominio/camada.
+- Importacoes atualizadas para o novo layout.
+- Rotas centralizadas em `app/router`.
+- Paginas principais modularizadas.
+- Base pronta para manutencao incremental por feature.
+
+---
+
+## 11. Atualizacao recente - Dashboard KPI (Aging + PDF executivo)
+
+Foram adicionadas evolucoes no modulo `features/dashboard` para aumentar governanca operacional e visibilidade de gargalos.
+
+### 11.1 Novas metricas de Aging (pendencias)
+
+- Cada falha pendente agora considera:
+  - data de abertura (`data`, `aberto_em` ou `created_at`)
+  - tempo aberto (em horas ou dias)
+  - comparacao contra SLA esperado de manutencao
+- SLA padrao centralizado em:
+  - `src/features/dashboard/constants/maintenance.js`
+  - `EXPECTED_MAINTENANCE_DAYS = 0.1` (2.4h)
+- Casos acima do SLA sao marcados como criticos.
+
+### 11.2 Camada de servico (backend logic) expandida
+
+- `src/features/dashboard/services/dashboardAnalyticsService.js`
+  - consolidacao de dataset KPI + concluidas + abertas
+  - calculo de:
+    - `pendingAging`
+    - `setorAgingResumo`
+    - `expectedMaintenanceDays`
+    - `generatedAt`
+  - manteve historico de concluidas e metricas de status/setor/top falhas
+
+### 11.3 Camada de UI (frontend) atualizada
+
+- `src/features/dashboard/components/DashboardKPI.jsx`
+  - integra novos dados de aging
+  - dispara exportacao executiva de PDF
+- `src/features/dashboard/components/DashboardAgingTable.jsx`
+  - tabela com pendencias mais antigas
+  - destaque visual para chamados criticos (acima do SLA)
+- `src/features/dashboard/components/DashboardHistoricalPoints.jsx`
+  - ajuste de tooltip para nao sair da tela
+
+### 11.4 Exportacao PDF otimizada
+
+- `src/features/dashboard/services/dashboardPdfReportService.js`
+  - layout mais compacto de resumo executivo
+  - prioriza primeira pagina com:
+    - leitura executiva
+    - aging por setor
+    - top ofensores
+    - pendencias mais antigas
+  - mantem secoes de historico e status por ponto
+
+### 11.5 Fluxo de dependencia (sem circularidade)
+
+- `DashboardKPI.jsx` -> `useDashboardKpi.js` -> `dashboardAnalyticsService.js` -> `core/api/supabaseSecure.js`
+- `DashboardKPI.jsx` -> `dashboardPdfReportService.js`
+- `dashboardAnalyticsService.js` -> `constants/maintenance.js`
+- `shared` permanece desacoplado de `features`
+
+## Observacao de ambiente
+
+Durante a etapa final, o runtime local apresentou timeout em comandos `node/npm` no terminal desta sessao. A validacao final de build pode ser rodada localmente com:
+
+```bash
+npm run build
+```
+
+Se houver falha local, revisar primeiro Node/npm instalados no PATH da maquina.
