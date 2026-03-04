@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, RotateCcw, X } from 'lucide-react';
+import CalendarDays from 'lucide-react/dist/esm/icons/calendar-days';
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
+import X from 'lucide-react/dist/esm/icons/x';
 
 function formatDateLabel(value) {
   if (!value) return '--/--/----';

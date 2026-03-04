@@ -1,5 +1,9 @@
 import React from 'react';
-import { ArrowRight, Clock3, Monitor, ShieldAlert, X } from 'lucide-react';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
+import Clock3 from 'lucide-react/dist/esm/icons/clock-3';
+import Monitor from 'lucide-react/dist/esm/icons/monitor';
+import ShieldAlert from 'lucide-react/dist/esm/icons/shield-alert';
+import X from 'lucide-react/dist/esm/icons/x';
 
 export default function CloseFailureModal({
   theme,

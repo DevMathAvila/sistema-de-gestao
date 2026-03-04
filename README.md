@@ -325,6 +325,85 @@ Foram adicionadas evolucoes no modulo `features/dashboard` para aumentar governa
 - `dashboardAnalyticsService.js` -> `constants/maintenance.js`
 - `shared` permanece desacoplado de `features`
 
+---
+
+## 12. Atualizacao recente - Performance (Lighthouse) e Exportacao KPI configuravel
+
+Foram aplicadas otimizacoes tecnicas focadas em performance de carregamento e reducao de payload sem alterar identidade visual ou regras de negocio.
+
+### 12.1 Otimizacoes de performance aplicadas
+
+- Lazy loading de rotas no roteador:
+  - `src/app/router/AppRouter.jsx`
+  - paginas carregadas com `React.lazy` + `Suspense`
+- Lazy loading por tab no Admin:
+  - `src/features/admin/pages/AdminPage.jsx`
+  - tabs `usuarios`, `estatisticas`, `historico` e `indicadores` carregadas sob demanda
+- Graficos KPI em chunk separado:
+  - `src/features/dashboard/components/DashboardCharts.jsx`
+  - `DashboardKPI` passou a carregar graficos com `React.lazy`
+- Caching e deduplicacao de fetch KPI:
+  - `src/features/dashboard/hooks/useDashboardKpi.js`
+  - cache em memoria por periodo com TTL + controle de request em voo
+- Exportacao Excel sob demanda:
+  - `src/features/admin/services/adminService.js`
+  - `xlsx` removido do bundle inicial e carregado apenas no clique de exportar
+- Exportacao PDF sob demanda:
+  - `src/features/dashboard/components/DashboardKPI.jsx`
+  - `dashboardPdfReportService` via import dinamico no clique
+- Reducao de custo de render no monitoramento:
+  - `src/features/failures/hooks/useVisualizarFalhasPage.js`
+  - agrupamento memoizado por setor/trave para reduzir filtros repetidos
+  - `src/features/failures/services/failuresService.js` com cache/TTL de falhas abertas
+
+### 12.2 Ajustes de bundle (icones)
+
+Em fluxos criticos, os icones foram alterados para import por arquivo (`lucide-react/dist/esm/icons/...`) para favorecer tree-shaking/chunking:
+
+- `src/features/admin/pages/AdminPage.jsx`
+- `src/features/dashboard/components/DashboardKPI.jsx`
+- `src/features/dashboard/components/DashboardHistoricalPoints.jsx`
+- `src/shared/components/layout/AppBottomNav.jsx`
+- `src/shared/components/filters/DateRangePicker.jsx`
+- `src/features/failures/pages/VisualizarFalhasPage.jsx`
+- `src/features/failures/components/CloseFailureModal.jsx`
+- `src/features/failures/components/FailureSectorBoard.jsx`
+
+### 12.3 Exportacao KPI configuravel (novo fluxo)
+
+Ao clicar em `Exportar PDF` no dashboard KPI, agora abre modal de configuracao com secoes selecionaveis:
+
+- `Falhas fechadas`
+- `Ranking de falhas`
+- `Insights por setor`
+- `Aging de pendencias`
+- `Pontos com mais historico de registros`
+
+Arquivos:
+
+- `src/features/dashboard/components/DashboardKPI.jsx`
+- `src/features/dashboard/constants/reportSections.js`
+- `src/features/dashboard/services/dashboardPdfReportService.js`
+
+### 12.4 Novos presets de relatorio
+
+- `Diario enxuto`
+- `Semanal executivo` (novo)
+- `Semanal completo`
+
+No preset `Semanal executivo` foi adicionado um painel visual gerencial no PDF:
+
+- composicao de status em formato visual tipo pizza
+- torres por setor (top 5)
+- torres de ranking de falhas
+
+E foram removidas secoes redundantes nesse preset:
+
+- tabela `Volume por Setor`
+- tabela `Top 5 Falhas`
+
+Assim, o relatorio semanal executivo fica mais objetivo para apresentacao.
+
 ## Observacao de ambiente
 
 Durante a etapa final, o runtime local apresentou timeout em comandos `node/npm` no terminal desta sessao. A validacao final de build pode ser rodada localmente com:

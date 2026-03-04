@@ -1,5 +1,7 @@
 import React from 'react';
-import { ChevronDown, Hash, Zap } from 'lucide-react';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import Hash from 'lucide-react/dist/esm/icons/hash';
+import Zap from 'lucide-react/dist/esm/icons/zap';
 import { normalizeText, traveTemParada } from '../services/failuresService';
 
 export default function FailureSectorBoard({

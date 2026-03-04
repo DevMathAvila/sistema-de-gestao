@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x';
 
 export default function DashboardHistoricalPoints({ points, theme, s }) {
   const [selectedPoint, setSelectedPoint] = useState(null);

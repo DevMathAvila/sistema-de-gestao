@@ -6,6 +6,10 @@ import {
   listarHistoricoRecentePorPonto,
 } from '../../../core/api/supabaseSecure';
 
+const OPEN_FAILURES_CACHE_TTL_MS = 4000;
+let openFailuresCache = { timestamp: 0, data: [] };
+let openFailuresInFlight = null;
+
 export function normalizeText(text) {
   return String(text || '').replace(/\s|-|_/g, '').toLowerCase().trim();
 }
@@ -20,10 +24,26 @@ export function splitFalhas(rawFalhas) {
     .filter(Boolean);
 }
 
-export async function fetchFalhasAbertas() {
-  const { data, error } = await listarFalhasAbertas();
-  if (error) throw error;
-  return (data || []).filter((f) => f.setor && f.trave);
+export async function fetchFalhasAbertas({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && openFailuresCache.timestamp && now - openFailuresCache.timestamp < OPEN_FAILURES_CACHE_TTL_MS) {
+    return openFailuresCache.data;
+  }
+
+  if (openFailuresInFlight) return openFailuresInFlight;
+
+  openFailuresInFlight = listarFalhasAbertas()
+    .then(({ data, error }) => {
+      if (error) throw error;
+      const filtered = (data || []).filter((f) => f.setor && f.trave);
+      openFailuresCache = { timestamp: Date.now(), data: filtered };
+      return filtered;
+    })
+    .finally(() => {
+      openFailuresInFlight = null;
+    });
+
+  return openFailuresInFlight;
 }
 
 export async function fetchChamadosAbertosPorSetor(setor) {

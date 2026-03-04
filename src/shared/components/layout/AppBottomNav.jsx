@@ -1,6 +1,8 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Eye, ShieldCheck } from 'lucide-react';
+import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
 
 export default function AppBottomNav({ isAdmin = false }) {
   const navigate = useNavigate();

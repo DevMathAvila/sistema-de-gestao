@@ -1,25 +1,19 @@
-import React from 'react';
-import { Download, Loader2 } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from 'recharts';
+import React, { Suspense, useCallback, useMemo, useState } from 'react';
+import Download from 'lucide-react/dist/esm/icons/download';
+import LoaderCircle from 'lucide-react/dist/esm/icons/loader-circle';
+import X from 'lucide-react/dist/esm/icons/x';
 import DateRangePicker from '../../../shared/components/filters/DateRangePicker';
 import DashboardHistoricalPoints from './DashboardHistoricalPoints';
 import DashboardAgingTable from './DashboardAgingTable';
 import { useDashboardKpi } from '../hooks/useDashboardKpi';
-import { exportDashboardKpiReportPdf } from '../services/dashboardPdfReportService';
+import { DASHBOARD_REPORT_PRESETS, DASHBOARD_REPORT_SECTIONS } from '../constants/reportSections';
 
-export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s }) {
+const DashboardCharts = React.lazy(() => import('./DashboardCharts'));
+
+function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s }) {
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [reportPreset, setReportPreset] = useState('weeklyFull');
+  const [reportSections, setReportSections] = useState(DASHBOARD_REPORT_PRESETS.weeklyFull);
   const {
     totalGeral,
     totalPendentes,
@@ -39,13 +33,91 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
     intervaloInvalido,
   } = useDashboardKpi(dataInicio, dataFim);
 
-  const periodoLabel = dataInicio || dataFim ? `${dataInicio || '...'} a ${dataFim || '...'}` : 'Todo o Periodo';
+  const periodoLabel = useMemo(
+    () => (dataInicio || dataFim ? `${dataInicio || '...'} a ${dataFim || '...'}` : 'Todo o Periodo'),
+    [dataInicio, dataFim]
+  );
+
+  const reportMetrics = useMemo(
+    () => ({
+      totalGeral,
+      totalPendentes,
+      totalConcluidas,
+      porSetor,
+      porStatus,
+      top5,
+      setorInsights,
+      pontosHistorico,
+      pontosStatusResumo,
+      pendingAging,
+      setorAgingResumo,
+      expectedMaintenanceDays,
+      generatedAt,
+      tempoSemManutencao,
+    }),
+    [
+      expectedMaintenanceDays,
+      generatedAt,
+      pendingAging,
+      pontosHistorico,
+      pontosStatusResumo,
+      porSetor,
+      porStatus,
+      setorAgingResumo,
+      setorInsights,
+      tempoSemManutencao,
+      top5,
+      totalConcluidas,
+      totalGeral,
+      totalPendentes,
+    ]
+  );
+
+  const hasAtLeastOneSection = useMemo(
+    () => Object.values(reportSections).some(Boolean),
+    [reportSections]
+  );
+
+  const handleOpenExportModal = useCallback(() => {
+    setIsExportModalOpen(true);
+  }, []);
+
+  const handleCloseExportModal = useCallback(() => {
+    setIsExportModalOpen(false);
+  }, []);
+
+  const handleSelectPreset = useCallback((presetKey) => {
+    if (!DASHBOARD_REPORT_PRESETS[presetKey]) return;
+    setReportSections(DASHBOARD_REPORT_PRESETS[presetKey]);
+    setReportPreset(presetKey);
+  }, []);
+
+  const handleToggleSection = useCallback((key) => {
+    setReportPreset('custom');
+    setReportSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  }, []);
+
+  const handleExportPdf = useCallback(() => {
+    if (!hasAtLeastOneSection) return;
+    import('../services/dashboardPdfReportService').then(({ exportDashboardKpiReportPdf }) => {
+      exportDashboardKpiReportPdf({
+        metrics: reportMetrics,
+        periodoLabel,
+        sections: reportSections,
+        preset: reportPreset,
+      });
+    });
+    setIsExportModalOpen(false);
+  }, [hasAtLeastOneSection, periodoLabel, reportMetrics, reportPreset, reportSections]);
 
   if (loadingKpi) {
     return (
       <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
         <div className={`${s.card} rounded-[2.5rem] flex items-center justify-center py-32`}>
-          <Loader2 className="animate-spin text-red-600" size={48} />
+          <LoaderCircle className="animate-spin text-red-600" size={48} />
         </div>
       </section>
     );
@@ -72,27 +144,7 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
           />
           <button
             type="button"
-            onClick={() =>
-              exportDashboardKpiReportPdf({
-                metrics: {
-                  totalGeral,
-                  totalPendentes,
-                  totalConcluidas,
-                  porSetor,
-                  porStatus,
-                  top5,
-                  setorInsights,
-                  pontosHistorico,
-                  pontosStatusResumo,
-                  pendingAging,
-                  setorAgingResumo,
-                  expectedMaintenanceDays,
-                  generatedAt,
-                  tempoSemManutencao,
-                },
-                periodoLabel,
-              })
-            }
+            onClick={handleOpenExportModal}
             className="h-11 px-4 rounded-2xl bg-red-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all flex items-center gap-2 justify-center"
           >
             <Download size={14} /> Exportar PDF
@@ -123,68 +175,20 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-        <div className={`${s.card} p-6 rounded-[2.5rem]`}>
-          <h3 className="text-lg font-black uppercase italic text-red-600 mb-6">Volume por Setor</h3>
-          <div className="h-80">
-            {porSetor.length === 0 ? (
-              <div className={`h-full flex items-center justify-center ${s.sub} text-sm`}>Sem dados no periodo</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={porSetor} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: theme === 'dark' ? '#94a3b8' : '#64748b' }} />
-                  <YAxis tick={{ fontSize: 10, fill: theme === 'dark' ? '#94a3b8' : '#64748b' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#0f172a' : '#fff',
-                      border: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0',
-                      borderRadius: '12px',
-                    }}
-                    labelStyle={{ color: theme === 'dark' ? '#fff' : '#0f172a' }}
-                  />
-                  <Bar dataKey="total" fill="#dc2626" radius={[4, 4, 0, 0]} name="Falhas" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+      <Suspense
+        fallback={(
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+            <div className={`${s.card} p-6 rounded-[2.5rem]`}>
+              <div className="h-80 animate-pulse rounded-2xl bg-red-600/5" />
+            </div>
+            <div className={`${s.card} p-6 rounded-[2.5rem]`}>
+              <div className="h-80 animate-pulse rounded-2xl bg-red-600/5" />
+            </div>
           </div>
-        </div>
-
-        <div className={`${s.card} p-6 rounded-[2.5rem]`}>
-          <h3 className="text-lg font-black uppercase italic text-red-600 mb-6">Status (aberto vs concluido)</h3>
-          <div className="h-80">
-            {porStatus.length === 0 ? (
-              <div className={`h-full flex items-center justify-center ${s.sub} text-sm`}>Sem dados no periodo</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={porStatus}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {porStatus.map((entry, index) => (
-                      <Cell key={index} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#0f172a' : '#fff',
-                      border: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0',
-                      borderRadius: '12px',
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
+        )}
+      >
+        <DashboardCharts porSetor={porSetor} porStatus={porStatus} theme={theme} s={s} />
+      </Suspense>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 mb-10">
         <div className={`${s.card} p-8 rounded-[2.5rem] xl:col-span-3`}>
@@ -287,6 +291,126 @@ export default function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDa
           </div>
         )}
       </div>
+
+      {isExportModalOpen && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            onClick={handleCloseExportModal}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            aria-label="Fechar configuracao de exportacao"
+          />
+          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-full max-w-xl">
+            <div className={`rounded-3xl border shadow-2xl ${theme === 'dark' ? 'bg-[#090909] border-white/10' : 'bg-white border-slate-200'}`}>
+              <div className="p-5 border-b border-red-600/15 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-1">Configurar Relatorio KPI</p>
+                  <p className={`text-xs ${s.sub}`}>Escolha manualmente as secoes para este PDF.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseExportModal}
+                  className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-colors ${
+                    theme === 'dark' ? 'border-white/10 hover:bg-white/10' : 'border-slate-200 hover:bg-slate-100'
+                  }`}
+                  aria-label="Fechar"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPreset('daily')}
+                    className={`h-9 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest ${
+                      reportPreset === 'daily'
+                        ? 'border-red-600/40 text-red-600 bg-red-600/10'
+                        : theme === 'dark'
+                          ? 'border-white/15 hover:bg-white/10'
+                          : 'border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Diario enxuto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPreset('weeklyExecutive')}
+                    className={`h-9 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest ${
+                      reportPreset === 'weeklyExecutive'
+                        ? 'border-red-600/40 text-red-600 bg-red-600/10'
+                        : theme === 'dark'
+                          ? 'border-white/15 hover:bg-white/10'
+                          : 'border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Semanal executivo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPreset('weeklyFull')}
+                    className={`h-9 px-3 rounded-xl border text-[10px] font-black uppercase tracking-widest ${
+                      reportPreset === 'weeklyFull'
+                        ? 'border-red-600/40 text-red-600 bg-red-600/10'
+                        : theme === 'dark'
+                          ? 'border-white/15 hover:bg-white/10'
+                          : 'border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Semanal completo
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {DASHBOARD_REPORT_SECTIONS.map((section) => (
+                    <label
+                      key={section.key}
+                      className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer ${
+                        theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-red-600"
+                        checked={Boolean(reportSections[section.key])}
+                        onChange={() => handleToggleSection(section.key)}
+                      />
+                      <span className="text-sm font-black">{section.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-5 pt-0 flex flex-col sm:flex-row justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseExportModal}
+                  className={`h-11 px-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest ${
+                    theme === 'dark' ? 'border-white/15 hover:bg-white/10' : 'border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  disabled={!hasAtLeastOneSection}
+                  className={`h-11 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest ${
+                    hasAtLeastOneSection
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  Gerar PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
+
+export default React.memo(DashboardKPI);

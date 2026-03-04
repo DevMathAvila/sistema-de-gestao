@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import * as api from '../../../core/api/supabaseSecure';
 
 export async function loadUsuarios() {
@@ -59,14 +58,15 @@ export function formatDateBr(isoStr) {
   return `${day}/${month}/${year}`;
 }
 
-function exportRowsToExcel(rows, sheetName, filename) {
+async function exportRowsToExcel(rows, sheetName, filename) {
+  const XLSX = await import('xlsx');
   const worksheet = XLSX.utils.json_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
   XLSX.writeFile(workbook, filename);
 }
 
-export function exportHistoricoConcluidoExcel(historico) {
+export async function exportHistoricoConcluidoExcel(historico) {
   if (!Array.isArray(historico) || historico.length === 0) return;
   const rows = historico.map((item) => ({
     'Run In': item.setor || '',
@@ -78,10 +78,10 @@ export function exportHistoricoConcluidoExcel(historico) {
     'Finalizado por': item.resolvido_por || '',
     'Criado por': item.usuario || '',
   }));
-  exportRowsToExcel(rows, 'Concluidas', 'historico_registros_falhas.xlsx');
+  await exportRowsToExcel(rows, 'Concluidas', 'historico_registros_falhas.xlsx');
 }
 
-export function exportHistoricoAbertoExcel(historicoAbertas) {
+export async function exportHistoricoAbertoExcel(historicoAbertas) {
   if (!Array.isArray(historicoAbertas) || historicoAbertas.length === 0) return;
   const rows = historicoAbertas.map((item) => ({
     'Run In': item.setor || '',
@@ -91,5 +91,5 @@ export function exportHistoricoAbertoExcel(historicoAbertas) {
     Dia: item.data ? formatDateBr(item.data) : '',
     Solicitante: item.usuario || '',
   }));
-  exportRowsToExcel(rows, 'Abertas', 'falhas_em_aberto.xlsx');
+  await exportRowsToExcel(rows, 'Abertas', 'falhas_em_aberto.xlsx');
 }

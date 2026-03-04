@@ -128,9 +128,28 @@ export function useVisualizarFalhasPage() {
   }, [modalData]);
 
   const falhasPorSetor = useMemo(() => {
-    const map = {};
+    const grouped = {};
+    const setorLookup = {};
     LISTA_SETORES.forEach((setor) => {
-      map[setor] = falhas.filter((f) => normalizeText(f.setor) === normalizeText(setor));
+      grouped[setor] = [];
+      setorLookup[normalizeText(setor)] = setor;
+    });
+
+    falhas.forEach((f) => {
+      const setorOriginal = setorLookup[normalizeText(f.setor)];
+      if (!setorOriginal) return;
+      grouped[setorOriginal].push(f);
+    });
+
+    return grouped;
+  }, [falhas]);
+
+  const falhasPorSetorTrave = useMemo(() => {
+    const map = {};
+    falhas.forEach((f) => {
+      const key = `${normalizeText(f.setor)}|${String(f.trave)}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(f);
     });
     return map;
   }, [falhas]);
@@ -170,14 +189,15 @@ export function useVisualizarFalhasPage() {
   }, [navigate]);
 
   const getTraveChamados = useCallback((setor, trave) => {
-    return falhas.filter(
-      (f) => normalizeText(f.setor) === normalizeText(setor) && String(f.trave) === String(trave),
-    );
-  }, [falhas]);
+    const key = `${normalizeText(setor)}|${String(trave)}`;
+    return falhasPorSetorTrave[key] || [];
+  }, [falhasPorSetorTrave]);
 
   const getDadosPonto = useCallback((setor, trave, ponto) => {
-    const chamadosNoPonto = falhas.filter((f) => {
-      if (normalizeText(f.setor) !== normalizeText(setor) || String(f.trave) !== String(trave)) return false;
+    const key = `${normalizeText(setor)}|${String(trave)}`;
+    const chamadosDaTrave = falhasPorSetorTrave[key] || [];
+
+    const chamadosNoPonto = chamadosDaTrave.filter((f) => {
       return isPointMatch(f.ponto, ponto);
     });
     if (chamadosNoPonto.length === 0) return null;
@@ -195,7 +215,7 @@ export function useVisualizarFalhasPage() {
       falhasDisponiveis: falhasDoChamado,
       isMonitor: falhaConcatenada.toLowerCase().includes('monitor'),
     };
-  }, [falhas]);
+  }, [falhasPorSetorTrave]);
 
   const abrirModalPonto = useCallback((dadosPonto) => {
     if (!dadosPonto || isColaborador) return;

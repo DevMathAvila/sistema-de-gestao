@@ -25,7 +25,33 @@ function renderRows(items, rowRenderer, emptyText, columns) {
   return items.map(rowRenderer).join('');
 }
 
-function renderExecutiveSummary(metrics) {
+function normalizeSections(sections) {
+  const base = {
+    closedFailures: true,
+    ranking: true,
+    setorInsights: true,
+    aging: true,
+    historyPoints: true,
+  };
+
+  if (!sections || typeof sections !== 'object') return base;
+  return {
+    closedFailures: Boolean(sections.closedFailures),
+    ranking: Boolean(sections.ranking),
+    setorInsights: Boolean(sections.setorInsights),
+    aging: Boolean(sections.aging),
+    historyPoints: Boolean(sections.historyPoints),
+  };
+}
+
+function toPercent(value, total) {
+  if (!total) return 0;
+  const raw = (Number(value || 0) / Number(total || 1)) * 100;
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(100, raw));
+}
+
+function renderExecutiveSummary(metrics, sections) {
   const principalSetor = metrics.porSetor?.[0];
   const principalFalha = metrics.top5?.[0];
   const criticalSetor = metrics.setorAgingResumo?.[0];
@@ -39,11 +65,11 @@ function renderExecutiveSummary(metrics) {
     linhas.push(`Setor com maior volume: ${principalSetor.name} (${principalSetor.total} ocorrencias).`);
   }
 
-  if (principalFalha) {
+  if (sections.ranking && principalFalha) {
     linhas.push(`Falha mais recorrente no periodo: ${principalFalha.nome} (${principalFalha.total} eventos).`);
   }
 
-  if (criticalSetor) {
+  if (sections.aging && criticalSetor) {
     linhas.push(`Gargalo de aging: ${criticalSetor.setor} com ${criticalSetor.acimaSla}/${criticalSetor.pendentes} pendencias acima do SLA.`);
   }
 
@@ -54,9 +80,11 @@ function renderExecutiveSummary(metrics) {
   return linhas.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
 }
 
-function buildReportHtml({ metrics, periodoLabel }) {
+function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
+  const selectedSections = normalizeSections(sections);
   const generatedAt = formatDateTime(metrics?.generatedAt || new Date());
   const expectedDays = Number(metrics?.expectedMaintenanceDays || 0);
+  const isWeeklyExecutive = preset === 'weeklyExecutive';
 
   const setoresRows = renderRows(
     metrics.porSetor?.slice(0, 8),
@@ -152,6 +180,139 @@ function buildReportHtml({ metrics, periodoLabel }) {
     'Sem consolidacao de status por ponto.',
     6
   );
+
+  const closedFailuresSection = selectedSections.closedFailures
+    ? `
+    <div class="box section">
+      <h2>Falhas Fechadas no Periodo</h2>
+      <table>
+        <thead><tr><th>Indicador</th><th>Valor</th></tr></thead>
+        <tbody>
+          <tr><td>Total de falhas fechadas</td><td>${safe(metrics.totalConcluidas, '0')}</td></tr>
+        </tbody>
+      </table>
+    </div>`
+    : '';
+
+  const rankingSection = selectedSections.ranking
+    ? `
+      <div class="box">
+        <h2>Top 5 Falhas</h2>
+        <table>
+          <thead><tr><th>#</th><th>Falha</th><th>Ocorrencias</th></tr></thead>
+          <tbody>${topRows}</tbody>
+        </table>
+      </div>`
+    : '';
+
+  const agingSection = selectedSections.aging
+    ? `
+      <div class="box">
+        <h2>Aging por Setor (Critico)</h2>
+        <table>
+          <thead><tr><th>#</th><th>Setor</th><th>Pend.</th><th>Acima SLA</th><th>Media</th><th>Pico</th></tr></thead>
+          <tbody>${setorAgingRows}</tbody>
+        </table>
+      </div>
+      <div class="box section">
+        <h2>Aging de Pendencias (Mais Antigas)</h2>
+        <table>
+          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Abertura</th><th>Tempo Aberto</th><th>SLA</th></tr></thead>
+          <tbody>${agingRows}</tbody>
+        </table>
+      </div>`
+    : '';
+
+  const insightsSection = selectedSections.setorInsights
+    ? `
+      <div class="box section">
+        <h2>Falhas Dominantes por Setor</h2>
+        <table>
+          <thead><tr><th>Setor</th><th>Falhas</th></tr></thead>
+          <tbody>${setorInsightsRows}</tbody>
+        </table>
+      </div>`
+    : '';
+
+  const historySection = selectedSections.historyPoints
+    ? `
+      <div class="box section">
+        <h2>Pontos com Mais Historico</h2>
+        <table>
+          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Eventos</th></tr></thead>
+          <tbody>${pontosRows}</tbody>
+        </table>
+      </div>`
+    : '';
+
+  const statusTotal = Number(metrics.totalPendentes || 0) + Number(metrics.totalConcluidas || 0);
+  const pendingPct = toPercent(metrics.totalPendentes, statusTotal);
+  const concludedPct = toPercent(metrics.totalConcluidas, statusTotal);
+  const pieStyle = `conic-gradient(#cf102d 0 ${pendingPct}%, #16a34a ${pendingPct}% 100%)`;
+
+  const setorTowerRows = (metrics.porSetor || [])
+    .slice(0, 5)
+    .map((item) => {
+      const pct = toPercent(item.total, metrics.porSetor?.[0]?.total || 1);
+      return `
+        <div class="tower-row">
+          <div class="tower-label">${escapeHtml(item.name)}</div>
+          <div class="tower-track"><div class="tower-fill" style="width:${pct}%"></div></div>
+          <div class="tower-value">${safe(item.total, '0')}</div>
+        </div>`;
+    })
+    .join('');
+
+  const falhaTowerRows = (metrics.top5 || [])
+    .slice(0, 5)
+    .map((item) => {
+      const pct = toPercent(item.total, metrics.top5?.[0]?.total || 1);
+      return `
+        <div class="tower-row">
+          <div class="tower-label">${escapeHtml(item.nome)}</div>
+          <div class="tower-track"><div class="tower-fill tower-fill-alt" style="width:${pct}%"></div></div>
+          <div class="tower-value">${safe(item.total, '0')}</div>
+        </div>`;
+    })
+    .join('');
+
+  const executiveVisualSection = isWeeklyExecutive
+    ? `
+      <div class="box section">
+        <h2>Painel Visual Executivo</h2>
+        <div class="visual-grid">
+          <div class="visual-card">
+            <p class="visual-title">Composicao de Status</p>
+            <div class="pie-wrap">
+              <div class="pie-chart" style="background:${pieStyle}"></div>
+              <div class="pie-meta">
+                <p><span class="dot dot-pending"></span>Pendentes: ${safe(metrics.totalPendentes, '0')} (${pendingPct.toFixed(1)}%)</p>
+                <p><span class="dot dot-concluded"></span>Concluidas: ${safe(metrics.totalConcluidas, '0')} (${concludedPct.toFixed(1)}%)</p>
+              </div>
+            </div>
+          </div>
+          <div class="visual-card">
+            <p class="visual-title">Torres por Setor (Top 5)</p>
+            ${setorTowerRows || '<p class="empty">Sem dados.</p>'}
+          </div>
+          <div class="visual-card visual-card-full">
+            <p class="visual-title">Torres de Ranking de Falhas</p>
+            ${falhaTowerRows || '<p class="empty">Sem dados.</p>'}
+          </div>
+        </div>
+      </div>`
+    : '';
+
+  const volumeSection = !isWeeklyExecutive
+    ? `
+    <div class="box">
+      <h2>Volume por Setor</h2>
+      <table>
+        <thead><tr><th>#</th><th>Setor</th><th>Total</th></tr></thead>
+        <tbody>${setoresRows}</tbody>
+      </table>
+    </div>`
+    : '';
 
   return `
 <!doctype html>
@@ -260,6 +421,22 @@ function buildReportHtml({ metrics, periodoLabel }) {
     }
     .empty { text-align: center; color: var(--gray); font-style: italic; }
     .critical td { background: var(--critical-bg); color: #9f1239; font-weight: 700; }
+    .tower-row { display: grid; grid-template-columns: 90px 1fr 42px; gap: 6px; align-items: center; margin-bottom: 6px; }
+    .tower-label { font-size: 9px; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tower-track { height: 9px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+    .tower-fill { background: linear-gradient(90deg, #cf102d, #f43f5e); height: 100%; border-radius: 999px; }
+    .tower-fill-alt { background: linear-gradient(90deg, #ef4444, #fb923c); }
+    .tower-value { font-size: 9px; text-align: right; font-weight: 700; color: #0f172a; }
+    .visual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+    .visual-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+    .visual-card-full { grid-column: 1 / -1; }
+    .visual-title { margin: 0 0 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #475569; font-weight: 700; }
+    .pie-wrap { display: flex; align-items: center; gap: 10px; }
+    .pie-chart { width: 82px; height: 82px; border-radius: 999px; border: 1px solid #e2e8f0; }
+    .pie-meta p { margin: 0 0 4px; font-size: 10px; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 6px; }
+    .dot-pending { background: #cf102d; }
+    .dot-concluded { background: #16a34a; }
     .section { margin-top: 10px; }
     .foot {
       margin-top: 10px;
@@ -291,58 +468,22 @@ function buildReportHtml({ metrics, periodoLabel }) {
   <div class="compact-grid">
     <div class="box">
       <h2>Leitura Executiva</h2>
-      <ul>${renderExecutiveSummary(metrics)}</ul>
+      <ul>${renderExecutiveSummary(metrics, selectedSections)}</ul>
     </div>
-    <div class="box">
-      <h2>Aging por Setor (Critico)</h2>
-      <table>
-        <thead><tr><th>#</th><th>Setor</th><th>Pend.</th><th>Acima SLA</th><th>Media</th><th>Pico</th></tr></thead>
-        <tbody>${setorAgingRows}</tbody>
-      </table>
-    </div>
+    ${volumeSection}
   </div>
 
-  <div class="compact-grid section">
-    <div class="box">
-      <h2>Volume por Setor</h2>
-      <table>
-        <thead><tr><th>#</th><th>Setor</th><th>Total</th></tr></thead>
-        <tbody>${setoresRows}</tbody>
-      </table>
-    </div>
-    <div class="box">
-      <h2>Top 5 Falhas</h2>
-      <table>
-        <thead><tr><th>#</th><th>Falha</th><th>Ocorrencias</th></tr></thead>
-        <tbody>${topRows}</tbody>
-      </table>
-    </div>
-  </div>
+  ${closedFailuresSection}
 
-  <div class="box section">
-    <h2>Aging de Pendencias (Mais Antigas)</h2>
-    <table>
-      <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Abertura</th><th>Tempo Aberto</th><th>SLA</th></tr></thead>
-      <tbody>${agingRows}</tbody>
-    </table>
-  </div>
+  ${executiveVisualSection}
 
-  <div class="compact-grid section">
-    <div class="box">
-      <h2>Falhas Dominantes por Setor</h2>
-      <table>
-        <thead><tr><th>Setor</th><th>Falhas</th></tr></thead>
-        <tbody>${setorInsightsRows}</tbody>
-      </table>
-    </div>
-    <div class="box">
-      <h2>Pontos com Mais Historico</h2>
-      <table>
-        <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Eventos</th></tr></thead>
-        <tbody>${pontosRows}</tbody>
-      </table>
-    </div>
-  </div>
+  ${!isWeeklyExecutive && rankingSection ? `<div class="section">${rankingSection}</div>` : ''}
+
+  ${agingSection}
+
+  ${insightsSection}
+
+  ${historySection}
 
   <div class="box section">
     <h2>Status por Ponto (Pendentes x Concluidas)</h2>
@@ -357,7 +498,7 @@ function buildReportHtml({ metrics, periodoLabel }) {
 </html>`;
 }
 
-export function exportDashboardKpiReportPdf({ metrics, periodoLabel }) {
+export function exportDashboardKpiReportPdf({ metrics, periodoLabel, sections, preset }) {
   if (!metrics) return;
 
   const reportWindow = window.open('', '_blank', 'width=1200,height=900');
@@ -367,7 +508,7 @@ export function exportDashboardKpiReportPdf({ metrics, periodoLabel }) {
   }
 
   reportWindow.document.open();
-  reportWindow.document.write(buildReportHtml({ metrics, periodoLabel }));
+  reportWindow.document.write(buildReportHtml({ metrics, periodoLabel, sections, preset }));
   reportWindow.document.close();
 
   reportWindow.focus();

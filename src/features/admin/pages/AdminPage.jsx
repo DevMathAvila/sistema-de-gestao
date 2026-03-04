@@ -1,26 +1,25 @@
-import React from 'react';
-import {
-  BarChart3,
-  Calendar,
-  Loader2,
-  Menu,
-  Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ShieldCheck,
-  Sun,
-  TrendingUp,
-  Users,
-  X,
-} from 'lucide-react';
+import React, { Suspense } from 'react';
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3';
+import Calendar from 'lucide-react/dist/esm/icons/calendar';
+import LoaderCircle from 'lucide-react/dist/esm/icons/loader-circle';
+import Menu from 'lucide-react/dist/esm/icons/menu';
+import Moon from 'lucide-react/dist/esm/icons/moon';
+import PanelLeftClose from 'lucide-react/dist/esm/icons/panel-left-close';
+import PanelLeftOpen from 'lucide-react/dist/esm/icons/panel-left-open';
+import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
+import Sun from 'lucide-react/dist/esm/icons/sun';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
+import Users from 'lucide-react/dist/esm/icons/users';
+import X from 'lucide-react/dist/esm/icons/x';
 import { useNavigate } from 'react-router-dom';
-import DashboardKPI from '../../dashboard/components/DashboardKPI';
 import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
 import { getAdminScrollbarCss } from '../styles/adminTheme';
 import { useAdminPage } from '../hooks/useAdminPage';
-import AdminUsersTab from '../components/AdminUsersTab';
-import AdminStatsTab from '../components/AdminStatsTab';
-import AdminHistoryTab from '../components/AdminHistoryTab';
+
+const DashboardKPI = React.lazy(() => import('../../dashboard/components/DashboardKPI'));
+const AdminUsersTab = React.lazy(() => import('../components/AdminUsersTab'));
+const AdminStatsTab = React.lazy(() => import('../components/AdminStatsTab'));
+const AdminHistoryTab = React.lazy(() => import('../components/AdminHistoryTab'));
 
 const iconByTab = {
   indicadores: TrendingUp,
@@ -71,10 +70,18 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className={`min-h-screen ${s.bg} flex items-center justify-center`}>
-        <Loader2 className="animate-spin text-red-600" size={48} />
+        <LoaderCircle className="animate-spin text-red-600" size={48} />
       </div>
     );
   }
+
+  const tabFallback = (
+    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
+      <div className={`${s.card} rounded-[2.5rem] flex items-center justify-center py-32`}>
+        <LoaderCircle className="animate-spin text-red-600" size={48} />
+      </div>
+    </section>
+  );
 
   return (
     <div className={`min-h-screen ${s.bg} ${s.text} flex flex-col md:flex-row font-sans transition-colors duration-500`}>
@@ -216,58 +223,68 @@ export default function AdminPage() {
         </div>
 
         {activeTab === 'usuarios' && (
-          <AdminUsersTab
-            s={s}
-            theme={theme}
-            isMaster={isMaster}
-            usuarios={usuarios}
-            novoUser={novoUser}
-            setNovoUser={setNovoUser}
-            roleOptions={roleOptions}
-            onCreateUser={handleCreateUser}
-            onRemoveUser={handleRemoveUser}
-          />
+          <Suspense fallback={tabFallback}>
+            <AdminUsersTab
+              s={s}
+              theme={theme}
+              isMaster={isMaster}
+              usuarios={usuarios}
+              novoUser={novoUser}
+              setNovoUser={setNovoUser}
+              roleOptions={roleOptions}
+              onCreateUser={handleCreateUser}
+              onRemoveUser={handleRemoveUser}
+            />
+          </Suspense>
         )}
 
         {activeTab === 'estatisticas' && (
-          <AdminStatsTab
-            s={s}
-            theme={theme}
-            setorFiltro={setorFiltro}
-            setSetorFiltro={setSetorFiltro}
-            falhasStats={falhasStats}
-          />
+          <Suspense fallback={tabFallback}>
+            <AdminStatsTab
+              s={s}
+              theme={theme}
+              setorFiltro={setorFiltro}
+              setSetorFiltro={setSetorFiltro}
+              falhasStats={falhasStats}
+            />
+          </Suspense>
         )}
 
         {activeTab === 'historico' && (
-          <AdminHistoryTab
-            s={s}
-            theme={theme}
-            dataInicio={dataInicio}
-            dataFim={dataFim}
-            setDataInicio={setDataInicio}
-            setDataFim={setDataFim}
-            intervaloInvalido={intervaloInvalido}
-            historicoSubAba={historicoSubAba}
-            setHistoricoSubAba={setHistoricoSubAba}
-            historico={historico}
-            historicoAbertas={historicoAbertas}
-            loadingHistorico={loadingHistorico}
-            loadingHistoricoAbertas={loadingHistoricoAbertas}
-            onExportHistorico={handleExportHistorico}
-            onExportAbertas={handleExportAbertas}
-          />
+          <Suspense fallback={tabFallback}>
+            <AdminHistoryTab
+              s={s}
+              theme={theme}
+              dataInicio={dataInicio}
+              dataFim={dataFim}
+              setDataInicio={setDataInicio}
+              setDataFim={setDataFim}
+              intervaloInvalido={intervaloInvalido}
+              historicoSubAba={historicoSubAba}
+              setHistoricoSubAba={setHistoricoSubAba}
+              historico={historico}
+              historicoAbertas={historicoAbertas}
+              loadingHistorico={loadingHistorico}
+              loadingHistoricoAbertas={loadingHistoricoAbertas}
+              onExportHistorico={handleExportHistorico}
+              onExportAbertas={handleExportAbertas}
+            />
+          </Suspense>
         )}
 
         {activeTab === 'indicadores' && (
-          <DashboardKPI
-            dataInicio={dataInicio}
-            dataFim={dataFim}
-            setDataInicio={setDataInicio}
-            setDataFim={setDataFim}
-            theme={theme}
-            s={s}
-          />
+          <Suspense
+            fallback={tabFallback}
+          >
+            <DashboardKPI
+              dataInicio={dataInicio}
+              dataFim={dataFim}
+              setDataInicio={setDataInicio}
+              setDataFim={setDataFim}
+              theme={theme}
+              s={s}
+            />
+          </Suspense>
         )}
       </main>
 
