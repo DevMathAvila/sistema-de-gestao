@@ -8,9 +8,13 @@ import { PONTOS, TRAVES } from '../constants/failureConstants';
 import {
   buildFalhasDoChamado,
   concluirFalhas,
+  concluirSiga,
   countFalhasReais,
+  enviarFalhasParaSiga,
   fetchFalhasAbertas,
   fetchHistoricoPonto,
+  fetchSigaAguardando,
+  fetchSigaFinalizados,
   formatDateTime,
   getStatusTrave,
   normalizeText,
@@ -18,6 +22,8 @@ import {
   traveTemParada,
 } from '../services/failuresService';
 import { getFailureTheme } from '../styles/failureTheme';
+
+const SIGA_PORTAL_URL = 'https://siga.auvo.com.br/Ticket/Novo';
 
 function isPointMatch(recordPoint, pointNum) {
   const pStr = String(recordPoint || '');
@@ -43,8 +49,14 @@ export function useVisualizarFalhasPage() {
   const [historicoPonto, setHistoricoPonto] = useState([]);
   const [loadingHistoricoPonto, setLoadingHistoricoPonto] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSigaDesk, setShowSigaDesk] = useState(false);
+  const [sigaLoading, setSigaLoading] = useState(false);
+  const [sigaTab, setSigaTab] = useState('aguardando');
+  const [sigaAguardando, setSigaAguardando] = useState([]);
+  const [sigaFinalizados, setSigaFinalizados] = useState([]);
+  const [sigaDrafts, setSigaDrafts] = useState({});
+  const [sigaSubmittingId, setSigaSubmittingId] = useState(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [mostrarHistoricoCompleto, setMostrarHistoricoCompleto] = useState(false);
 
@@ -277,6 +289,101 @@ export function useVisualizarFalhasPage() {
     }
   }, [buscarFalhas, falhasSelecionadas, fecharModal, isColaborador, modalData, solucaoTexto]);
 
+  const handleEnviarParaSiga = useCallback(async () => {
+    if (!modalData || isColaborador) return;
+    const idsParaEncaminhar = modalData?.ids || (modalData?.id ? [modalData.id] : []);
+    if (!idsParaEncaminhar.length) return;
+
+    const popup = window.open('', '_blank', 'noopener,noreferrer');
+
+    setEnviando(true);
+    try {
+      await enviarFalhasParaSiga({ ids: idsParaEncaminhar });
+      fecharModal();
+      await buscarFalhas();
+      if (popup && !popup.closed) {
+        popup.location.href = SIGA_PORTAL_URL;
+      } else {
+        window.open(SIGA_PORTAL_URL, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      if (popup && !popup.closed) popup.close();
+      alert(err?.message || 'Erro ao enviar para SIGA');
+    } finally {
+      setEnviando(false);
+    }
+  }, [buscarFalhas, fecharModal, isColaborador, modalData]);
+
+  const loadSigaDeskData = useCallback(async () => {
+    try {
+      setSigaLoading(true);
+      const [openData, doneData] = await Promise.all([fetchSigaAguardando(), fetchSigaFinalizados()]);
+      setSigaAguardando(openData);
+      setSigaFinalizados(doneData);
+      setSigaDrafts((prev) => {
+        const next = { ...prev };
+        openData.forEach((item) => {
+          if (!next[item.id]) {
+            next[item.id] = {
+              diaAbertura: item?.siga_data_abertura || '',
+              codigoChamado: item?.siga_codigo_chamado || '',
+            };
+          }
+        });
+        return next;
+      });
+    } catch (err) {
+      alert(err?.message || 'Erro ao carregar painel SIGA');
+      setSigaAguardando([]);
+      setSigaFinalizados([]);
+    } finally {
+      setSigaLoading(false);
+    }
+  }, []);
+
+  const openSigaDesk = useCallback(async () => {
+    setShowSigaDesk(true);
+    await loadSigaDeskData();
+  }, [loadSigaDeskData]);
+
+  const closeSigaDesk = useCallback(() => {
+    setShowSigaDesk(false);
+  }, []);
+
+  const updateSigaDraft = useCallback((id, field, value) => {
+    setSigaDrafts((prev) => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] || {}),
+        [field]: value,
+      },
+    }));
+  }, []);
+
+  const finalizeSigaItem = useCallback(async (item) => {
+    const draft = sigaDrafts[item.id] || {};
+    if (!draft.diaAbertura || !draft.codigoChamado) {
+      alert('Preencha dia da abertura e codigo do chamado.');
+      return;
+    }
+
+    setSigaSubmittingId(item.id);
+    try {
+      await concluirSiga({
+        id: item.id,
+        diaAbertura: draft.diaAbertura,
+        codigoChamado: draft.codigoChamado,
+      });
+      await loadSigaDeskData();
+      await buscarFalhas();
+      setSigaTab('finalizados');
+    } catch (err) {
+      alert(err?.message || 'Erro ao finalizar via SIGA');
+    } finally {
+      setSigaSubmittingId(null);
+    }
+  }, [buscarFalhas, loadSigaDeskData, sigaDrafts]);
+
   const irParaTraveRecorrente = useCallback((setor, trave) => {
     setSetorAberto(setor);
     setTraveAberta(Number(trave));
@@ -312,11 +419,21 @@ export function useVisualizarFalhasPage() {
     falhasAtivasHoje,
     showNotifications,
     setShowNotifications,
+    showSigaDesk,
+    openSigaDesk,
+    closeSigaDesk,
+    sigaLoading,
+    sigaTab,
+    setSigaTab,
+    sigaAguardando,
+    sigaFinalizados,
+    sigaDrafts,
+    updateSigaDraft,
+    finalizeSigaItem,
+    sigaSubmittingId,
     irParaTraveRecorrente,
     mobileMenuOpen,
     setMobileMenuOpen,
-    sidebarCollapsed,
-    setSidebarCollapsed,
     navigateAndCloseMobile,
     handleLogout,
     navigate,
@@ -332,6 +449,7 @@ export function useVisualizarFalhasPage() {
     falhasSelecionadas,
     toggleFalhaSelecionada,
     handleFinalizarChamado,
+    handleEnviarParaSiga,
     historicoPonto,
     loadingHistoricoPonto,
     historicoVisivel,

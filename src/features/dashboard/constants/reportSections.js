@@ -4,6 +4,7 @@ export const DASHBOARD_REPORT_SECTIONS = [
   { key: 'setorInsights', label: 'Insights por setor' },
   { key: 'aging', label: 'Aging de pendencias' },
   { key: 'historyPoints', label: 'Pontos com mais historico de registros' },
+  { key: 'sigaCalls', label: 'Chamados enviados para SIGA' },
 ];
 
 export const DASHBOARD_REPORT_PRESETS = {
@@ -13,6 +14,7 @@ export const DASHBOARD_REPORT_PRESETS = {
     setorInsights: false,
     aging: true,
     historyPoints: false,
+    sigaCalls: false,
   },
   weeklyExecutive: {
     closedFailures: true,
@@ -20,6 +22,7 @@ export const DASHBOARD_REPORT_PRESETS = {
     setorInsights: true,
     aging: true,
     historyPoints: false,
+    sigaCalls: true,
   },
   weeklyFull: {
     closedFailures: true,
@@ -27,5 +30,6 @@ export const DASHBOARD_REPORT_PRESETS = {
     setorInsights: true,
     aging: true,
     historyPoints: true,
+    sigaCalls: true,
   },
 };

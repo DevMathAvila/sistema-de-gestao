@@ -49,11 +49,11 @@ export default function DashboardHistoricalPoints({ points, theme, s }) {
       </div>
 
       {selectedPoint && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-[320]">
           <button
             type="button"
             onClick={closeDetails}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/65 backdrop-blur-md"
             aria-label="Fechar detalhes"
           />
           <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-full max-w-2xl">

@@ -16,7 +16,15 @@ export function useDashboardKpi(dataInicio, dataFim) {
     abertasRows: [],
   });
   const [loadingKpi, setLoadingKpi] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const intervaloInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowTick(Date.now());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (intervaloInvalido) {
@@ -79,8 +87,8 @@ export function useDashboardKpi(dataInicio, dataFim) {
   }, [dataInicio, dataFim, intervaloInvalido]);
 
   const computed = useMemo(
-    () => computeDashboardMetrics(dataset.kpiRows, dataset.concluidasRows, dataset.abertasRows),
-    [dataset]
+    () => computeDashboardMetrics(dataset.kpiRows, dataset.concluidasRows, dataset.abertasRows, new Date(nowTick)),
+    [dataset, nowTick]
   );
 
   return {

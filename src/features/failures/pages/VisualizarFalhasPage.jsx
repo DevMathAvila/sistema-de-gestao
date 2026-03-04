@@ -1,13 +1,12 @@
 import React from 'react';
 import BellRing from 'lucide-react/dist/esm/icons/bell-ring';
+import ClipboardList from 'lucide-react/dist/esm/icons/clipboard-list';
 import Eye from 'lucide-react/dist/esm/icons/eye';
 import HardDrive from 'lucide-react/dist/esm/icons/hard-drive';
 import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard';
 import LogOut from 'lucide-react/dist/esm/icons/log-out';
 import Menu from 'lucide-react/dist/esm/icons/menu';
 import Moon from 'lucide-react/dist/esm/icons/moon';
-import PanelLeftClose from 'lucide-react/dist/esm/icons/panel-left-close';
-import PanelLeftOpen from 'lucide-react/dist/esm/icons/panel-left-open';
 import ShieldAlert from 'lucide-react/dist/esm/icons/shield-alert';
 import Sun from 'lucide-react/dist/esm/icons/sun';
 import User from 'lucide-react/dist/esm/icons/user';
@@ -15,11 +14,13 @@ import X from 'lucide-react/dist/esm/icons/x';
 import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
 import CloseFailureModal from '../components/CloseFailureModal';
 import FailureSectorBoard from '../components/FailureSectorBoard';
+import SigaDeskOverlay from '../components/SigaDeskOverlay';
 import { useVisualizarFalhasPage } from '../hooks/useVisualizarFalhasPage';
 
 const navItems = [
   { id: 'abrir', label: 'Abrir chamado', path: '/abrir-chamado', icon: HardDrive },
   { id: 'visualizar', label: 'Visualizar Falhas', path: '/visualizar', icon: Eye, active: true },
+  { id: 'siga', label: 'SIGA', icon: ClipboardList },
   { id: 'admin', label: 'Administracao', path: '/admin?tab=indicadores', icon: ShieldAlert, adminOnly: true },
   { id: 'inicio', label: 'Voltar ao inicio', path: '/dashboard', icon: LayoutDashboard },
 ];
@@ -66,7 +67,14 @@ export default function VisualizarFalhasPage() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => vm.navigateAndCloseMobile(item.path)}
+                  onClick={() => {
+                    if (item.id === 'siga') {
+                      vm.setMobileMenuOpen(false);
+                      vm.openSigaDesk();
+                      return;
+                    }
+                    vm.navigateAndCloseMobile(item.path);
+                  }}
                   className={`w-full min-h-12 flex items-center gap-3 p-4 rounded-2xl font-black text-[11px] tracking-widest uppercase text-left ${
                     item.active ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' : `${vm.styles.subtext} hover:text-red-600`
                   }`}
@@ -79,42 +87,45 @@ export default function VisualizarFalhasPage() {
         </div>
       )}
 
-      <aside className={`hidden md:flex ${vm.sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${vm.styles.sidebar} p-4 flex-col z-20 transition-all duration-300`}>
-        <div className="flex items-center justify-between mb-10">
+      <aside className={`hidden md:flex w-60 border-r ${vm.styles.sidebar} p-4 flex-col z-20 transition-all duration-300`}>
+        <div className="mb-10">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl text-white">L</div>
-            {!vm.sidebarCollapsed && <div><h1 className="text-xl font-black tracking-tighter italic leading-none">LENOVO</h1><span className="text-[8px] font-bold tracking-[0.2em] text-red-600 uppercase">Live Monitor</span></div>}
+            <div><h1 className="text-xl font-black tracking-tighter italic leading-none">LENOVO</h1><span className="text-[8px] font-bold tracking-[0.2em] text-red-600 uppercase">Live Monitor</span></div>
           </div>
-          <button onClick={() => vm.setSidebarCollapsed((v) => !v)} className={`p-2 rounded-lg border ${vm.theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
-            {vm.sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          </button>
         </div>
         <nav className="flex-1 space-y-2">
           {navItems.filter((item) => !item.adminOnly || vm.isAdmin).map((item) => (
             <button
               key={item.id}
               type="button"
-              onClick={() => vm.navigate(item.path)}
+              onClick={() => {
+                if (item.id === 'siga') {
+                  vm.openSigaDesk();
+                  return;
+                }
+                vm.navigate(item.path);
+              }}
               className={`w-full flex items-center gap-3 p-4 rounded-2xl group font-black text-[10px] tracking-widest uppercase text-left ${
                 item.active ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' : `${vm.styles.subtext} hover:text-red-600`
               }`}
             >
               <item.icon size={18} />
-              {!vm.sidebarCollapsed && item.label}
+              {item.label}
             </button>
           ))}
         </nav>
         <div className="mt-auto pt-6 border-t border-white/5 space-y-3">
           <button onClick={vm.toggleTheme} className={`w-full p-3 rounded-xl border flex items-center justify-between ${vm.theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
-            {!vm.sidebarCollapsed && <span className="text-[10px] font-black uppercase">Tema</span>}
+            <span className="text-[10px] font-black uppercase">Tema</span>
             {vm.theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
           </button>
           <div className={`flex items-center gap-4 p-4 rounded-2xl ${vm.theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}`}>
             <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center text-red-600"><User size={20} /></div>
-            {!vm.sidebarCollapsed && <div className="overflow-hidden"><p className={`text-[8px] font-black uppercase ${vm.styles.subtext}`}>Usuario:</p><p className="text-sm font-black truncate italic leading-none">{vm.user.username}</p></div>}
+            <div className="overflow-hidden"><p className={`text-[8px] font-black uppercase ${vm.styles.subtext}`}>Usuario:</p><p className="text-sm font-black truncate italic leading-none">{vm.user.username}</p></div>
           </div>
           <button onClick={vm.handleLogout} className="w-full flex items-center justify-center gap-3 p-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl uppercase text-xs">
-            <LogOut size={16} /> {!vm.sidebarCollapsed && 'Encerrar Sessao'}
+            <LogOut size={16} /> Encerrar Sessao
           </button>
         </div>
       </aside>
@@ -141,7 +152,7 @@ export default function VisualizarFalhasPage() {
               </button>
 
               {vm.showNotifications && (
-                <div className={`absolute right-0 mt-3 w-[320px] max-w-[85vw] z-30 rounded-2xl border shadow-2xl p-3 ${
+                <div className={`fixed left-3 right-3 top-[78px] md:absolute md:left-auto md:right-0 md:top-auto md:mt-3 md:w-[320px] md:max-w-[85vw] z-30 rounded-2xl border shadow-2xl p-3 ${
                   vm.theme === 'dark' ? 'bg-[#0b0b0b] border-white/10' : 'bg-white border-slate-200'
                 }`}>
                   <div className="mb-2 px-2">
@@ -221,6 +232,7 @@ export default function VisualizarFalhasPage() {
         falhasSelecionadas={vm.falhasSelecionadas}
         toggleFalhaSelecionada={vm.toggleFalhaSelecionada}
         handleFinalizarChamado={vm.handleFinalizarChamado}
+        handleEnviarParaSiga={vm.handleEnviarParaSiga}
         fecharModal={vm.fecharModal}
         historicoPonto={vm.historicoPonto}
         historicoVisivel={vm.historicoVisivel}
@@ -229,6 +241,22 @@ export default function VisualizarFalhasPage() {
         isMobileView={vm.isMobileView}
         mostrarHistoricoCompleto={vm.mostrarHistoricoCompleto}
         setMostrarHistoricoCompleto={vm.setMostrarHistoricoCompleto}
+      />
+
+      <SigaDeskOverlay
+        open={vm.showSigaDesk}
+        onClose={vm.closeSigaDesk}
+        theme={vm.theme}
+        styles={vm.styles}
+        activeTab={vm.sigaTab}
+        setActiveTab={vm.setSigaTab}
+        aguardando={vm.sigaAguardando}
+        finalizados={vm.sigaFinalizados}
+        drafts={vm.sigaDrafts}
+        updateDraft={vm.updateSigaDraft}
+        finalizeSigaItem={vm.finalizeSigaItem}
+        submittingId={vm.sigaSubmittingId}
+        loading={vm.sigaLoading}
       />
 
       <AppBottomNav isAdmin={vm.isAdmin} />

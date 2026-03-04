@@ -1,11 +1,10 @@
 import React, { Suspense } from 'react';
 import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3';
 import Calendar from 'lucide-react/dist/esm/icons/calendar';
+import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard';
 import LoaderCircle from 'lucide-react/dist/esm/icons/loader-circle';
 import Menu from 'lucide-react/dist/esm/icons/menu';
 import Moon from 'lucide-react/dist/esm/icons/moon';
-import PanelLeftClose from 'lucide-react/dist/esm/icons/panel-left-close';
-import PanelLeftOpen from 'lucide-react/dist/esm/icons/panel-left-open';
 import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
 import Sun from 'lucide-react/dist/esm/icons/sun';
 import TrendingUp from 'lucide-react/dist/esm/icons/trending-up';
@@ -40,8 +39,6 @@ export default function AdminPage() {
     setActiveTab,
     mobileMenuOpen,
     setMobileMenuOpen,
-    sidebarCollapsed,
-    setSidebarCollapsed,
     toggleTheme,
     navItems,
     novoUser,
@@ -139,6 +136,21 @@ export default function AdminPage() {
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => {
+                  navigate('/dashboard');
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full min-h-12 p-3 rounded-xl border font-black text-[10px] uppercase tracking-wider flex items-center gap-3 text-left transition-all ${
+                  theme === 'dark'
+                    ? 'border-white/10 text-white bg-white/5'
+                    : 'border-slate-200 text-slate-900 bg-white'
+                }`}
+              >
+                <LayoutDashboard size={16} className="text-red-600" />
+                Voltar ao inicio
+              </button>
               <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
                 <span className="text-[11px] font-black uppercase">Tema</span>
                 {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
@@ -148,20 +160,15 @@ export default function AdminPage() {
         </div>
       )}
 
-      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-72'} ${s.sidebar} border-r p-6 flex-col z-20 transition-all duration-300 relative`}>
-        <div className="flex items-center justify-between mb-12">
+      <aside className={`hidden md:flex w-60 ${s.sidebar} border-r p-6 flex-col z-20 transition-all duration-300 relative`}>
+        <div className="mb-12">
           <div className="flex items-center gap-3 text-red-600 overflow-hidden">
             <ShieldCheck size={32} strokeWidth={2.5} />
-            {!sidebarCollapsed && (
-              <div>
-                <h1 className="text-xl font-black tracking-tighter text-red-600 italic leading-none">ADMIN</h1>
-                <span className={`text-[8px] font-bold uppercase tracking-widest ${s.sub}`}>Privileged Access</span>
-              </div>
-            )}
+            <div>
+              <h1 className="text-xl font-black tracking-tighter text-red-600 italic leading-none">ADMIN</h1>
+              <span className={`text-[8px] font-bold uppercase tracking-widest ${s.sub}`}>Privileged Access</span>
+            </div>
           </div>
-          <button onClick={() => setSidebarCollapsed((v) => !v)} className={`p-2 rounded-xl border ${theme === 'dark' ? 'border-white/10' : 'border-slate-100'}`}>
-            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
         </div>
 
         <nav className="flex-1 space-y-3">
@@ -179,49 +186,29 @@ export default function AdminPage() {
                 }`}
               >
                 <Icon size={20} className={activeTab === item.id ? 'text-white' : ''} />
-                {!sidebarCollapsed && item.label}
+                {item.label}
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-wider text-left ${s.sub} hover:bg-red-600/5 hover:text-red-600`}
+          >
+            <LayoutDashboard size={20} />
+            Voltar ao inicio
+          </button>
         </nav>
 
         <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
           <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
-            {!sidebarCollapsed && <span className="text-[11px] font-black uppercase">Tema</span>}
+            <span className="text-[11px] font-black uppercase">Tema</span>
             {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
           </button>
         </div>
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 md:p-12 pb-24 md:pb-12 overflow-y-auto">
-        <div className="mb-5 flex justify-end">
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className={`h-11 px-4 rounded-2xl border flex items-center gap-2 font-black text-[10px] uppercase tracking-widest transition-all ${
-              theme === 'dark'
-                ? 'border-white/10 bg-white/5 text-white hover:bg-white/10'
-                : 'border-slate-300 bg-white text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            Voltar ao inicio
-          </button>
-        </div>
-        <div className="md:hidden mb-5 flex gap-2 overflow-x-auto no-scrollbar">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveTab(item.id)}
-              className={`h-11 px-4 rounded-2xl whitespace-nowrap font-black text-[10px] uppercase tracking-widest transition-all ${
-                activeTab === item.id ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : `${s.card} ${s.sub}`
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
         {activeTab === 'usuarios' && (
           <Suspense fallback={tabFallback}>
             <AdminUsersTab

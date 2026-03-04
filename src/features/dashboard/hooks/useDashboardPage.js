@@ -10,7 +10,6 @@ export function useDashboardPage() {
   const isAdmin = isAdminUser(user);
   const { theme, toggleTheme } = usePersistentTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useBodyScrollLock(mobileMenuOpen);
 
@@ -38,8 +37,6 @@ export function useDashboardPage() {
     toggleTheme,
     mobileMenuOpen,
     setMobileMenuOpen,
-    sidebarCollapsed,
-    setSidebarCollapsed,
     styles,
     handleLogout,
     navigateAndCloseMobile,

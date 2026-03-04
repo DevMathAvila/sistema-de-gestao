@@ -32,6 +32,7 @@ function normalizeSections(sections) {
     setorInsights: true,
     aging: true,
     historyPoints: true,
+    sigaCalls: true,
   };
 
   if (!sections || typeof sections !== 'object') return base;
@@ -41,6 +42,7 @@ function normalizeSections(sections) {
     setorInsights: Boolean(sections.setorInsights),
     aging: Boolean(sections.aging),
     historyPoints: Boolean(sections.historyPoints),
+    sigaCalls: Boolean(sections.sigaCalls),
   };
 }
 
@@ -75,6 +77,12 @@ function renderExecutiveSummary(metrics, sections) {
 
   if (metrics.tempoSemManutencao?.label) {
     linhas.push(`Tempo medio entre manutencoes de pontos: ${metrics.tempoSemManutencao.label}.`);
+  }
+  if (sections.sigaCalls && Array.isArray(metrics.sigaChamadosAbertos) && metrics.sigaChamadosAbertos.length > 0) {
+    linhas.push(`Chamados SIGA aguardando: ${metrics.sigaChamadosAbertos.length}.`);
+  }
+  if (sections.sigaCalls && metrics?.sigaResumo?.atendimentoTotalLabel && metrics.sigaResumo.atendimentoTotalLabel !== '-') {
+    linhas.push(`Tempo de atendimento SIGA no periodo: ${metrics.sigaResumo.atendimentoTotalLabel}.`);
   }
 
   return linhas.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
@@ -181,6 +189,42 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
     6
   );
 
+  const sigaRows = renderRows(
+    metrics.sigaChamadosAbertos?.slice(0, 20),
+    (item, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${escapeHtml(item.setor)}</td>
+        <td>${escapeHtml(item.trave)}</td>
+        <td>${escapeHtml(item.ponto)}</td>
+        <td>${escapeHtml(item.falha)}</td>
+        <td>${escapeHtml(item.enviadoEmLabel)}</td>
+        <td>${escapeHtml(item.codigoChamado)}</td>
+      </tr>`,
+    'Sem chamados enviados para SIGA no periodo.',
+    7
+  );
+
+  const sigaFinalizadosRows = renderRows(
+    metrics.sigaChamadosFinalizados?.slice(0, 20),
+    (item, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${escapeHtml(item.setor)}</td>
+        <td>${escapeHtml(item.trave)}</td>
+        <td>${escapeHtml(item.ponto)}</td>
+        <td>${escapeHtml(item.fechadoEmLabel)}</td>
+        <td>${escapeHtml(item.atendimentoLabel)}</td>
+      </tr>`,
+    'Sem chamados SIGA finalizados no periodo.',
+    6
+  );
+  const sigaPendentes = Number(metrics?.sigaResumo?.chamadosPendentes || 0);
+  const sigaFechados = Number(metrics?.sigaResumo?.chamadosFechados || 0);
+  const sigaTotal = Math.max(sigaPendentes + sigaFechados, 1);
+  const sigaPendentesPct = toPercent(sigaPendentes, sigaTotal);
+  const sigaPieStyle = `conic-gradient(#dc2626 0 ${sigaPendentesPct}%, #16a34a ${sigaPendentesPct}% 100%)`;
+
   const closedFailuresSection = selectedSections.closedFailures
     ? `
     <div class="box section">
@@ -241,6 +285,40 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
         <table>
           <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Eventos</th></tr></thead>
           <tbody>${pontosRows}</tbody>
+        </table>
+      </div>`
+    : '';
+
+  const sigaSection = selectedSections.sigaCalls
+    ? `
+      <div class="box section">
+        <h2>KPI SIGA</h2>
+        <div class="visual-grid siga-grid">
+          <div class="visual-card">
+            <p class="visual-title">Status dos Chamados SIGA</p>
+            <div class="pie-wrap">
+              <div class="pie-chart" style="background:${sigaPieStyle}"></div>
+              <div class="pie-meta">
+                <p><span class="dot dot-pending"></span>Chamados abertos totais: ${safe(metrics?.sigaResumo?.chamadosAbertosTotais, '0')}</p>
+                <p><span class="dot dot-pending"></span>Chamados pendentes: ${safe(metrics?.sigaResumo?.chamadosPendentes, '0')}</p>
+                <p><span class="dot dot-concluded"></span>Chamados fechados: ${safe(metrics?.sigaResumo?.chamadosFechados, '0')}</p>
+              </div>
+            </div>
+          </div>
+          <div class="visual-card">
+            <p class="visual-title">Tempo de Atendimento Geral</p>
+            <p class="kpi-main">${escapeHtml(safe(metrics?.sigaResumo?.atendimentoTotalLabel, '-'))}</p>
+            <p class="kpi-sub">Media por chamado: ${escapeHtml(safe(metrics?.sigaResumo?.atendimentoMedioLabel, '-'))}</p>
+            <p class="kpi-sub">Pico no periodo: ${escapeHtml(safe(metrics?.sigaResumo?.atendimentoMaxLabel, '-'))}</p>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Falha</th><th>Enviado</th><th>Codigo</th></tr></thead>
+          <tbody>${sigaRows}</tbody>
+        </table>
+        <table class="section">
+          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Finalizado</th><th>Atendimento</th></tr></thead>
+          <tbody>${sigaFinalizadosRows}</tbody>
         </table>
       </div>`
     : '';
@@ -428,6 +506,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
     .tower-fill-alt { background: linear-gradient(90deg, #ef4444, #fb923c); }
     .tower-value { font-size: 9px; text-align: right; font-weight: 700; color: #0f172a; }
     .visual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+    .siga-grid { padding-bottom: 0; }
     .visual-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
     .visual-card-full { grid-column: 1 / -1; }
     .visual-title { margin: 0 0 8px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #475569; font-weight: 700; }
@@ -437,6 +516,8 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
     .dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 6px; }
     .dot-pending { background: #cf102d; }
     .dot-concluded { background: #16a34a; }
+    .kpi-main { margin: 2px 0 8px; color: var(--red); font-size: 22px; font-weight: 800; }
+    .kpi-sub { margin: 0 0 5px; font-size: 10px; color: #475569; }
     .section { margin-top: 10px; }
     .foot {
       margin-top: 10px;
@@ -484,6 +565,8 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   ${insightsSection}
 
   ${historySection}
+
+  ${sigaSection}
 
   <div class="box section">
     <h2>Status por Ponto (Pendentes x Concluidas)</h2>

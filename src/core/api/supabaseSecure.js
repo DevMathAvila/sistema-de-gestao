@@ -133,6 +133,19 @@ function removeFalhasSelecionadas(originais, selecionadas) {
   return restante;
 }
 
+const SIGA_SCHEMA_HINT = "Colunas SIGA nao encontradas em 'registros_falhas'. Execute a migracao de schema.";
+
+function withSigaSchemaHint(error) {
+  const message = String(error?.message || '');
+  const isSigaColumnMissing = message.includes("Could not find the 'siga_")
+    || message.includes('schema cache')
+    || message.includes('siga_enviado')
+    || message.includes('siga_status');
+
+  if (!isSigaColumnMissing) return error;
+  return { ...error, message: `${SIGA_SCHEMA_HINT} (${message})` };
+}
+
 export async function getUsuarioParaLogin(username, senha) {
   if (!validateUsername(username) || !validateSenha(senha)) {
     return { data: null, error: { message: 'Dados invalidos.' } };
@@ -301,13 +314,24 @@ export async function listarRegistrosFalhas(filtroSetor = null) {
 
 export async function listarRegistrosAbertos(dataInicio = null, dataFim = null) {
   const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
+  const selectBase = 'id, usuario, setor, trave, ponto, falha, data, status, resolvido_em';
+  const selectWithSiga = `${selectBase}, siga_enviado, siga_status, siga_enviado_em, siga_codigo_chamado, siga_data_abertura, siga_finalizado_em`;
 
-  let query = supabase
-    .from('registros_falhas')
-    .select('id, usuario, setor, trave, ponto, falha, data, status, resolvido_em')
-    .ilike('status', '%aberto%');
+  const loadBySelect = async (selectCols) => {
+    return supabase
+      .from('registros_falhas')
+      .select(selectCols)
+      .ilike('status', '%aberto%')
+      .order('data', { ascending: false });
+  };
 
-  const { data, error } = await query.order('data', { ascending: false });
+  let { data, error } = await loadBySelect(selectWithSiga);
+  const maybeMissingSigaColumns = String(error?.message || '').includes('siga_');
+  if (error && maybeMissingSigaColumns) {
+    const fallback = await loadBySelect(selectBase);
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (error) return { data: [], error };
 
   const base = (data || []).filter((item) => isOpenRecord(item));
@@ -340,12 +364,23 @@ export async function listarRegistrosParaKPI(dataInicio = null, dataFim = null) 
 
 export async function listarOcorrenciasConcluidas(dataInicio = null, dataFim = null) {
   const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
+  const selectBase = 'id, usuario, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, status, data';
+  const selectWithSiga = `${selectBase}, siga_enviado, siga_status, siga_enviado_em, siga_codigo_chamado, siga_data_abertura, siga_finalizado_em`;
 
-  let query = supabase
-    .from('registros_falhas')
-    .select('id, usuario, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, status, data');
+  const loadBySelect = async (selectCols) => {
+    return supabase
+      .from('registros_falhas')
+      .select(selectCols)
+      .order('resolvido_em', { ascending: false });
+  };
 
-  const { data, error } = await query.order('resolvido_em', { ascending: false });
+  let { data, error } = await loadBySelect(selectWithSiga);
+  const maybeMissingSigaColumns = String(error?.message || '').includes('siga_');
+  if (error && maybeMissingSigaColumns) {
+    const fallback = await loadBySelect(selectBase);
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (error) return { data: [], error };
 
   const base = (data || []).filter((item) => isConcludedRecord(item));
@@ -579,6 +614,101 @@ export async function fecharRegistros(ids, solucao, falhasSelecionadas = null) {
     return { error: null };
   } catch (err) {
     return { error: { message: err?.message || 'Erro ao fechar chamado.' } };
+  }
+}
+
+export async function marcarFalhasParaSiga(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatorios.' } };
+
+  const idsValidos = [...new Set(ids.filter((id) => id != null && id !== ''))];
+  if (idsValidos.length === 0) return { error: { message: 'Nenhum ID valido.' } };
+
+  const payload = {
+    siga_enviado: true,
+    siga_status: 'AGUARDANDO',
+    siga_enviado_em: new Date().toISOString(),
+  };
+
+  try {
+    const { error } = await supabase
+      .from('registros_falhas')
+      .update(payload)
+      .in('id', idsValidos)
+      .ilike('status', '%aberto%');
+
+    return { error: withSigaSchemaHint(error) };
+  } catch (err) {
+    return { error: withSigaSchemaHint({ message: err?.message || 'Erro ao enviar para SIGA.' }) };
+  }
+}
+
+export async function listarFalhasSigaAguardando() {
+  try {
+    const { data, error } = await supabase
+      .from('registros_falhas')
+      .select('id, usuario, setor, trave, ponto, falha, data, status, siga_status, siga_enviado, siga_enviado_em, siga_codigo_chamado, siga_data_abertura')
+      .eq('siga_enviado', true)
+      .ilike('status', '%aberto%')
+      .order('data', { ascending: false });
+
+    if (error) return { data: [], error: withSigaSchemaHint(error) };
+    const aguardando = (data || []).filter((item) => String(item?.siga_status || 'AGUARDANDO').toUpperCase() !== 'FINALIZADO');
+    return { data: aguardando, error: null };
+  } catch (err) {
+    return { data: [], error: withSigaSchemaHint({ message: err?.message || 'Erro ao listar SIGA (aguardando).' }) };
+  }
+}
+
+export async function listarFalhasSigaFinalizados() {
+  try {
+    const { data, error } = await supabase
+      .from('registros_falhas')
+      .select('id, usuario, setor, trave, ponto, falha, data, status, solucao, resolvido_em, resolvido_por, siga_status, siga_enviado, siga_enviado_em, siga_codigo_chamado, siga_data_abertura, siga_finalizado_em')
+      .eq('siga_enviado', true)
+      .ilike('status', '%conclu%')
+      .order('resolvido_em', { ascending: false });
+
+    if (error) return { data: [], error: withSigaSchemaHint(error) };
+    return { data: data || [], error: null };
+  } catch (err) {
+    return { data: [], error: withSigaSchemaHint({ message: err?.message || 'Erro ao listar SIGA (finalizados).' }) };
+  }
+}
+
+export async function finalizarFalhaViaSiga({ id, diaAbertura, codigoChamado }) {
+  if (id == null || id === '') return { error: { message: 'ID obrigatorio.' } };
+  const codigo = sanitizeString(codigoChamado, 120).trim();
+  const dia = normalizeDate(diaAbertura);
+  if (!codigo || !dia) return { error: { message: 'Dia da abertura e codigo do chamado sao obrigatorios.' } };
+
+  const sessionUser = getStoredSessionUser();
+  if (!sessionUser || sessionUser.role === 'colaborador') {
+    return { error: { message: 'Nao autorizado.' } };
+  }
+
+  const resolvidoEmIso = new Date().toISOString();
+  const resolvidoPorSanit = sanitizeString(sessionUser.username, LIMITS.MAX_USERNAME) || 'Sistema';
+  const solucaoTexto = `Finalizado via SIGA - Chamado ${codigo}`;
+
+  try {
+    const { error } = await supabase
+      .from('registros_falhas')
+      .update({
+        status: 'CONCLUIDO',
+        solucao: solucaoTexto,
+        resolvido_por: resolvidoPorSanit,
+        resolvido_em: resolvidoEmIso,
+        siga_status: 'FINALIZADO',
+        siga_codigo_chamado: codigo,
+        siga_data_abertura: dia,
+        siga_finalizado_em: resolvidoEmIso,
+      })
+      .eq('id', id)
+      .eq('siga_enviado', true);
+
+    return { error: withSigaSchemaHint(error) };
+  } catch (err) {
+    return { error: withSigaSchemaHint({ message: err?.message || 'Erro ao finalizar falha via SIGA.' }) };
   }
 }
 

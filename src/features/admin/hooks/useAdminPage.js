@@ -25,7 +25,6 @@ export function useAdminPage() {
   });
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [usuarios, setUsuarios] = useState([]);
   const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'tecnico' });
@@ -196,8 +195,6 @@ export function useAdminPage() {
     setActiveTab,
     mobileMenuOpen,
     setMobileMenuOpen,
-    sidebarCollapsed,
-    setSidebarCollapsed,
     toggleTheme,
     navItems: ADMIN_NAV_ITEMS,
     novoUser,

@@ -15,7 +15,6 @@ export function useFabricaStatusPage() {
 
   const [setoresComFalha, setSetoresComFalha] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useBodyScrollLock(mobileMenuOpen);
 
@@ -74,8 +73,6 @@ export function useFabricaStatusPage() {
     toggleTheme,
     mobileMenuOpen,
     setMobileMenuOpen,
-    sidebarCollapsed,
-    setSidebarCollapsed,
     setoresComFalha,
     styles,
     sidebarLinks,

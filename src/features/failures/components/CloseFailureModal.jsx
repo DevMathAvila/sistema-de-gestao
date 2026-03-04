@@ -18,6 +18,7 @@ export default function CloseFailureModal({
   falhasSelecionadas,
   toggleFalhaSelecionada,
   handleFinalizarChamado,
+  handleEnviarParaSiga,
   fecharModal,
   historicoPonto,
   historicoVisivel,
@@ -119,13 +120,22 @@ export default function CloseFailureModal({
                   })}
                 </div>
               </div>
-              <button
-                onClick={() => setEtapaFechamento(true)}
-                disabled={isColaborador || falhasSelecionadas.length === 0}
-                className={`w-full py-4 ${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} font-black rounded-xl flex items-center justify-center gap-2 uppercase text-[10px] disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                Reparar Selecionadas <ArrowRight size={14} />
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={handleEnviarParaSiga}
+                  disabled={isColaborador || enviando || falhasSelecionadas.length === 0}
+                  className="w-full py-4 bg-cyan-500/90 hover:bg-cyan-500 text-white font-black rounded-xl uppercase text-[10px] tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Enviar para SIGA
+                </button>
+                <button
+                  onClick={() => setEtapaFechamento(true)}
+                  disabled={isColaborador || falhasSelecionadas.length === 0}
+                  className={`w-full py-4 ${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} font-black rounded-xl flex items-center justify-center gap-2 uppercase text-[10px] disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  Reparar Selecionadas <ArrowRight size={14} />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">

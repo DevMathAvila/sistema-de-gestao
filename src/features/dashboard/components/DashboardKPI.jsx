@@ -10,10 +10,27 @@ import { DASHBOARD_REPORT_PRESETS, DASHBOARD_REPORT_SECTIONS } from '../constant
 
 const DashboardCharts = React.lazy(() => import('./DashboardCharts'));
 
+const DASHBOARD_VIEWS = [
+  { key: 'executivo', label: 'Executivo' },
+  { key: 'operacao', label: 'Operacao' },
+  { key: 'siga', label: 'SIGA' },
+  { key: 'historico', label: 'Historico' },
+];
+
+function SectionCard({ title, s, children, className = '' }) {
+  return (
+    <div className={`${s.card} p-6 rounded-[2.5rem] ${className}`}>
+      <h3 className="text-lg font-black uppercase italic text-red-600 mb-4">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
 function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s }) {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [reportPreset, setReportPreset] = useState('weeklyFull');
   const [reportSections, setReportSections] = useState(DASHBOARD_REPORT_PRESETS.weeklyFull);
+  const [activeView, setActiveView] = useState('executivo');
   const {
     totalGeral,
     totalPendentes,
@@ -27,6 +44,9 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
     pontosStatusResumo,
     pendingAging,
     setorAgingResumo,
+    sigaChamadosAbertos,
+    sigaChamadosFinalizados,
+    sigaResumo,
     expectedMaintenanceDays,
     generatedAt,
     loadingKpi,
@@ -51,6 +71,9 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       pontosStatusResumo,
       pendingAging,
       setorAgingResumo,
+      sigaChamadosAbertos,
+      sigaChamadosFinalizados,
+      sigaResumo,
       expectedMaintenanceDays,
       generatedAt,
       tempoSemManutencao,
@@ -64,6 +87,9 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       porSetor,
       porStatus,
       setorAgingResumo,
+      sigaChamadosAbertos,
+      sigaChamadosFinalizados,
+      sigaResumo,
       setorInsights,
       tempoSemManutencao,
       top5,
@@ -77,6 +103,19 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
     () => Object.values(reportSections).some(Boolean),
     [reportSections]
   );
+
+  const sigaPie = useMemo(() => {
+    const pendentes = Number(sigaResumo?.chamadosPendentes || 0);
+    const fechados = Number(sigaResumo?.chamadosFechados || 0);
+    const total = Math.max(pendentes + fechados, 1);
+    const pendentesPct = (pendentes / total) * 100;
+    return {
+      pendentes,
+      fechados,
+      total: Number(sigaResumo?.chamadosAbertosTotais || 0),
+      style: { background: `conic-gradient(#dc2626 0 ${pendentesPct}%, #16a34a ${pendentesPct}% 100%)` },
+    };
+  }, [sigaResumo]);
 
   const handleOpenExportModal = useCallback(() => {
     setIsExportModalOpen(true);
@@ -125,12 +164,12 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
 
   return (
     <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
-      <header className="mb-8 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+      <header className="mb-6 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
         <div>
           <h2 className="text-4xl font-black uppercase italic tracking-tighter">
             Dashboard <span className="text-red-600">KPI</span>
           </h2>
-          <p className={s.sub}>Indicadores executivos para analise de falhas e manutencao.</p>
+          <p className={s.sub}>Cockpit executivo de manutencao e performance operacional.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -158,146 +197,279 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
         </p>
       )}
 
-      <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-6`}>Periodo: {periodoLabel}</p>
+      <div className={`${s.card} p-5 rounded-[2rem] mb-6 border border-red-600/15`}>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub}`}>Periodo: {periodoLabel}</p>
+          <div className="flex flex-wrap gap-2">
+            {DASHBOARD_VIEWS.map((view) => (
+              <button
+                key={view.key}
+                type="button"
+                onClick={() => setActiveView(view.key)}
+                className={`h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  activeView === view.key
+                    ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
+                    : theme === 'dark'
+                      ? 'bg-white/5 border border-white/10'
+                      : 'bg-slate-50 border border-slate-200'
+                }`}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <div className={`${s.card} p-6 rounded-[2rem] border-l-4 border-red-600`}>
-          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Total Geral de Falhas</p>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Total Geral</p>
           <p className="text-4xl font-black text-red-600 italic">{totalGeral}</p>
         </div>
         <div className={`${s.card} p-6 rounded-[2rem] border-l-4 border-amber-500`}>
-          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Total Pendentes</p>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Pendentes</p>
           <p className="text-4xl font-black text-amber-500 italic">{totalPendentes}</p>
         </div>
         <div className={`${s.card} p-6 rounded-[2rem] border-l-4 border-emerald-500`}>
-          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Total Concluidas</p>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Concluidas</p>
           <p className="text-4xl font-black text-emerald-500 italic">{totalConcluidas}</p>
         </div>
       </div>
 
-      <Suspense
-        fallback={(
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-            <div className={`${s.card} p-6 rounded-[2.5rem]`}>
-              <div className="h-80 animate-pulse rounded-2xl bg-red-600/5" />
-            </div>
-            <div className={`${s.card} p-6 rounded-[2.5rem]`}>
-              <div className="h-80 animate-pulse rounded-2xl bg-red-600/5" />
-            </div>
-          </div>
-        )}
-      >
-        <DashboardCharts porSetor={porSetor} porStatus={porStatus} theme={theme} s={s} />
-      </Suspense>
+      {activeView === 'executivo' && (
+        <div className="space-y-8">
+          <Suspense
+            fallback={(
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className={`${s.card} p-6 rounded-[2.5rem]`}><div className="h-80 animate-pulse rounded-2xl bg-red-600/5" /></div>
+                <div className={`${s.card} p-6 rounded-[2.5rem]`}><div className="h-80 animate-pulse rounded-2xl bg-red-600/5" /></div>
+              </div>
+            )}
+          >
+            <DashboardCharts porSetor={porSetor} porStatus={porStatus} theme={theme} s={s} />
+          </Suspense>
 
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 mb-10">
-        <div className={`${s.card} p-8 rounded-[2.5rem] xl:col-span-3`}>
-          <h3 className="text-lg font-black uppercase italic text-red-600 mb-6">Ranking de Recorrencia (Top 5)</h3>
-          {top5.length === 0 ? (
-            <p className={`${s.sub} text-sm`}>Nenhuma falha registrada no periodo.</p>
-          ) : (
-            <div className="space-y-4">
-              {top5.map((item, idx) => {
-                const maxTotal = Math.max(...top5.map((x) => x.total || 0), 1);
-                const pctBruto = (item.total / maxTotal) * 100;
-                const pct = Number.isFinite(pctBruto) ? Math.max(0, Math.min(100, pctBruto)) : 0;
-                return (
-                  <div key={item.nome} className="flex items-center gap-4">
-                    <span className={`w-6 text-center font-black text-[10px] ${s.sub}`}>#{idx + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between mb-1 gap-3">
-                        <span className="font-bold truncate">{item.nome}</span>
-                        <span className="text-red-600 font-black text-sm whitespace-nowrap">{item.total} ocorrencias</span>
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+            <SectionCard title="Ranking de Recorrencia (Top 5)" s={s} className="xl:col-span-3">
+              {top5.length === 0 ? (
+                <p className={`${s.sub} text-sm`}>Nenhuma falha registrada no periodo.</p>
+              ) : (
+                <div className="space-y-4">
+                  {top5.map((item, idx) => {
+                    const maxTotal = Math.max(...top5.map((x) => x.total || 0), 1);
+                    const pctBruto = (item.total / maxTotal) * 100;
+                    const pct = Number.isFinite(pctBruto) ? Math.max(0, Math.min(100, pctBruto)) : 0;
+                    return (
+                      <div key={item.nome} className="flex items-center gap-4">
+                        <span className={`w-6 text-center font-black text-[10px] ${s.sub}`}>#{idx + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between mb-1 gap-3">
+                            <span className="font-bold truncate">{item.nome}</span>
+                            <span className="text-red-600 font-black text-sm whitespace-nowrap">{item.total} ocorrencias</span>
+                          </div>
+                          <div className={`h-3 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-100'}`}>
+                            <div className="h-full bg-red-600 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
                       </div>
-                      <div className={`h-3 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-white/10' : 'bg-slate-100'}`}>
-                        <div className="h-full bg-red-600 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className={`${s.card} p-6 rounded-[2.5rem] xl:col-span-2`}>
-          <h3 className="text-lg font-black uppercase italic text-red-600 mb-4">Insights por Setor</h3>
-          <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-4`}>
-            Tempo medio sem manutencao: {tempoSemManutencao?.label || '-'}
-          </p>
-          {setorInsights.length === 0 ? (
-            <p className={`${s.sub} text-sm`}>Sem dados de setor para o periodo atual.</p>
-          ) : (
-            <div className="space-y-3">
-              {setorInsights.map((setor) => (
-                <div key={setor.setor} className="rounded-2xl border border-red-600/15 p-3.5">
-                  <p className="text-[12px] font-black text-red-600 uppercase tracking-wide">{setor.setor}</p>
-                  <p className={`text-[11px] mt-2 ${s.sub}`}>
-                    {setor.topFalhas.map((item) => `${item.falha} (${item.total})`).join(' | ') || 'Sem falhas mapeadas'}
-                  </p>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+              )}
+            </SectionCard>
 
-      <div className="mb-10">
-        <DashboardAgingTable
-          pendingAging={pendingAging}
-          setorAgingResumo={setorAgingResumo}
-          expectedMaintenanceDays={expectedMaintenanceDays}
-          s={s}
-          theme={theme}
-        />
-      </div>
-
-      <div className="mb-10">
-        <DashboardHistoricalPoints points={pontosHistorico} theme={theme} s={s} />
-      </div>
-
-      <div className={`${s.card} p-6 rounded-[2.5rem]`}>
-        <h3 className="text-lg font-black uppercase italic text-red-600 mb-4">Pontos Pendentes e Concluidos</h3>
-        {pontosStatusResumo.length === 0 ? (
-          <p className={`${s.sub} text-sm`}>Sem dados por ponto no periodo.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] text-left">
-              <thead>
-                <tr className={`${s.sub} text-[10px] uppercase tracking-widest border-b ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
-                  <th className="p-3">Run In</th>
-                  <th className="p-3">Trave</th>
-                  <th className="p-3">Ponto</th>
-                  <th className="p-3">Pendentes</th>
-                  <th className="p-3">Concluidas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pontosStatusResumo.map((item) => (
-                  <tr key={`${item.setor}-${item.trave}-${item.ponto}`} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
-                    <td className="p-3 font-bold">{item.setor}</td>
-                    <td className="p-3 font-mono">{item.trave}</td>
-                    <td className="p-3 font-mono">{item.ponto}</td>
-                    <td className="p-3">
-                      <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-500/15 text-amber-500">{item.pendentes}</span>
-                    </td>
-                    <td className="p-3">
-                      <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-500">{item.concluidas}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <SectionCard title="Insights por Setor" s={s} className="xl:col-span-2">
+              <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-4`}>
+                Tempo medio sem manutencao: {tempoSemManutencao?.label || '-'}
+              </p>
+              {setorInsights.length === 0 ? (
+                <p className={`${s.sub} text-sm`}>Sem dados de setor para o periodo atual.</p>
+              ) : (
+                <div className="space-y-3">
+                  {setorInsights.map((setor) => (
+                    <div key={setor.setor} className="rounded-2xl border border-red-600/15 p-3.5">
+                      <p className="text-[12px] font-black text-red-600 uppercase tracking-wide">{setor.setor}</p>
+                      <p className={`text-[11px] mt-2 ${s.sub}`}>
+                        {setor.topFalhas.map((item) => `${item.falha} (${item.total})`).join(' | ') || 'Sem falhas mapeadas'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {activeView === 'operacao' && (
+        <div className="space-y-8">
+          <DashboardAgingTable
+            pendingAging={pendingAging}
+            setorAgingResumo={setorAgingResumo}
+            expectedMaintenanceDays={expectedMaintenanceDays}
+            s={s}
+            theme={theme}
+          />
+
+          <SectionCard title="Pontos Pendentes e Concluidos" s={s}>
+            {pontosStatusResumo.length === 0 ? (
+              <p className={`${s.sub} text-sm`}>Sem dados por ponto no periodo.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-left">
+                  <thead>
+                    <tr className={`${s.sub} text-[10px] uppercase tracking-widest border-b ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
+                      <th className="p-3">Run In</th>
+                      <th className="p-3">Trave</th>
+                      <th className="p-3">Ponto</th>
+                      <th className="p-3">Pendentes</th>
+                      <th className="p-3">Concluidas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pontosStatusResumo.map((item) => (
+                      <tr key={`${item.setor}-${item.trave}-${item.ponto}`} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+                        <td className="p-3 font-bold">{item.setor}</td>
+                        <td className="p-3 font-mono">{item.trave}</td>
+                        <td className="p-3 font-mono">{item.ponto}</td>
+                        <td className="p-3">
+                          <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-500/15 text-amber-500">{item.pendentes}</span>
+                        </td>
+                        <td className="p-3">
+                          <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-500">{item.concluidas}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      )}
+
+      {activeView === 'siga' && (
+        <SectionCard title="Chamados Enviados para SIGA" s={s}>
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-5 mb-6">
+            <div className={`rounded-3xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-3`}>Status SIGA</p>
+              <div className="flex items-center gap-4">
+                <div className="relative h-24 w-24 rounded-full border border-white/10" style={sigaPie.style}>
+                  <div className={`absolute inset-3 rounded-full flex items-center justify-center text-[11px] font-black ${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'}`}>
+                    {sigaPie.total}
+                  </div>
+                </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <p><span className="inline-block h-2 w-2 rounded-full bg-red-600 mr-2" />Pendentes: <strong>{sigaPie.pendentes}</strong></p>
+                  <p><span className="inline-block h-2 w-2 rounded-full bg-emerald-500 mr-2" />Fechados: <strong>{sigaPie.fechados}</strong></p>
+                  <p className={`${s.sub}`}>Abertos totais: <strong>{sigaPie.total}</strong></p>
+                </div>
+              </div>
+            </div>
+
+            <div className={`rounded-3xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Tempo de atendimento (somente finalizados)</p>
+              <p className="text-2xl font-black text-red-600">{sigaResumo?.atendimentoTotalLabel || '-'}</p>
+              <p className={`text-[11px] mt-3 ${s.sub}`}>Media por chamado: <strong>{sigaResumo?.atendimentoMedioLabel || '-'}</strong></p>
+              <p className={`text-[11px] ${s.sub}`}>Pico do periodo: <strong>{sigaResumo?.atendimentoMaxLabel || '-'}</strong></p>
+              <p className={`text-[11px] ${s.sub}`}>Em andamento agora: <strong>{sigaResumo?.chamadosEmAndamento || 0}</strong></p>
+              <p className={`text-[10px] mt-1 ${s.sub}`}>Atualizacao automatica: a cada 1 minuto</p>
+            </div>
+
+            <div className={`rounded-3xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Chamados pendentes</p>
+              <p className="text-3xl font-black text-amber-500">{sigaResumo?.chamadosPendentes || 0}</p>
+            </div>
+
+            <div className={`rounded-3xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-1`}>Chamados fechados</p>
+              <p className="text-3xl font-black text-emerald-500">{sigaResumo?.chamadosFechados || 0}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-2`}>Pendentes (SIGA)</p>
+              {sigaChamadosAbertos.length === 0 ? (
+                <p className={`${s.sub} text-sm`}>Nenhum chamado pendente no periodo.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[680px] text-left">
+                    <thead>
+                      <tr className={`${s.sub} text-[10px] uppercase tracking-widest border-b ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
+                        <th className="p-3">Run In</th>
+                        <th className="p-3">Trave</th>
+                        <th className="p-3">Ponto</th>
+                        <th className="p-3">Falha</th>
+                        <th className="p-3">Enviado em</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sigaChamadosAbertos.map((item) => (
+                        <tr key={item.id} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+                          <td className="p-3 font-bold">{item.setor}</td>
+                          <td className="p-3 font-mono">{item.trave}</td>
+                          <td className="p-3 font-mono">{item.ponto}</td>
+                          <td className="p-3">{item.falha}</td>
+                          <td className="p-3 font-mono">{item.enviadoEmLabel}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-2`}>Finalizados (SIGA)</p>
+              {sigaChamadosFinalizados.length === 0 ? (
+                <p className={`${s.sub} text-sm`}>Nenhum chamado finalizado no periodo.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-left">
+                    <thead>
+                      <tr className={`${s.sub} text-[10px] uppercase tracking-widest border-b ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
+                        <th className="p-3">Run In</th>
+                        <th className="p-3">Trave</th>
+                        <th className="p-3">Ponto</th>
+                        <th className="p-3">Fechado em</th>
+                        <th className="p-3">Atendimento</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sigaChamadosFinalizados.map((item) => (
+                        <tr key={item.id} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+                          <td className="p-3 font-bold">{item.setor}</td>
+                          <td className="p-3 font-mono">{item.trave}</td>
+                          <td className="p-3 font-mono">{item.ponto}</td>
+                          <td className="p-3 font-mono">{item.fechadoEmLabel}</td>
+                          <td className="p-3">
+                            <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-500">
+                              {item.atendimentoLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {activeView === 'historico' && (
+        <div className="space-y-8">
+          <DashboardHistoricalPoints points={pontosHistorico} theme={theme} s={s} />
+        </div>
+      )}
 
       {isExportModalOpen && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-[320]">
           <button
             type="button"
             onClick={handleCloseExportModal}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/65 backdrop-blur-md"
             aria-label="Fechar configuracao de exportacao"
           />
           <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-full max-w-xl">

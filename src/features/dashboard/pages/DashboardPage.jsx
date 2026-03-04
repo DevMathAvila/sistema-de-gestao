@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, HardDrive, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Settings, Shield, Sparkles, Sun, User, X } from 'lucide-react';
+import { Eye, HardDrive, LogOut, Menu, Moon, Settings, Shield, Sparkles, Sun, User, X } from 'lucide-react';
 import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
 import { useDashboardPage } from '../hooks/useDashboardPage';
 
@@ -61,40 +61,35 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <aside className={`hidden md:flex ${vm.sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${vm.styles.sidebar} p-4 flex-col z-20 transition-all duration-300`}>
-        <div className="flex items-center justify-between mb-10">
+      <aside className={`hidden md:flex w-60 border-r ${vm.styles.sidebar} p-4 flex-col z-20 transition-all duration-300`}>
+        <div className="mb-10">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl text-white">L</div>
-            {!vm.sidebarCollapsed && <div><h1 className="text-xl font-black tracking-tighter italic leading-none">LENOVO</h1><span className="text-[8px] font-bold tracking-[0.2em] text-red-600 uppercase">Welcome Hub</span></div>}
+            <div><h1 className="text-xl font-black tracking-tighter italic leading-none">LENOVO</h1><span className="text-[8px] font-bold tracking-[0.2em] text-red-600 uppercase">Welcome Hub</span></div>
           </div>
-          <button onClick={() => vm.setSidebarCollapsed((v) => !v)} className={`p-2 rounded-lg border ${vm.theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
-            {vm.sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          </button>
         </div>
         <nav className="flex-1 space-y-2">
           {visibleNav.map((item) => (
             <button key={item.id} type="button" onClick={() => vm.navigate(item.path)} className={`w-full flex items-center gap-3 p-4 ${vm.styles.subtext} hover:text-red-600 rounded-2xl font-black text-[10px] tracking-widest uppercase text-left`}>
               <item.icon size={18} />
-              {!vm.sidebarCollapsed && (
-                <span className="leading-tight">
-                  <span className="block">{item.label}</span>
-                  {item.helper && <span className="block text-[8px] tracking-wide normal-case opacity-60">{item.helper}</span>}
-                </span>
-              )}
+              <span className="leading-tight">
+                <span className="block">{item.label}</span>
+                {item.helper && <span className="block text-[8px] tracking-wide normal-case opacity-60">{item.helper}</span>}
+              </span>
             </button>
           ))}
         </nav>
         <div className="mt-auto pt-6 border-t border-white/5 space-y-3">
           <button onClick={vm.toggleTheme} className={`w-full p-3 rounded-xl border flex items-center justify-between ${vm.theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
-            {!vm.sidebarCollapsed && <span className="text-[10px] font-black uppercase">Tema</span>}
+            <span className="text-[10px] font-black uppercase">Tema</span>
             {vm.theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
           </button>
           <div className={`flex items-center gap-4 p-4 rounded-2xl ${vm.theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}`}>
             <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center text-red-600"><User size={20} /></div>
-            {!vm.sidebarCollapsed && <div className="overflow-hidden"><p className={`text-[8px] font-black uppercase ${vm.styles.subtext}`}>Usuario:</p><p className="text-sm font-black truncate italic leading-none">{vm.user.username}</p></div>}
+            <div className="overflow-hidden"><p className={`text-[8px] font-black uppercase ${vm.styles.subtext}`}>Usuario:</p><p className="text-sm font-black truncate italic leading-none">{vm.user.username}</p></div>
           </div>
           <button onClick={vm.handleLogout} className="w-full flex items-center justify-center gap-3 p-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl uppercase text-xs">
-            <LogOut size={16} /> {!vm.sidebarCollapsed && 'Encerrar Sessao'}
+            <LogOut size={16} /> Encerrar Sessao
           </button>
         </div>
       </aside>

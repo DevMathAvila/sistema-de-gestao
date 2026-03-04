@@ -8,8 +8,6 @@ import {
   LogOut,
   Menu,
   Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
   Shield,
   ShieldAlert,
   Sun,
@@ -35,8 +33,6 @@ export default function FabricaStatusPage() {
     toggleTheme,
     mobileMenuOpen,
     setMobileMenuOpen,
-    sidebarCollapsed,
-    setSidebarCollapsed,
     setoresComFalha,
     styles,
     sidebarLinks,
@@ -106,20 +102,15 @@ export default function FabricaStatusPage() {
         </div>
       )}
 
-      <aside className={`hidden md:flex ${sidebarCollapsed ? 'w-24' : 'w-64'} border-r ${styles.sidebar} p-4 flex-col z-20 transition-all duration-300`}>
-        <div className="flex items-center justify-between mb-10">
+      <aside className={`hidden md:flex w-60 border-r ${styles.sidebar} p-4 flex-col z-20 transition-all duration-300`}>
+        <div className="mb-10">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black text-xl text-white">L</div>
-            {!sidebarCollapsed && (
-              <div>
-                <h1 className="text-xl font-black tracking-tighter italic leading-none">LENOVO</h1>
-                <span className="text-[8px] font-bold tracking-[0.2em] text-red-600 uppercase">Core Dashboard</span>
-              </div>
-            )}
+            <div>
+              <h1 className="text-xl font-black tracking-tighter italic leading-none">LENOVO</h1>
+              <span className="text-[8px] font-bold tracking-[0.2em] text-red-600 uppercase">Core Dashboard</span>
+            </div>
           </div>
-          <button onClick={() => setSidebarCollapsed((v) => !v)} className={`p-2 rounded-lg border ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
-            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          </button>
         </div>
 
         <nav className="flex-1 space-y-2">
@@ -136,12 +127,10 @@ export default function FabricaStatusPage() {
                 }`}
               >
                 <Icon size={18} />
-                {!sidebarCollapsed && (
-                  <span className="leading-tight">
-                    <span className="block">{item.label}</span>
-                    {item.helper && <span className="block text-[8px] tracking-wide normal-case opacity-60">{item.helper}</span>}
-                  </span>
-                )}
+                <span className="leading-tight">
+                  <span className="block">{item.label}</span>
+                  {item.helper && <span className="block text-[8px] tracking-wide normal-case opacity-60">{item.helper}</span>}
+                </span>
               </button>
             );
           })}
@@ -149,15 +138,15 @@ export default function FabricaStatusPage() {
 
         <div className="mt-auto pt-6 border-t border-white/5 space-y-3">
           <button onClick={toggleTheme} className={`w-full p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>
-            {!sidebarCollapsed && <span className="text-[10px] font-black uppercase">Tema</span>}
+            <span className="text-[10px] font-black uppercase">Tema</span>
             {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
           </button>
           <div className={`flex items-center gap-4 p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}`}>
             <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center text-red-600"><User size={20} /></div>
-            {!sidebarCollapsed && <div className="overflow-hidden"><p className={`text-[8px] font-black uppercase ${styles.subtext}`}>Usuario:</p><p className="text-sm font-black truncate italic leading-none">{user.username}</p></div>}
+            <div className="overflow-hidden"><p className={`text-[8px] font-black uppercase ${styles.subtext}`}>Usuario:</p><p className="text-sm font-black truncate italic leading-none">{user.username}</p></div>
           </div>
           <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 p-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl uppercase text-xs">
-            <LogOut size={16} /> {!sidebarCollapsed && 'Encerrar Sessao'}
+            <LogOut size={16} /> Encerrar Sessao
           </button>
         </div>
       </aside>

@@ -37,6 +37,37 @@ function formatDateBr(value) {
   return dt.toLocaleDateString('pt-BR');
 }
 
+function formatDateTimeBr(value) {
+  if (!value) return '-';
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return '-';
+  return dt.toLocaleString('pt-BR');
+}
+
+function toValidDate(value) {
+  const dt = new Date(value || '');
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function formatDurationHours(hours) {
+  if (!Number.isFinite(hours) || hours < 0) return '-';
+  const totalMinutes = Math.round(hours * 60);
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+
+  if (totalMinutes < 24 * 60) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}min`;
+  }
+
+  const d = Math.floor(totalMinutes / (24 * 60));
+  const rem = totalMinutes % (24 * 60);
+  const h = Math.floor(rem / 60);
+  if (h === 0) return `${d} dias`;
+  return `${d}d ${h}h`;
+}
+
 function extractOpenedAt(item) {
   return item?.data || item?.aberto_em || item?.created_at || null;
 }
@@ -80,6 +111,30 @@ function parseEvent(item) {
   };
 }
 
+function isSigaWaiting(item) {
+  if (!item) return false;
+  const enviado = Boolean(item.siga_enviado);
+  const status = String(item.siga_status || '').toUpperCase();
+  return enviado || status === 'AGUARDANDO';
+}
+
+function isSigaFinalized(item) {
+  if (!item) return false;
+  const enviado = Boolean(item.siga_enviado);
+  const status = String(item.siga_status || '').toUpperCase();
+  return enviado || status === 'FINALIZADO';
+}
+
+function getSigaOpenedAt(item) {
+  // Usa preferencialmente timestamp real de envio para SIGA.
+  // `siga_data_abertura` e um campo de data sem hora (00:00), que distorce o tempo.
+  return item?.siga_enviado_em || item?.data || item?.siga_data_abertura || null;
+}
+
+function getSigaClosedAt(item) {
+  return item?.siga_finalizado_em || item?.resolvido_em || null;
+}
+
 function computeTempoSemManutencao(concluidasRows) {
   const groups = {};
   concluidasRows.forEach((row) => {
@@ -117,9 +172,9 @@ export async function fetchDashboardDataset(dataInicio, dataFim) {
   };
 }
 
-export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows) {
+export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, referenceNow = null) {
   const registros = Array.isArray(kpiRows) ? kpiRows : [];
-  const nowDate = new Date();
+  const nowDate = referenceNow instanceof Date ? referenceNow : new Date();
   const totalGeral = registros.length;
   const totalPendentes = registros.filter((r) => isOpenRecord(r)).length;
   const totalConcluidas = registros.filter((r) => isConcludedRecord(r)).length;
@@ -230,6 +285,87 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows) {
       return (b.agingMs || 0) - (a.agingMs || 0);
     });
 
+  const sigaChamadosAbertos = (abertasRows || [])
+    .filter((row) => isSigaWaiting(row))
+    .map((row, idx) => ({
+      id: row?.id || `siga-${idx}`,
+      setor: row?.setor || 'N/I',
+      trave: row?.trave ?? '-',
+      ponto: row?.ponto || '-',
+      falha: splitFalhas(row?.falha).join(', ') || '-',
+      enviadoEm: row?.siga_enviado_em || row?.data || null,
+      enviadoEmLabel: formatDateTimeBr(row?.siga_enviado_em || row?.data),
+      codigoChamado: row?.siga_codigo_chamado || '-',
+      status: String(row?.siga_status || 'AGUARDANDO').toUpperCase(),
+    }))
+    .sort((a, b) => new Date(b.enviadoEm || 0) - new Date(a.enviadoEm || 0));
+
+  const sigaAtendimentoEmAndamento = sigaChamadosAbertos
+    .map((row) => {
+      const opened = toValidDate(row?.enviadoEm);
+      if (!opened) return null;
+      const hours = Math.max(0, (nowDate.getTime() - opened.getTime()) / (1000 * 60 * 60));
+      return {
+        id: row.id,
+        hours,
+        label: formatDurationHours(hours),
+      };
+    })
+    .filter(Boolean);
+
+  const sigaChamadosFinalizados = (concluidasRows || [])
+    .filter((row) => isSigaFinalized(row))
+    .map((row, idx) => {
+      const openedAt = getSigaOpenedAt(row);
+      const closedAt = getSigaClosedAt(row);
+      const openedDate = toValidDate(openedAt);
+      const closedDate = toValidDate(closedAt);
+      const atendimentoHours = openedDate && closedDate
+        ? Math.max(0, (closedDate.getTime() - openedDate.getTime()) / (1000 * 60 * 60))
+        : null;
+
+      return {
+        id: row?.id || `siga-final-${idx}`,
+        setor: row?.setor || 'N/I',
+        trave: row?.trave ?? '-',
+        ponto: row?.ponto || '-',
+        falha: splitFalhas(row?.falha).join(', ') || '-',
+        codigoChamado: row?.siga_codigo_chamado || '-',
+        abertoEm: openedAt,
+        abertoEmLabel: formatDateTimeBr(openedAt),
+        fechadoEm: closedAt,
+        fechadoEmLabel: formatDateTimeBr(closedAt),
+        atendimentoHours,
+        atendimentoLabel: formatDurationHours(atendimentoHours),
+      };
+    })
+    .sort((a, b) => new Date(b.fechadoEm || 0) - new Date(a.fechadoEm || 0));
+
+  const atendimentoSamplesFinalizados = sigaChamadosFinalizados
+    .map((item) => item.atendimentoHours)
+    .filter((hours) => Number.isFinite(hours));
+  const atendimentoSamples = [...atendimentoSamplesFinalizados];
+
+  const atendimentoTotalHoras = atendimentoSamples.reduce((sum, value) => sum + value, 0);
+  const atendimentoMedioHoras = atendimentoSamples.length ? atendimentoTotalHoras / atendimentoSamples.length : null;
+  const atendimentoMaxHoras = atendimentoSamples.length ? Math.max(...atendimentoSamples) : null;
+  const sigaChamadosPendentes = sigaChamadosAbertos.length;
+  const sigaChamadosFechados = sigaChamadosFinalizados.length;
+  const sigaChamadosAbertosTotais = sigaChamadosPendentes + sigaChamadosFechados;
+
+  const sigaResumo = {
+    chamadosAbertosTotais: sigaChamadosAbertosTotais,
+    chamadosPendentes: sigaChamadosPendentes,
+    chamadosFechados: sigaChamadosFechados,
+    atendimentoTotalHoras,
+    atendimentoTotalLabel: formatDurationHours(atendimentoTotalHoras),
+    atendimentoMedioHoras,
+    atendimentoMedioLabel: formatDurationHours(atendimentoMedioHoras),
+    atendimentoMaxHoras,
+    atendimentoMaxLabel: formatDurationHours(atendimentoMaxHoras),
+    chamadosEmAndamento: sigaAtendimentoEmAndamento.length,
+  };
+
   const setorAgingMap = {};
   pendingAging.forEach((item) => {
     if (!setorAgingMap[item.setor]) {
@@ -280,6 +416,9 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows) {
     pontosStatusResumo,
     pendingAging,
     setorAgingResumo,
+    sigaChamadosAbertos,
+    sigaChamadosFinalizados,
+    sigaResumo,
     expectedMaintenanceDays: EXPECTED_MAINTENANCE_DAYS,
     generatedAt: nowDate.toISOString(),
     tempoSemManutencao,

@@ -1,9 +1,13 @@
 import {
+  finalizarFalhaViaSiga,
   fecharRegistros,
   inserirRegistrosFalha,
   listarChamadosAbertosPorSetor,
   listarFalhasAbertas,
+  listarFalhasSigaAguardando,
+  listarFalhasSigaFinalizados,
   listarHistoricoRecentePorPonto,
+  marcarFalhasParaSiga,
 } from '../../../core/api/supabaseSecure';
 
 const OPEN_FAILURES_CACHE_TTL_MS = 4000;
@@ -35,7 +39,11 @@ export async function fetchFalhasAbertas({ force = false } = {}) {
   openFailuresInFlight = listarFalhasAbertas()
     .then(({ data, error }) => {
       if (error) throw error;
-      const filtered = (data || []).filter((f) => f.setor && f.trave);
+      const filtered = (data || []).filter((f) => {
+        if (!f.setor || !f.trave) return false;
+        const enviadoSiga = Boolean(f?.siga_enviado) || String(f?.siga_status || '').toUpperCase() === 'AGUARDANDO';
+        return !enviadoSiga;
+      });
       openFailuresCache = { timestamp: Date.now(), data: filtered };
       return filtered;
     })
@@ -59,6 +67,28 @@ export async function createFalhaRegistro({ setor, trave, pontos, falhas }) {
 
 export async function concluirFalhas({ ids, solucao, falhasSelecionadas }) {
   const { error } = await fecharRegistros(ids, solucao, falhasSelecionadas);
+  if (error) throw error;
+}
+
+export async function enviarFalhasParaSiga({ ids }) {
+  const { error } = await marcarFalhasParaSiga(ids);
+  if (error) throw error;
+}
+
+export async function fetchSigaAguardando() {
+  const { data, error } = await listarFalhasSigaAguardando();
+  if (error) throw error;
+  return data || [];
+}
+
+export async function fetchSigaFinalizados() {
+  const { data, error } = await listarFalhasSigaFinalizados();
+  if (error) throw error;
+  return data || [];
+}
+
+export async function concluirSiga({ id, diaAbertura, codigoChamado }) {
+  const { error } = await finalizarFalhaViaSiga({ id, diaAbertura, codigoChamado });
   if (error) throw error;
 }
 
