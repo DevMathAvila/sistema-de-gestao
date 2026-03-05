@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import Clock3 from 'lucide-react/dist/esm/icons/clock-3';
 import Monitor from 'lucide-react/dist/esm/icons/monitor';
@@ -29,10 +29,32 @@ export default function CloseFailureModal({
   setMostrarHistoricoCompleto,
 }) {
   if (!modalData) return null;
+  const [customPreset, setCustomPreset] = useState('');
+  const presetOptions = useMemo(
+    () => ([
+      'Testado - Validado - Funcionando',
+      'Manutencao feita no CABO RJ45',
+      'VGA Trocado por um novo',
+      'HDMI Trocado por um novo',
+    ]),
+    []
+  );
+
+  const handleApplyPreset = (value) => {
+    if (!value) return;
+    setSolucaoTexto(value);
+  };
+
+  const handleAddPreset = () => {
+    const trimmed = String(customPreset || '').trim();
+    if (!trimmed) return;
+    setSolucaoTexto(trimmed);
+    setCustomPreset('');
+  };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl`}>
+      <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 w-full max-w-sm rounded-[2rem] shadow-2xl max-h-[85vh] flex flex-col`}>
         <div className={`p-6 flex justify-between items-center ${etapaFechamento ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-xl ${etapaFechamento ? 'bg-green-500' : 'bg-red-600'} text-white`}>
@@ -48,7 +70,7 @@ export default function CloseFailureModal({
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto">
           {String(modalData.ponto) !== 'Todos' && (
             <section className={`mb-5 p-4 rounded-xl border ${styles.mutedCard}`}>
               <div className="flex items-center gap-2 mb-3">
@@ -154,6 +176,44 @@ export default function CloseFailureModal({
                   ))}
                 </div>
               </div>
+              <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'} rounded-xl p-3`}>
+                <p className="text-[8px] font-black uppercase opacity-60 mb-2">Frases prontas</p>
+                <div className="flex flex-wrap gap-2">
+                  {presetOptions.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => handleApplyPreset(opt)}
+                      className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase transition-all ${
+                        solucaoTexto === opt
+                          ? 'bg-red-600 text-white'
+                          : theme === 'dark'
+                            ? 'bg-white/10 text-white hover:bg-white/20'
+                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customPreset}
+                    onChange={(e) => setCustomPreset(e.target.value)}
+                    placeholder="Adicionar opcao propria"
+                    className={`flex-1 ${styles.input} h-10 px-3 rounded-xl outline-none text-[10px]`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddPreset}
+                    className="h-10 w-10 rounded-xl bg-red-600 text-white font-black text-sm hover:bg-red-700"
+                    aria-label="Adicionar frase"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
               <textarea
                 autoFocus
                 placeholder="Relatorio de solucao..."
@@ -180,3 +240,4 @@ export default function CloseFailureModal({
     </div>
   );
 }
+
