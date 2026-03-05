@@ -342,6 +342,23 @@ export async function listarRegistrosAbertos(dataInicio = null, dataFim = null) 
   return { data: dataFiltrada, error: null };
 }
 
+export async function listarRegistrosInseridosNoSistema(dataInicio = null, dataFim = null) {
+  const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
+  const { data, error } = await supabase
+    .from('registros_falhas')
+    .select('id, data')
+    .order('data', { ascending: false });
+
+  if (error) return { data: [], error };
+
+  const base = Array.isArray(data) ? data : [];
+  const dataFiltrada = inicioMs != null || fimExclusiveMs != null
+    ? base.filter((item) => isInRange(item?.data, inicioMs, fimExclusiveMs))
+    : base;
+
+  return { data: dataFiltrada, error: null };
+}
+
 export async function listarRegistrosParaKPI(dataInicio = null, dataFim = null) {
   const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
 

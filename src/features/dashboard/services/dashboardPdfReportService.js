@@ -59,7 +59,9 @@ function renderExecutiveSummary(metrics, sections) {
   const criticalSetor = metrics.setorAgingResumo?.[0];
 
   const linhas = [
+    `Chamados inseridos no sistema (periodo): ${safe(metrics?.chamadosInseridosNoSistema, '0')}.`,
     `Total de registros analisados: ${metrics.totalGeral}.`,
+    `Total de falhas fechadas no periodo: ${safe(metrics.totalConcluidas, '0')}.`,
     `Pendentes: ${metrics.totalPendentes}; Concluidas: ${metrics.totalConcluidas}.`,
   ];
 
@@ -93,9 +95,10 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   const generatedAt = formatDateTime(metrics?.generatedAt || new Date());
   const expectedDays = Number(metrics?.expectedMaintenanceDays || 0);
   const isWeeklyExecutive = preset === 'weeklyExecutive';
+  const chamadosInseridos = Number(metrics?.chamadosInseridosNoSistema || 0);
 
   const setoresRows = renderRows(
-    metrics.porSetor?.slice(0, 8),
+    metrics.porSetor?.slice(0, 6),
     (item, idx) => `
       <tr>
         <td>${idx + 1}</td>
@@ -119,7 +122,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   );
 
   const agingRows = renderRows(
-    metrics.pendingAging?.slice(0, 15),
+    metrics.pendingAging?.slice(0, 8),
     (item, idx) => `
       <tr class="${item.aboveSla ? 'critical' : ''}">
         <td>${idx + 1}</td>
@@ -135,7 +138,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   );
 
   const setorAgingRows = renderRows(
-    metrics.setorAgingResumo?.slice(0, 8),
+    metrics.setorAgingResumo?.slice(0, 6),
     (item, idx) => `
       <tr>
         <td>${idx + 1}</td>
@@ -150,7 +153,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   );
 
   const setorInsightsRows = renderRows(
-    metrics.setorInsights,
+    metrics.setorInsights?.slice(0, 6),
     (item) => `
       <tr>
         <td>${escapeHtml(item.setor)}</td>
@@ -161,7 +164,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   );
 
   const pontosRows = renderRows(
-    metrics.pontosHistorico?.slice(0, 8),
+    metrics.pontosHistorico?.slice(0, 6),
     (item, idx) => `
       <tr>
         <td>${idx + 1}</td>
@@ -175,7 +178,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   );
 
   const pontoStatusRows = renderRows(
-    metrics.pontosStatusResumo,
+    metrics.pontosStatusResumo?.slice(0, 8),
     (item, idx) => `
       <tr>
         <td>${idx + 1}</td>
@@ -190,7 +193,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   );
 
   const sigaRows = renderRows(
-    metrics.sigaChamadosAbertos?.slice(0, 20),
+    metrics.sigaChamadosAbertos?.slice(0, 10),
     (item, idx) => `
       <tr>
         <td>${idx + 1}</td>
@@ -206,7 +209,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   );
 
   const sigaFinalizadosRows = renderRows(
-    metrics.sigaChamadosFinalizados?.slice(0, 20),
+    metrics.sigaChamadosFinalizados?.slice(0, 10),
     (item, idx) => `
       <tr>
         <td>${idx + 1}</td>
@@ -225,19 +228,6 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   const sigaTotal = Math.max(sigaPendentes + sigaFechados, 1);
   const sigaPendentesPct = toPercent(sigaPendentes, sigaTotal);
   const sigaPieStyle = `conic-gradient(#dc2626 0 ${sigaPendentesPct}%, #16a34a ${sigaPendentesPct}% 100%)`;
-
-  const closedFailuresSection = selectedSections.closedFailures
-    ? `
-    <div class="box section">
-      <h2>Falhas Fechadas no Periodo</h2>
-      <table>
-        <thead><tr><th>Indicador</th><th>Valor</th></tr></thead>
-        <tbody>
-          <tr><td>Total de falhas fechadas</td><td>${safe(metrics.totalConcluidas, '0')}</td></tr>
-        </tbody>
-      </table>
-    </div>`
-    : '';
 
   const rankingSection = selectedSections.ranking
     ? `
@@ -444,7 +434,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
     }
     .meta {
       display: grid;
-      grid-template-columns: repeat(4, minmax(100px, 1fr));
+      grid-template-columns: repeat(5, minmax(100px, 1fr));
       gap: 8px;
       margin-top: 10px;
     }
@@ -520,6 +510,14 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
     .kpi-main { margin: 2px 0 8px; color: var(--red); font-size: 22px; font-weight: 800; }
     .kpi-sub { margin: 0 0 5px; font-size: 10px; color: #475569; }
     .section { margin-top: 10px; }
+    .section-note {
+      margin: 8px 10px 0;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #64748b;
+      font-weight: 700;
+    }
     .foot {
       margin-top: 10px;
       color: #94a3b8;
@@ -527,8 +525,10 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
       text-align: right;
     }
     @media print {
-      body { margin: 8mm; }
+      body { margin: 7mm; }
       .hero, .box { break-inside: avoid; page-break-inside: avoid; }
+      table { font-size: 9px; }
+      th, td { padding: 5px 6px; }
     }
   </style>
 </head>
@@ -541,6 +541,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
 
     <div class="meta">
       <div class="card"><p class="k">Total de Falhas</p><p class="v">${safe(metrics.totalGeral, '0')}</p></div>
+      <div class="card"><p class="k">Chamados inseridos no sistema</p><p class="v">${safe(chamadosInseridos, '0')}</p></div>
       <div class="card"><p class="k">Pendentes</p><p class="v">${safe(metrics.totalPendentes, '0')}</p></div>
       <div class="card"><p class="k">Concluidas</p><p class="v">${safe(metrics.totalConcluidas, '0')}</p></div>
       <div class="card"><p class="k">SLA esperado</p><p class="v">${escapeHtml(`${expectedDays} dia`)}</p></div>
@@ -550,12 +551,11 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   <div class="compact-grid">
     <div class="box">
       <h2>Leitura Executiva</h2>
+      <p class="section-note">Chamados inseridos no sistema: ${safe(chamadosInseridos, '0')}</p>
       <ul>${renderExecutiveSummary(metrics, selectedSections)}</ul>
     </div>
     ${volumeSection}
   </div>
-
-  ${closedFailuresSection}
 
   ${executiveVisualSection}
 
@@ -571,6 +571,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
 
   <div class="box section">
     <h2>Status por Ponto (Pendentes x Concluidas)</h2>
+    <p class="section-note">Chamados inseridos no sistema: ${safe(chamadosInseridos, '0')}</p>
     <table>
       <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Pendentes</th><th>Concluidas</th></tr></thead>
       <tbody>${pontoStatusRows}</tbody>

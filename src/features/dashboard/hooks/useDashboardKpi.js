@@ -14,6 +14,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
     kpiRows: [],
     concluidasRows: [],
     abertasRows: [],
+    inseridosRows: [],
   });
   const [loadingKpi, setLoadingKpi] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -46,7 +47,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
 
   useEffect(() => {
     if (intervaloInvalido) {
-      setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [] });
+      setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], inseridosRows: [] });
       setLoadingKpi(false);
       return;
     }
@@ -76,13 +77,14 @@ export function useDashboardKpi(dataInicio, dataFim) {
       .then((res) => {
         if (cancelled) return;
         if (res?.hasError) {
-          setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [] });
+          setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], inseridosRows: [] });
           return;
         }
         const nextDataset = {
           kpiRows: Array.isArray(res?.kpiRows) ? res.kpiRows : [],
           concluidasRows: Array.isArray(res?.concluidasRows) ? res.concluidasRows : [],
           abertasRows: Array.isArray(res?.abertasRows) ? res.abertasRows : [],
+          inseridosRows: Array.isArray(res?.inseridosRows) ? res.inseridosRows : [],
         };
         dashboardDatasetCache.set(cacheKey, {
           dataset: nextDataset,
@@ -92,7 +94,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
       })
       .catch(() => {
         if (!cancelled) {
-          setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [] });
+          setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], inseridosRows: [] });
         }
       })
       .finally(() => {
@@ -105,7 +107,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
   }, [dataInicio, dataFim, intervaloInvalido, datasetVersion]);
 
   const computed = useMemo(
-    () => computeDashboardMetrics(dataset.kpiRows, dataset.concluidasRows, dataset.abertasRows, new Date(nowTick)),
+    () => computeDashboardMetrics(dataset.kpiRows, dataset.concluidasRows, dataset.abertasRows, dataset.inseridosRows, new Date(nowTick)),
     [dataset, nowTick]
   );
 

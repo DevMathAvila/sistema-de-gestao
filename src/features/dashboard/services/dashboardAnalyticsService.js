@@ -1,5 +1,6 @@
 import {
   listarOcorrenciasConcluidas,
+  listarRegistrosInseridosNoSistema,
   listarRegistrosAbertos,
   listarRegistrosParaKPI,
 } from '../../../core/api/supabaseSecure';
@@ -158,26 +159,29 @@ function computeTempoSemManutencao(concluidasRows) {
 }
 
 export async function fetchDashboardDataset(dataInicio, dataFim) {
-  const [kpiRes, concluidasRes, abertasRes] = await Promise.all([
+  const [kpiRes, concluidasRes, abertasRes, inseridosRes] = await Promise.all([
     listarRegistrosParaKPI(dataInicio || null, dataFim || null),
     listarOcorrenciasConcluidas(dataInicio || null, dataFim || null),
     listarRegistrosAbertos(dataInicio || null, dataFim || null),
+    listarRegistrosInseridosNoSistema(dataInicio || null, dataFim || null),
   ]);
 
   return {
     kpiRows: Array.isArray(kpiRes?.data) ? kpiRes.data : [],
     concluidasRows: Array.isArray(concluidasRes?.data) ? concluidasRes.data : [],
     abertasRows: Array.isArray(abertasRes?.data) ? abertasRes.data : [],
-    hasError: Boolean(kpiRes?.error || concluidasRes?.error || abertasRes?.error),
+    inseridosRows: Array.isArray(inseridosRes?.data) ? inseridosRes.data : [],
+    hasError: Boolean(kpiRes?.error || concluidasRes?.error || abertasRes?.error || inseridosRes?.error),
   };
 }
 
-export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, referenceNow = null) {
+export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, inseridosRows = [], referenceNow = null) {
   const registros = Array.isArray(kpiRows) ? kpiRows : [];
   const nowDate = referenceNow instanceof Date ? referenceNow : new Date();
   const totalGeral = registros.length;
   const totalPendentes = registros.filter((r) => isOpenRecord(r)).length;
   const totalConcluidas = registros.filter((r) => isConcludedRecord(r)).length;
+  const chamadosInseridosNoSistema = Array.isArray(inseridosRows) ? inseridosRows.length : 0;
 
   const setorCount = {};
   registros.forEach((r) => {
@@ -406,6 +410,7 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, re
     totalGeral,
     totalPendentes,
     totalConcluidas,
+    chamadosInseridosNoSistema,
     pendentesDetalhe: (abertasRows || []).length,
     concluidasDetalhe: (concluidasRows || []).length,
     porSetor,

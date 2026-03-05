@@ -35,6 +35,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
     totalGeral,
     totalPendentes,
     totalConcluidas,
+    chamadosInseridosNoSistema,
     porSetor,
     porStatus,
     top5,
@@ -63,6 +64,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       totalGeral,
       totalPendentes,
       totalConcluidas,
+      chamadosInseridosNoSistema,
       porSetor,
       porStatus,
       top5,
@@ -94,6 +96,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       tempoSemManutencao,
       top5,
       totalConcluidas,
+      chamadosInseridosNoSistema,
       totalGeral,
       totalPendentes,
     ]
