@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
 const EMAIL_DOMAIN = 'lenovo.app';
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  console.error('Missing SUPABASE_URL and/or service role key (SUPABASE_SERVICE_ROLE_KEY or SERVICE_ROLE_KEY).');
   process.exit(1);
 }
 

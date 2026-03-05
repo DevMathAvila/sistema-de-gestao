@@ -156,6 +156,24 @@ drop policy if exists avisos_insert_admin on public.avisos;
 -- -----------------------------------------------------------------------------
 -- 6) RLS NOVO (AUTH + PERFIL)
 -- -----------------------------------------------------------------------------
+-- helper sem recursao de policy
+create or replace function public.is_admin_or_master()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.usuarios u
+    where u.auth_user_id = auth.uid()
+      and lower(u.role) in ('admin', 'master')
+  );
+$$;
+
+revoke all on function public.is_admin_or_master() from public;
+grant execute on function public.is_admin_or_master() to authenticated;
+
 -- usuarios: usuario ve proprio perfil
 create policy usuarios_select_own
 on public.usuarios
@@ -168,14 +186,7 @@ create policy usuarios_select_admin_all
 on public.usuarios
 for select
 to authenticated
-using (
-  exists (
-    select 1
-    from public.usuarios me
-    where me.auth_user_id = auth.uid()
-      and lower(me.role) in ('admin', 'master')
-  )
-);
+using (public.is_admin_or_master());
 
 -- usuarios: sem insert/update/delete pelo cliente (edge function com service role)
 
@@ -216,14 +227,7 @@ create policy avisos_insert_admin
 on public.avisos
 for insert
 to authenticated
-with check (
-  exists (
-    select 1
-    from public.usuarios me
-    where me.auth_user_id = auth.uid()
-      and lower(me.role) in ('admin', 'master')
-  )
-);
+with check (public.is_admin_or_master());
 
 -- -----------------------------------------------------------------------------
 -- 7) DIAGNOSTICO RAPIDO
@@ -238,4 +242,3 @@ select u.username, u.auth_user_id, a.email
 from public.usuarios u
 left join auth.users a on a.id = u.auth_user_id
 order by u.username;
-
