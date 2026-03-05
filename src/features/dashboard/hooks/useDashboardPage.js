@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearSessionData, getSessionUser, isAdminUser } from '../../../core/auth/session';
+import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { useBodyScrollLock } from '../../../shared/hooks/useBodyScrollLock';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
+import { logoutUser } from '../../auth/services/authService';
 
 export function useDashboardPage() {
   const navigate = useNavigate();
@@ -20,8 +21,8 @@ export function useDashboardPage() {
     subtext: theme === 'dark' ? 'text-gray-500' : 'text-slate-400',
   }), [theme]);
 
-  const handleLogout = () => {
-    clearSessionData();
+  const handleLogout = async () => {
+    await logoutUser();
     navigate('/', { replace: true });
   };
 

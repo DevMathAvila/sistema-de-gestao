@@ -164,7 +164,7 @@ export async function getUsuarioParaLogin(username, senha) {
 export async function listarUsuarios() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, username, senha, role')
+    .select('id, username, role')
     .order('username');
 
   return { data: data || [], error };

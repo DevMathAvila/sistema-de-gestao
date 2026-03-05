@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearSessionData, getSessionUser, isAdminUser } from '../../../core/auth/session';
+import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { LISTA_SETORES } from '../../../shared/constants/setores';
 import { useBodyScrollLock } from '../../../shared/hooks/useBodyScrollLock';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
 import { fetchFalhasAbertas } from '../services/failuresService';
 import { getFailureTheme } from '../styles/failureTheme';
+import { logoutUser } from '../../auth/services/authService';
 
 export function useFabricaStatusPage() {
   const navigate = useNavigate();
@@ -34,9 +35,9 @@ export function useFabricaStatusPage() {
     return () => clearInterval(interval);
   }, [buscarFalhas]);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     setSetoresComFalha([]);
-    clearSessionData();
+    await logoutUser();
     navigate('/', { replace: true });
   }, [navigate]);
 

@@ -1,83 +1,63 @@
 -- =============================================================================
--- RLS (Row Level Security) — Lenovo Asset System
+-- RLS (Row Level Security) — Lenovo Asset System (Auth + Profiles)
 -- Execute no Supabase: SQL Editor → New query → Cole este conteúdo → Run
 -- =============================================================================
--- Isso impede que qualquer pessoa com a anon key apague ou altere dados
--- de forma indevida. A aplicação continua usando a anon key no front-end.
--- =============================================================================
 
--- 1) TABELA: usuarios
--- Habilitar RLS
+-- 1) TABELA: usuarios (perfil)
 ALTER TABLE IF EXISTS public.usuarios ENABLE ROW LEVEL SECURITY;
 
--- Política: permitir SELECT para qualquer um (necessário para o login)
-CREATE POLICY "usuarios_select_anon"
-  ON public.usuarios FOR SELECT
-  TO anon
-  USING (true);
-
--- Política: permitir INSERT apenas para usuários autenticados (opcional: restringir depois com Supabase Auth)
--- Por enquanto permitimos INSERT para o app admin funcionar; para travar criação de usuários pela API pública, use a política comentada abaixo.
-CREATE POLICY "usuarios_insert_anon"
-  ON public.usuarios FOR INSERT
-  TO anon
-  WITH CHECK (true);
-
--- UPDATE: permitir para anon para viabilizar troca de senha no Dashboard.
--- Observação: sem Supabase Auth no app, não há vínculo forte de identidade no banco.
--- Para ambiente de produção, prefira mover esta ação para Edge Function com service_role.
-DROP POLICY IF EXISTS "usuarios_deny_update_anon" ON public.usuarios;
+-- Remover politicas antigas (se existirem)
+DROP POLICY IF EXISTS "usuarios_select_anon" ON public.usuarios;
+DROP POLICY IF EXISTS "usuarios_insert_anon" ON public.usuarios;
 DROP POLICY IF EXISTS "usuarios_update_anon" ON public.usuarios;
-CREATE POLICY "usuarios_update_anon"
-  ON public.usuarios FOR UPDATE
-  TO anon
-  USING (true)
-  WITH CHECK (true);
+DROP POLICY IF EXISTS "usuarios_delete_anon" ON public.usuarios;
+DROP POLICY IF EXISTS "usuarios_select_own" ON public.usuarios;
 
--- DELETE: permitido para anon para o painel Admin (Remover usuário) funcionar.
--- Para máxima segurança (só remover usuários pelo Dashboard ou Edge Function),
--- comente o bloco abaixo e remova a política usuarios_delete_anon.
-DROP POLICY IF EXISTS "usuarios_deny_delete_anon" ON public.usuarios;
-CREATE POLICY "usuarios_delete_anon"
-  ON public.usuarios FOR DELETE
-  TO anon
-  USING (true);
+-- Apenas o proprio usuario autenticado pode ler seu perfil
+CREATE POLICY "usuarios_select_own"
+  ON public.usuarios FOR SELECT
+  TO authenticated
+  USING (auth.uid() = auth_user_id);
 
--- Se preferir que NINGUÉM crie usuário pela anon key (só pelo Dashboard ou Edge Function), descomente:
--- DROP POLICY IF EXISTS "usuarios_insert_anon" ON public.usuarios;
--- Depois crie usuários apenas pelo Supabase Dashboard ou por uma Edge Function com service_role.
+-- Bloqueia insert/update/delete via cliente
+-- (essas operacoes ficam no Edge Function com service_role)
 
 
 -- 2) TABELA: registros_falhas
 ALTER TABLE IF EXISTS public.registros_falhas ENABLE ROW LEVEL SECURITY;
 
--- SELECT: permitir leitura para o app (dashboard, monitor, visualizar)
-CREATE POLICY "registros_falhas_select_anon"
+-- Remover politicas antigas
+DROP POLICY IF EXISTS "registros_falhas_select_anon" ON public.registros_falhas;
+DROP POLICY IF EXISTS "registros_falhas_insert_anon" ON public.registros_falhas;
+DROP POLICY IF EXISTS "registros_falhas_update_anon" ON public.registros_falhas;
+DROP POLICY IF EXISTS "registros_falhas_deny_delete_anon" ON public.registros_falhas;
+
+-- SELECT: apenas autenticados
+CREATE POLICY "registros_falhas_select_auth"
   ON public.registros_falhas FOR SELECT
-  TO anon
+  TO authenticated
   USING (true);
 
--- INSERT: permitir para técnicos registrarem falhas
-CREATE POLICY "registros_falhas_insert_anon"
+-- INSERT: apenas autenticados
+CREATE POLICY "registros_falhas_insert_auth"
   ON public.registros_falhas FOR INSERT
-  TO anon
+  TO authenticated
   WITH CHECK (true);
 
--- UPDATE: permitir para fechar chamados (status, solucao, etc.)
-CREATE POLICY "registros_falhas_update_anon"
+-- UPDATE: apenas autenticados (fechamento, SIGA, etc)
+CREATE POLICY "registros_falhas_update_auth"
   ON public.registros_falhas FOR UPDATE
-  TO anon
+  TO authenticated
   USING (true)
   WITH CHECK (true);
 
--- DELETE: BLOQUEAR para anon — ninguém apaga registros pela aplicação pública
-DROP POLICY IF EXISTS "registros_falhas_delete_anon" ON public.registros_falhas;
-CREATE POLICY "registros_falhas_deny_delete_anon"
+-- DELETE: bloqueado para cliente
+DROP POLICY IF EXISTS "registros_falhas_delete_auth" ON public.registros_falhas;
+CREATE POLICY "registros_falhas_deny_delete_auth"
   ON public.registros_falhas FOR DELETE
-  TO anon
+  TO authenticated
   USING (false);
 
 -- =============================================================================
--- Após executar, teste o app: login, registrar falha, fechar chamado, admin.
--- Se algo deixar de funcionar, verifique as políticas no Dashboard (Table → RLS).
+-- Apos executar, teste: login, registrar falha, fechar chamado, admin.
 -- =============================================================================

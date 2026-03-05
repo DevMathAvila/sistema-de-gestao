@@ -1,19 +1,47 @@
 import * as api from '../../../core/api/supabaseSecure';
+import { supabase } from '../../../core/api/supabaseClient';
+
+async function getAccessToken() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  const token = data?.session?.access_token || '';
+  if (!token) throw new Error('Sessao expirada. Faca login novamente.');
+  return token;
+}
+
+async function invokeAdminFunction(fnName, payload) {
+  const accessToken = await getAccessToken();
+  const { data, error } = await supabase.functions.invoke(fnName, {
+    body: payload,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (error) {
+    if (error?.context) {
+      try {
+        const body = await error.context.json();
+        throw new Error(body?.error || body?.message || error.message || 'Falha na Edge Function.');
+      } catch {
+        throw new Error(error.message || 'Falha na Edge Function.');
+      }
+    }
+    throw new Error(error.message || 'Falha na Edge Function.');
+  }
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
 
 export async function loadUsuarios() {
-  const { data, error } = await api.listarUsuarios();
-  if (error) throw error;
-  return data || [];
+  const data = await invokeAdminFunction('admin-users-list');
+  return Array.isArray(data?.users) ? data.users : [];
 }
 
 export async function createUsuario(payload) {
-  const { error } = await api.criarUsuario(payload);
-  if (error) throw error;
+  await invokeAdminFunction('admin-users-create', payload);
 }
 
-export async function removeUsuario(id) {
-  const { error } = await api.removerUsuario(id);
-  if (error) throw error;
+export async function removeUsuario(authUserId) {
+  if (!authUserId) throw new Error('Usuario invalido.');
+  await invokeAdminFunction('admin-users-delete', { authUserId });
 }
 
 export async function loadParetoStats(setorFiltro) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearSessionData, getSessionUser, isAdminUser } from '../../../core/auth/session';
+import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { LISTA_SETORES } from '../../../shared/constants/setores';
 import { useBodyScrollLock } from '../../../shared/hooks/useBodyScrollLock';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
@@ -23,6 +23,7 @@ import {
   salvarRascunhoSiga,
 } from '../services/failuresService';
 import { getFailureTheme } from '../styles/failureTheme';
+import { logoutUser } from '../../auth/services/authService';
 
 const SIGA_PORTAL_URL = 'https://siga.auvo.com.br/Ticket/Novo';
 
@@ -198,8 +199,8 @@ export function useVisualizarFalhasPage() {
 
   const historicoVisivel = isMobileView && !mostrarHistoricoCompleto ? historicoPonto.slice(0, 3) : historicoPonto;
 
-  const handleLogout = useCallback(() => {
-    clearSessionData();
+  const handleLogout = useCallback(async () => {
+    await logoutUser();
     navigate('/', { replace: true });
   }, [navigate]);
 

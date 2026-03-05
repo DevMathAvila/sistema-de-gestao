@@ -36,7 +36,7 @@ export default function AdminUsersTab({
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase ml-2 opacity-50">Senha de Acesso</label>
             <input
-              type="text"
+              type="password"
               placeholder="••••"
               className={`${s.input} w-full p-4 rounded-2xl focus:ring-2 ring-red-600/20 outline-none text-sm font-mono transition-all`}
               value={novoUser.senha}
@@ -71,7 +71,6 @@ export default function AdminUsersTab({
             >
               <th className="p-6 text-red-600">Nivel</th>
               <th className="p-6 text-current">Usuario</th>
-              <th className="p-6 text-current">Credencial</th>
               {isMaster && <th className="p-6 text-right">Acao</th>}
             </tr>
           </thead>
@@ -86,11 +85,10 @@ export default function AdminUsersTab({
                   </span>
                 </td>
                 <td className="p-6 font-bold">{u.username}</td>
-                <td className="p-6 font-mono text-xs opacity-50">{u.senha}</td>
                 {isMaster && (
                   <td className="p-6 text-right">
                     <button
-                      onClick={() => onRemoveUser(u.id)}
+                        onClick={() => onRemoveUser(u.auth_user_id || u.id)}
                       className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                     >
                       <Trash2 size={18} />
@@ -115,7 +113,7 @@ export default function AdminUsersTab({
                 </span>
                 {isMaster && (
                   <button
-                    onClick={() => onRemoveUser(u.id)}
+                    onClick={() => onRemoveUser(u.auth_user_id || u.id)}
                     className="h-11 w-11 rounded-xl bg-red-600/10 text-red-600 flex items-center justify-center active:scale-95 transition-all"
                   >
                     <Trash2 size={16} />
@@ -123,7 +121,6 @@ export default function AdminUsersTab({
                 )}
               </div>
               <p className="text-sm font-black">{u.username}</p>
-              <p className="text-[11px] font-mono opacity-60 mt-1">{u.senha}</p>
             </div>
           ))}
         </div>

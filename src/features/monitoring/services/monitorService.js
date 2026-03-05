@@ -5,7 +5,9 @@ function normalizeText(text) {
 }
 
 export async function fetchOpenFailures() {
-  const { data, error } = await supabase.from('registros_falhas').select('*');
+  const { data, error } = await supabase
+    .from('registros_falhas')
+    .select('id, setor, trave, ponto, falha, status');
   if (error) throw error;
   return (data || []).filter((f) => String(f.status || '').toLowerCase().trim() === 'aberto');
 }
