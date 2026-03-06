@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isRuninKioskUser } from '../../../core/auth/session';
 import { authenticateUser, persistRememberUser, updateUserPassword } from '../services/authService';
 
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 function getPasswordChangedKey(username) {
   return `lenovo_pwd_changed_${String(username || '').toLowerCase()}`;
+}
+
+function resolvePostLoginPath(user) {
+  return isRuninKioskUser(user) ? '/chamado' : '/dashboard';
 }
 
 export function useLoginPage() {
@@ -38,7 +43,7 @@ export function useLoginPage() {
       if (user?.force_password_change) {
         const alreadyChangedLocally = localStorage.getItem(getPasswordChangedKey(user.username)) === '1';
         if (alreadyChangedLocally) {
-          navigate('/dashboard');
+          navigate(resolvePostLoginPath(user), { replace: true });
           return;
         }
         setPendingUser(user);
@@ -47,7 +52,7 @@ export function useLoginPage() {
         setConfirmNewPassword('');
         setForcePasswordModalOpen(true);
       } else {
-        navigate('/dashboard');
+        navigate(resolvePostLoginPath(user), { replace: true });
       }
     } catch (err) {
       setError(err?.message || 'Falha na conexao.');
@@ -78,7 +83,7 @@ export function useLoginPage() {
       localStorage.setItem(getPasswordChangedKey(pendingUser.username), '1');
       setForcePasswordModalOpen(false);
       setPendingUser(null);
-      navigate('/dashboard');
+      navigate(resolvePostLoginPath(pendingUser), { replace: true });
     } catch (err) {
       setForcePasswordError(err?.message || 'Falha ao atualizar senha.');
     } finally {

@@ -75,7 +75,7 @@ export function useVisualizarFalhasPage() {
   useBodyScrollLock(mobileMenuOpen);
 
   const user = getSessionUser() || { username: 'Tecnico', role: 'colaborador' };
-  const isColaborador = user.role === 'colaborador';
+  const isColaborador = user.role === 'colaborador' || user.role === 'runin_kiosk';
   const isAdmin = isAdminUser(user);
 
   const styles = useMemo(() => getFailureTheme(theme), [theme]);
@@ -321,7 +321,6 @@ export function useVisualizarFalhasPage() {
       await marcarComoInoperante({ ids: idsParaMarcar, falhasSelecionadas: payloadFalhas });
       fecharModal();
       await buscarFalhas();
-      setAbaFalhas('inoperantes');
     } catch (err) {
       alert(err?.message || 'Erro ao marcar ponto inoperante');
     } finally {

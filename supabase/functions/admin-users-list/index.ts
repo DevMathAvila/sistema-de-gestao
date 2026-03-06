@@ -41,7 +41,7 @@ serve(async (req) => {
 
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, username, role, created_at, auth_user_id')
+    .select('id, username, role, setor_fixo, created_at, auth_user_id')
     .order('username');
 
   if (error) {

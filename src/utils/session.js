@@ -1,15 +1,20 @@
-import { LIMITS, sanitizeString } from './validation';
+﻿import { LIMITS, sanitizeString } from './validation';
 
 const SESSION_KEY = 'lenovo_user';
 const REMEMBER_USER_KEY = 'lenovo_remember_user';
 const REMEMBER_PASS_KEY = 'lenovo_remember_pass';
-const ALLOWED_ROLES = new Set(['master', 'admin', 'tecnico', 't�cnico', 'técnico', 'colaborador']);
+const ALLOWED_ROLES = new Set(['master', 'admin', 'tecnico', 'técnico', 'tÃ©cnico', 'colaborador', 'runin_kiosk']);
 
 function normalizeRole(role) {
   const value = sanitizeString(role, 20).toLowerCase();
   if (!ALLOWED_ROLES.has(value)) return 'colaborador';
-  if (value === 't�cnico' || value === 'técnico') return 'tecnico';
+  if (value === 'técnico' || value === 'tÃ©cnico') return 'tecnico';
   return value;
+}
+
+function normalizeSetorFixo(value) {
+  const setor = sanitizeString(value, 40).trim();
+  return setor || null;
 }
 
 export function getSessionUser() {
@@ -24,6 +29,7 @@ export function getSessionUser() {
       id: parsed?.id ?? null,
       username,
       role: normalizeRole(parsed?.role),
+      setor_fixo: normalizeSetorFixo(parsed?.setor_fixo),
     };
   } catch {
     return null;
@@ -38,6 +44,7 @@ export function setSessionUser(user) {
     id: user?.id ?? null,
     username,
     role: normalizeRole(user?.role),
+    setor_fixo: normalizeSetorFixo(user?.setor_fixo),
   };
 
   try {
@@ -66,4 +73,7 @@ export function isMasterUser(user) {
   return user?.role === 'master';
 }
 
+export function isRuninKioskUser(user) {
+  return user?.role === 'runin_kiosk';
+}
 

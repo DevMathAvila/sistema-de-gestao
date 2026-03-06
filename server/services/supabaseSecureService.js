@@ -90,6 +90,37 @@ function normalizeStatus(value) {
     .toLowerCase();
 }
 
+function normalizeRole(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isRuninKioskRole(value) {
+  return normalizeRole(value) === 'runin_kiosk';
+}
+
+function isRestrictedMaintenanceRole(value) {
+  const role = normalizeRole(value);
+  return role === 'colaborador' || role === 'runin_kiosk';
+}
+
+function getSessionSetorFixo(sessionUser = null) {
+  const setor = sanitizeString(sessionUser?.setor_fixo, 40).trim();
+  if (!setor) return null;
+  if (!validateSetor(setor, LISTA_SETORES)) return null;
+  return setor;
+}
+
+function inferRuninSetorFromUsername(username) {
+  const normalized = sanitizeString(username, LIMITS.MAX_USERNAME)
+    .toLowerCase()
+    .replace(/[\s._-]+/g, '');
+  const match = normalized.match(/^runin0?([1-9]|10)$/);
+  if (!match) return null;
+  const runinNum = Number(match[1]);
+  if (!Number.isInteger(runinNum) || runinNum < 1 || runinNum > 10) return null;
+  return `Runin ${String(runinNum).padStart(2, '0')}`;
+}
+
 function isConcludedRecord(item) {
   const status = normalizeStatus(item?.status);
   return status.includes('conclu');
@@ -150,7 +181,7 @@ export async function getUsuarioParaLogin(username, senha) {
 export async function listarUsuarios() {
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, username, senha, role')
+    .select('id, username, senha, role, setor_fixo')
     .order('username');
 
   return { data: data || [], error };
@@ -191,22 +222,30 @@ export async function criarUsuario(payload, sessionUser = null) {
 
   const username = sanitizeString(payload?.username, LIMITS.MAX_USERNAME).toLowerCase();
   const senha = String(payload?.senha ?? '').slice(0, LIMITS.MAX_SENHA);
-  const desiredRole = String(payload?.role || 'tecnico').toLowerCase();
+  const inferredSetorFixo = inferRuninSetorFromUsername(username);
+  const desiredRoleRaw = String(payload?.role || 'tecnico').toLowerCase();
+  const desiredRole = inferredSetorFixo ? 'runin_kiosk' : desiredRoleRaw;
+  const setorFixoInput = sanitizeString(payload?.setor_fixo, 40).trim();
+  const setorFixo = inferredSetorFixo || setorFixoInput;
 
   const rolesPermitidas = roleSolicitante === 'master'
-    ? ['master', 'admin', 'tecnico', 'técnico', 'tÃ©cnico', 'colaborador']
-    : ['tecnico', 'técnico', 'tÃ©cnico', 'colaborador'];
+    ? ['master', 'admin', 'tecnico', 'técnico', 'tÃ©cnico', 'colaborador', 'runin_kiosk']
+    : ['tecnico', 'técnico', 'tÃ©cnico', 'colaborador', 'runin_kiosk'];
   const roleNormalizada = desiredRole === 'técnico' || desiredRole === 'tÃ©cnico' ? 'tecnico' : desiredRole;
   const role = rolesPermitidas.includes(desiredRole) || rolesPermitidas.includes(roleNormalizada)
     ? roleNormalizada
     : 'tecnico';
+  const setorFixoFinal = role === 'runin_kiosk' ? setorFixo : null;
+  if (role === 'runin_kiosk' && !validateSetor(setorFixoFinal, LISTA_SETORES)) {
+    return { data: null, error: { message: 'setor_fixo obrigatorio para Run In kiosk.' } };
+  }
 
   if (!username || !senha) return { data: null, error: { message: 'Username e senha obrigatorios.' } };
 
   try {
     const { data, error } = await supabase
       .from('usuarios')
-      .insert([{ username, senha, role }])
+      .insert([{ username, senha, role, setor_fixo: setorFixoFinal }])
       .select()
       .single();
 
@@ -240,13 +279,15 @@ export async function listarFalhasAbertas() {
   return { data: data || [], error };
 }
 
-export async function listarChamadosAbertosPorSetor(setor) {
-  if (!validateSetor(setor, LISTA_SETORES)) return { data: [], error: null };
+export async function listarChamadosAbertosPorSetor(setor, sessionUser = null) {
+  const setorFixo = getSessionSetorFixo(sessionUser);
+  const setorAlvo = isRuninKioskRole(sessionUser?.role) ? setorFixo : String(setor || '').trim();
+  if (!setorAlvo || !validateSetor(setorAlvo, LISTA_SETORES)) return { data: [], error: null };
 
   const { data, error } = await supabase
     .from('registros_falhas')
     .select('trave, ponto, falha')
-    .eq('setor', String(setor).trim())
+    .eq('setor', setorAlvo)
     .ilike('status', '%aberto%')
     .not('trave', 'is', null)
     .not('ponto', 'is', null);
@@ -385,7 +426,13 @@ export async function listarHistoricoRecentePorPonto(setor, trave, ponto, limite
 }
 
 export async function inserirRegistrosFalha(setor, trave, pontos, falhas, sessionUser = null) {
-  if (!validateSetor(setor, LISTA_SETORES)) return { error: { message: 'Setor invalido.' } };
+  const setorFixo = getSessionSetorFixo(sessionUser);
+  const setorSanit = String(setor || '').trim();
+  const setorAlvo = isRuninKioskRole(sessionUser?.role) ? setorFixo : setorSanit;
+  if (!validateSetor(setorAlvo, LISTA_SETORES)) return { error: { message: 'Setor invalido.' } };
+  if (isRuninKioskRole(sessionUser?.role) && setorFixo !== setorSanit) {
+    return { error: { message: 'Usuario Run In pode registrar apenas no seu setor fixo.' } };
+  }
   if (!validateTrave(trave)) return { error: { message: 'Trave invalida.' } };
 
   const falhasSanit = sanitizeFalhasArray(falhas, FALHAS_COMUNS);
@@ -397,17 +444,15 @@ export async function inserirRegistrosFalha(setor, trave, pontos, falhas, sessio
   const falhaTexto = falhasSanit.join(', ');
   if (!validateFalhaTexto(falhaTexto)) return { error: { message: 'Texto de falha invalido.' } };
 
-  const usuario = sessionUser;
-  const username = usuario?.username || 'Tecnico';
-  const setorTrim = String(setor).trim();
+  const username = sessionUser?.username || 'Tecnico';
   const traveNum = Number(trave);
   const listaPontos = [...Array(15)].map((_, i) => i + 1);
   const todosPontos = listaPontos.length === pontosSanit.length;
   const inserts = todosPontos
-    ? [{ usuario: username, setor: setorTrim, trave: traveNum, ponto: '1-15 (Inteira)', falha: falhaTexto, status: 'aberto' }]
+    ? [{ usuario: username, setor: setorAlvo, trave: traveNum, ponto: '1-15 (Inteira)', falha: falhaTexto, status: 'aberto' }]
     : pontosSanit.map((p) => ({
         usuario: username,
-        setor: setorTrim,
+        setor: setorAlvo,
         trave: traveNum,
         ponto: `Ponto ${p}`,
         falha: falhaTexto,
@@ -426,7 +471,7 @@ export async function fecharRegistros(ids, solucao, falhasSelecionadas = null, s
   if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatorios.' } };
   if (!validateSolucao(solucao)) return { error: { message: 'Solucao invalida.' } };
 
-    if (!sessionUser || sessionUser.role === 'colaborador') {
+    if (!sessionUser || isRestrictedMaintenanceRole(sessionUser.role)) {
     return { error: { message: 'Nao autorizado.' } };
   }
 

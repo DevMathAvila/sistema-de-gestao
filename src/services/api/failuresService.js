@@ -26,7 +26,7 @@ export function listarFalhasAbertas() {
 }
 
 export function listarChamadosAbertosPorSetor(setor) {
-  return postApiAction('listarChamadosAbertosPorSetor', { setor });
+  return postApiAction('listarChamadosAbertosPorSetor', { setor, sessionUser: getSessionUser() });
 }
 
 export function listarRegistrosFalhas(filtroSetor = null) {

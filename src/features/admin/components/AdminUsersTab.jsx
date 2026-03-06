@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trash2, UserPlus } from 'lucide-react';
+import { LISTA_SETORES } from '../../../shared/constants/setores';
 
 export default function AdminUsersTab({
   s,
@@ -37,7 +38,7 @@ export default function AdminUsersTab({
       </header>
 
       <div className={`${s.card} p-8 rounded-[2.5rem] mb-10`}>
-        <form onSubmit={onCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form onSubmit={onCreateUser} className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase ml-2 opacity-50">Username</label>
             <input
@@ -72,6 +73,22 @@ export default function AdminUsersTab({
               ))}
             </select>
           </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase ml-2 opacity-50">Setor fixo (kiosk)</label>
+            <select
+              className={`${s.input} w-full p-4 rounded-2xl outline-none text-sm`}
+              value={novoUser.setor_fixo || ''}
+              onChange={(e) => setNovoUser({ ...novoUser, setor_fixo: e.target.value })}
+              disabled={novoUser.role !== 'runin_kiosk'}
+            >
+              <option value="">Selecione</option>
+              {LISTA_SETORES.map((setor) => (
+                <option key={setor} value={setor}>
+                  {setor}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             disabled={salvandoUsuario}
             className="mt-6 h-[52px] bg-red-600 text-white font-black rounded-2xl hover:bg-red-700 disabled:bg-slate-500 transition-all uppercase text-xs flex items-center justify-center gap-2"
@@ -89,6 +106,7 @@ export default function AdminUsersTab({
             >
               <th className="p-6 text-red-600">Nivel</th>
               <th className="p-6 text-current">Usuario</th>
+              <th className="p-6 text-current">Setor fixo</th>
               {isMaster && <th className="p-6 text-right">Acao</th>}
             </tr>
           </thead>
@@ -103,6 +121,7 @@ export default function AdminUsersTab({
                   </span>
                 </td>
                 <td className="p-6 font-bold">{u.username}</td>
+                <td className="p-6 font-bold text-xs">{u.setor_fixo || '-'}</td>
                 {isMaster && (
                   <td className="p-6 text-right">
                     <button
@@ -143,6 +162,7 @@ export default function AdminUsersTab({
                 )}
               </div>
               <p className="text-sm font-black">{u.username}</p>
+              <p className={`text-[10px] font-black uppercase mt-1 ${s.sub}`}>Setor: {u.setor_fixo || '-'}</p>
             </div>
           ))}
         </div>

@@ -23,7 +23,7 @@ async function fetchProfileByAuthUser(db, authUser) {
 
   const { data: byAuthId, error: byAuthIdError } = await db
     .from('usuarios')
-    .select('id, username, role, auth_user_id, force_password_change')
+    .select('id, username, role, auth_user_id, force_password_change, setor_fixo')
     .eq('auth_user_id', authUserId)
     .maybeSingle();
 
@@ -36,7 +36,7 @@ async function fetchProfileByAuthUser(db, authUser) {
 
   const { data: byUsername, error: byUsernameError } = await db
     .from('usuarios')
-    .select('id, username, role, auth_user_id, force_password_change')
+    .select('id, username, role, auth_user_id, force_password_change, setor_fixo')
     .ilike('username', usernameFromEmail)
     .maybeSingle();
 
@@ -83,7 +83,12 @@ export async function authenticateUser(username, password) {
   // Usa client com JWT explicito para evitar bloqueio por RLS no primeiro request apos login.
   const authedClient = createAuthedClient(accessToken);
   const profile = await fetchProfileByAuthUser(authedClient, data.user);
-  const saved = setSessionUser({ id: profile.id, username: profile.username, role: profile.role });
+  const saved = setSessionUser({
+    id: profile.id,
+    username: profile.username,
+    role: profile.role,
+    setor_fixo: profile?.setor_fixo || null,
+  });
   if (!saved) throw new Error('Nao foi possivel criar a sessao.');
 
   return profile;

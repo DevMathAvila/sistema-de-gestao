@@ -17,11 +17,13 @@ export function getRoleOptions(isMaster) {
       { value: 'master', label: 'Master' },
       { value: 'admin', label: 'Administrador' },
       { value: 'tecnico', label: 'Tecnico Operador' },
+      { value: 'runin_kiosk', label: 'Run In Kiosk' },
       { value: 'colaborador', label: 'Colaborador' },
     ];
   }
   return [
     { value: 'tecnico', label: 'Tecnico Operador' },
+    { value: 'runin_kiosk', label: 'Run In Kiosk' },
     { value: 'colaborador', label: 'Colaborador' },
   ];
 }

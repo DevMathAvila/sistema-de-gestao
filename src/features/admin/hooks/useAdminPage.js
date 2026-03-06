@@ -15,6 +15,18 @@ import {
 } from '../services/adminService';
 import { getAdminThemeClasses } from '../styles/adminTheme';
 
+function inferRuninSetorFromUsername(username) {
+  const normalized = String(username || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[\s._-]+/g, '');
+  const match = normalized.match(/^runin0?([1-9]|10)$/);
+  if (!match) return null;
+  const runinNum = Number(match[1]);
+  if (!Number.isInteger(runinNum) || runinNum < 1 || runinNum > 10) return null;
+  return `Runin ${String(runinNum).padStart(2, '0')}`;
+}
+
 export function useAdminPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,7 +39,7 @@ export function useAdminPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [usuarios, setUsuarios] = useState([]);
-  const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'tecnico' });
+  const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'tecnico', setor_fixo: '' });
   const [salvandoUsuario, setSalvandoUsuario] = useState(false);
   const [removendoUsuario, setRemovendoUsuario] = useState(false);
   const [usuarioPendenteRemocao, setUsuarioPendenteRemocao] = useState(null);
@@ -122,6 +134,13 @@ export function useAdminPage() {
     const rolePermitida = roleOptions.some((opt) => opt.value === roleSelecionada)
       ? roleSelecionada
       : roleOptions[0].value;
+    const roleDefault = roleOptions.some((opt) => opt.value === 'tecnico') ? 'tecnico' : roleOptions[0].value;
+
+    const setorFixo = String(novoUser.setor_fixo || '').trim();
+    if (rolePermitida === 'runin_kiosk' && !setorFixo) {
+      showUserFeedback('error', 'Selecione o setor fixo para o usuario Run In kiosk.');
+      return;
+    }
 
     setSalvandoUsuario(true);
     try {
@@ -129,8 +148,9 @@ export function useAdminPage() {
         username: novoUser.username,
         senha: novoUser.senha,
         role: rolePermitida,
+        setor_fixo: rolePermitida === 'runin_kiosk' ? setorFixo : null,
       });
-      setNovoUser({ username: '', senha: '', role: roleOptions[0].value });
+      setNovoUser({ username: '', senha: '', role: roleDefault, setor_fixo: '' });
       await fetchUsuarios();
       showUserFeedback('success', 'Usuario criado com sucesso.');
     } catch (err) {
@@ -170,6 +190,16 @@ export function useAdminPage() {
       setRemovendoUsuario(false);
     }
   }, [fetchUsuarios, showUserFeedback, usuarioPendenteRemocao]);
+
+  useEffect(() => {
+    const inferredSetor = inferRuninSetorFromUsername(novoUser.username);
+    if (!inferredSetor) return;
+    setNovoUser((prev) => ({
+      ...prev,
+      role: 'runin_kiosk',
+      setor_fixo: prev.setor_fixo || inferredSetor,
+    }));
+  }, [novoUser.username]);
 
   const handleExportHistorico = useCallback(() => {
     exportHistoricoConcluidoExcel(historico);

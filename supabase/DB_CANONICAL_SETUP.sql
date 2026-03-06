@@ -14,10 +14,13 @@ create extension if not exists pgcrypto;
 -- -----------------------------------------------------------------------------
 alter table if exists public.usuarios
   add column if not exists auth_user_id uuid,
-  add column if not exists force_password_change boolean default true;
+  add column if not exists force_password_change boolean default true,
+  add column if not exists setor_fixo text;
 
 create unique index if not exists usuarios_username_lower_key
   on public.usuarios (lower(username));
+create index if not exists idx_usuarios_setor_fixo
+  on public.usuarios (setor_fixo);
 
 do $$
 begin
@@ -37,7 +40,17 @@ end $$;
 
 alter table public.usuarios drop constraint if exists usuarios_role_check;
 alter table public.usuarios add constraint usuarios_role_check
-check (role in ('master', 'admin', 'tecnico', 'técnico', 'colaborador'));
+check (role in ('master', 'admin', 'tecnico', 'técnico', 'colaborador', 'runin_kiosk'));
+
+alter table public.usuarios drop constraint if exists usuarios_setor_fixo_check;
+alter table public.usuarios add constraint usuarios_setor_fixo_check
+check (
+  role <> 'runin_kiosk'
+  or setor_fixo in (
+    'Runin 01', 'Runin 02', 'Runin 03', 'Runin 04', 'Runin 05',
+    'Runin 06', 'Runin 07', 'Runin 08', 'Runin 09', 'Runin 10'
+  )
+);
 
 -- -----------------------------------------------------------------------------
 -- 2) TABELA AVISOS (COMPATIVEL COM O FRONT)
@@ -174,8 +187,38 @@ as $$
   );
 $$;
 
+create or replace function public.is_runin_kiosk()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.usuarios u
+    where u.auth_user_id = auth.uid()
+      and lower(u.role) = 'runin_kiosk'
+  );
+$$;
+
+create or replace function public.current_user_setor_fixo()
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select u.setor_fixo
+  from public.usuarios u
+  where u.auth_user_id = auth.uid()
+  limit 1;
+$$;
+
 revoke all on function public.is_admin_or_master() from public;
 grant execute on function public.is_admin_or_master() to authenticated;
+revoke all on function public.is_runin_kiosk() from public;
+grant execute on function public.is_runin_kiosk() to authenticated;
+revoke all on function public.current_user_setor_fixo() from public;
+grant execute on function public.current_user_setor_fixo() to authenticated;
 
 -- usuarios: usuario ve proprio perfil
 create policy usuarios_select_own
@@ -198,20 +241,30 @@ create policy registros_falhas_select_auth
 on public.registros_falhas
 for select
 to authenticated
-using (true);
+using (
+  public.is_runin_kiosk() = false
+  or setor = public.current_user_setor_fixo()
+);
 
 create policy registros_falhas_insert_auth
 on public.registros_falhas
 for insert
 to authenticated
-with check (true);
+with check (
+  public.is_runin_kiosk() = false
+  or setor = public.current_user_setor_fixo()
+);
 
 create policy registros_falhas_update_auth
 on public.registros_falhas
 for update
 to authenticated
-using (true)
-with check (true);
+using (
+  public.is_runin_kiosk() = false
+)
+with check (
+  public.is_runin_kiosk() = false
+);
 
 create policy registros_falhas_deny_delete_auth
 on public.registros_falhas

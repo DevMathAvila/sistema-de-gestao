@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 const EMAIL_DOMAIN = 'lenovo.app';
-const ALLOWED_ROLES = new Set(['master', 'admin', 'tecnico', 'colaborador']);
+const ALLOWED_ROLES = new Set(['master', 'admin', 'tecnico', 'colaborador', 'runin_kiosk']);
 
 function normalizeUsername(value: string) {
   return String(value || '')
@@ -23,6 +23,15 @@ function toEmail(username: string) {
   const normalized = normalizeUsername(username);
   if (!normalized) return '';
   return `${normalized}@${EMAIL_DOMAIN}`;
+}
+
+function inferRuninSetorFromUsername(username: string) {
+  const normalized = normalizeUsername(username).replace(/[\s._-]+/g, '');
+  const match = normalized.match(/^runin0?([1-9]|10)$/);
+  if (!match) return null;
+  const runinNum = Number(match[1]);
+  if (!Number.isInteger(runinNum) || runinNum < 1 || runinNum > 10) return null;
+  return `Runin ${String(runinNum).padStart(2, '0')}`;
 }
 
 async function getRequesterProfile(authHeader: string | null) {
@@ -74,11 +83,15 @@ serve(async (req) => {
   const rawUsername = String(body?.username || '');
   const rawPassword = String(body?.senha || body?.password || '');
   const rawRole = String(body?.role || 'tecnico').toLowerCase();
+  const rawSetorFixo = String(body?.setor_fixo || '').trim();
 
   const username = rawUsername.trim();
   const email = toEmail(rawUsername);
+  const inferredSetorFixo = inferRuninSetorFromUsername(rawUsername);
   const requesterRole = String(profile.role || '').toLowerCase();
-  const role = ALLOWED_ROLES.has(rawRole) ? rawRole : 'tecnico';
+  const requestedRole = inferredSetorFixo ? 'runin_kiosk' : rawRole;
+  const role = ALLOWED_ROLES.has(requestedRole) ? requestedRole : 'tecnico';
+  const setorFixo = role === 'runin_kiosk' ? (inferredSetorFixo || rawSetorFixo) : null;
 
   if ((role === 'admin' || role === 'master') && requesterRole !== 'master') {
     return new Response(JSON.stringify({ error: 'Apenas master pode criar admin/master.' }), {
@@ -89,6 +102,13 @@ serve(async (req) => {
 
   if (!username || !email || rawPassword.length < 6) {
     return new Response(JSON.stringify({ error: 'Dados invalidos.' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (role === 'runin_kiosk' && !setorFixo) {
+    return new Response(JSON.stringify({ error: 'setor_fixo obrigatorio para runin_kiosk.' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -117,7 +137,7 @@ serve(async (req) => {
 
   const { error: insertError } = await supabase
     .from('usuarios')
-    .insert([{ username, role, auth_user_id: created.user.id, force_password_change: true }]);
+    .insert([{ username, role, auth_user_id: created.user.id, force_password_change: true, setor_fixo: setorFixo }]);
 
   if (insertError) {
     return new Response(JSON.stringify({ error: insertError.message }), {

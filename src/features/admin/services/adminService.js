@@ -52,7 +52,7 @@ export async function loadUsuarios() {
     // Fallback operacional: leitura direta via RLS (admin/master pode listar todos).
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, username, role, created_at, auth_user_id')
+      .select('id, username, role, setor_fixo, created_at, auth_user_id')
       .order('username');
     if (error) throw error;
     return Array.isArray(data) ? data : [];
