@@ -74,6 +74,7 @@ alter table if exists public.registros_falhas
   add column if not exists resolvido_em timestamptz,
   add column if not exists solucao text,
   add column if not exists resolvido_por text,
+  add column if not exists ponto_inoperante boolean not null default false,
   add column if not exists siga_enviado boolean not null default false,
   add column if not exists siga_status text,
   add column if not exists siga_enviado_em timestamptz,
@@ -111,6 +112,8 @@ create index if not exists idx_registros_falhas_siga_status
   on public.registros_falhas (siga_status);
 create index if not exists idx_registros_falhas_siga_enviado_em
   on public.registros_falhas (siga_enviado_em desc);
+create index if not exists idx_registros_falhas_ponto_inoperante_status
+  on public.registros_falhas (ponto_inoperante, status);
 
 -- -----------------------------------------------------------------------------
 -- 4) VINCULO PERFIL <-> AUTH.USERS (POR USERNAME)

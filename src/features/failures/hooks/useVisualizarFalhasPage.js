@@ -13,11 +13,13 @@ import {
   enviarFalhasParaSiga,
   fetchFalhasAbertas,
   fetchHistoricoPonto,
+  marcarComoInoperante,
   fetchSigaAguardando,
   fetchSigaFinalizados,
   formatDateTime,
   getStatusTrave,
   normalizeText,
+  reativarInoperante,
   splitFalhas,
   traveTemParada,
   salvarRascunhoSiga,
@@ -59,6 +61,7 @@ export function useVisualizarFalhasPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSigaDesk, setShowSigaDesk] = useState(false);
+  const [abaFalhas, setAbaFalhas] = useState('abertas');
   const [sigaLoading, setSigaLoading] = useState(false);
   const [sigaTab, setSigaTab] = useState('aguardando');
   const [sigaAguardando, setSigaAguardando] = useState([]);
@@ -148,6 +151,16 @@ export function useVisualizarFalhasPage() {
     setFalhasSelecionadas(disponiveis);
   }, [modalData]);
 
+  const falhasOperacionais = useMemo(
+    () => falhas.filter((f) => !Boolean(f?.ponto_inoperante)),
+    [falhas],
+  );
+
+  const falhasInoperantes = useMemo(
+    () => falhas.filter((f) => Boolean(f?.ponto_inoperante)),
+    [falhas],
+  );
+
   const falhasPorSetor = useMemo(() => {
     const grouped = {};
     const setorLookup = {};
@@ -156,28 +169,28 @@ export function useVisualizarFalhasPage() {
       setorLookup[normalizeText(setor)] = setor;
     });
 
-    falhas.forEach((f) => {
+    falhasOperacionais.forEach((f) => {
       const setorOriginal = setorLookup[normalizeText(f.setor)];
       if (!setorOriginal) return;
       grouped[setorOriginal].push(f);
     });
 
     return grouped;
-  }, [falhas]);
+  }, [falhasOperacionais]);
 
   const falhasPorSetorTrave = useMemo(() => {
     const map = {};
-    falhas.forEach((f) => {
+    falhasOperacionais.forEach((f) => {
       const key = `${normalizeText(f.setor)}|${String(f.trave)}`;
       if (!map[key]) map[key] = [];
       map[key].push(f);
     });
     return map;
-  }, [falhas]);
+  }, [falhasOperacionais]);
 
   const alertasCriticos = useMemo(() => {
     const grupos = {};
-    falhas.forEach((f) => {
+    falhasOperacionais.forEach((f) => {
       const chave = `${f.setor}-T${f.trave}`;
       if (!grupos[chave]) {
         grupos[chave] = { setor: f.setor, trave: f.trave, count: 0, isTraveToda: false };
@@ -192,10 +205,10 @@ export function useVisualizarFalhasPage() {
         if (!a.isTraveToda && b.isTraveToda) return 1;
         return b.count - a.count;
       });
-  }, [falhas]);
+  }, [falhasOperacionais]);
 
   // Mantem o contador consistente com o KPI de pendentes (abertos no momento).
-  const falhasAtivasHoje = useMemo(() => falhas.length, [falhas]);
+  const falhasAtivasHoje = useMemo(() => falhasOperacionais.length, [falhasOperacionais]);
 
   const historicoVisivel = isMobileView && !mostrarHistoricoCompleto ? historicoPonto.slice(0, 3) : historicoPonto;
 
@@ -297,6 +310,58 @@ export function useVisualizarFalhasPage() {
       setEnviando(false);
     }
   }, [buscarFalhas, falhasSelecionadas, fecharModal, isColaborador, modalData, solucaoTexto]);
+
+  const handleMarcarInoperante = useCallback(async () => {
+    if (falhasSelecionadas.length === 0 || isColaborador) return;
+
+    setEnviando(true);
+    try {
+      const idsParaMarcar = modalData?.ids || (modalData?.id ? [modalData.id] : []);
+      const payloadFalhas = falhasSelecionadas.map((item) => ({ id: item.id, falha: item.falha }));
+      await marcarComoInoperante({ ids: idsParaMarcar, falhasSelecionadas: payloadFalhas });
+      fecharModal();
+      await buscarFalhas();
+      setAbaFalhas('inoperantes');
+    } catch (err) {
+      alert(err?.message || 'Erro ao marcar ponto inoperante');
+    } finally {
+      setEnviando(false);
+    }
+  }, [buscarFalhas, falhasSelecionadas, fecharModal, isColaborador, modalData]);
+
+  const handleReativarInoperante = useCallback(async (id) => {
+    if (!id || isColaborador) return;
+    setEnviando(true);
+    try {
+      await reativarInoperante({ ids: [id] });
+      await buscarFalhas();
+      setAbaFalhas('abertas');
+    } catch (err) {
+      alert(err?.message || 'Erro ao reativar ponto');
+    } finally {
+      setEnviando(false);
+    }
+  }, [buscarFalhas, isColaborador]);
+
+  const inoperantesPorSetor = useMemo(() => {
+    const grouped = {};
+    falhasInoperantes.forEach((item) => {
+      const key = String(item?.setor || 'Sem setor');
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(item);
+    });
+
+    Object.keys(grouped).forEach((setor) => {
+      grouped[setor].sort((a, b) => {
+        const traveA = Number(a?.trave || 0);
+        const traveB = Number(b?.trave || 0);
+        if (traveA !== traveB) return traveA - traveB;
+        return String(a?.ponto || '').localeCompare(String(b?.ponto || ''));
+      });
+    });
+
+    return grouped;
+  }, [falhasInoperantes]);
 
   const handleEnviarParaSiga = useCallback(async () => {
     if (!modalData || isColaborador) return;
@@ -434,12 +499,16 @@ export function useVisualizarFalhasPage() {
   return {
     theme,
     toggleTheme,
+    abaFalhas,
+    setAbaFalhas,
     styles,
     user,
     isAdmin,
     isColaborador,
     loading,
     falhas,
+    falhasInoperantes,
+    inoperantesPorSetor,
     falhasPorSetor,
     traveAberta,
     setTraveAberta,
@@ -488,6 +557,8 @@ export function useVisualizarFalhasPage() {
     falhasSelecionadas,
     toggleFalhaSelecionada,
     handleFinalizarChamado,
+    handleMarcarInoperante,
+    handleReativarInoperante,
     handleEnviarParaSiga,
     historicoPonto,
     loadingHistoricoPonto,

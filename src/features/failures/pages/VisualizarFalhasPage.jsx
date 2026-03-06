@@ -14,6 +14,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
 import CloseFailureModal from '../components/CloseFailureModal';
 import FailureSectorBoard from '../components/FailureSectorBoard';
+import InoperantPointsBoard from '../components/InoperantPointsBoard';
 import SigaDeskOverlay from '../components/SigaDeskOverlay';
 import { useVisualizarFalhasPage } from '../hooks/useVisualizarFalhasPage';
 
@@ -134,7 +135,11 @@ export default function VisualizarFalhasPage() {
         <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter">Visualizar <span className="text-red-600">Falhas</span></h2>
-            <p className={`${vm.styles.subtext} text-xs`}>Monitoramento em tempo real de falhas abertas.</p>
+            <p className={`${vm.styles.subtext} text-xs`}>
+              {vm.abaFalhas === 'abertas'
+                ? 'Monitoramento em tempo real de falhas abertas.'
+                : 'Lista dedicada de pontos em aberto marcados como inoperantes.'}
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -199,24 +204,65 @@ export default function VisualizarFalhasPage() {
           </div>
         </header>
 
-        <FailureSectorBoard
-          setors={vm.setors}
-          falhasPorSetor={vm.falhasPorSetor}
-          setorAberto={vm.setorAberto}
-          setSetorAberto={vm.setSetorAberto}
-          traveAberta={vm.traveAberta}
-          setTraveAberta={vm.setTraveAberta}
-          traves={vm.traves}
-          pontos={vm.pontos}
-          getTraveChamados={vm.getTraveChamados}
-          getStatusTrave={vm.getStatusTrave}
-          getDadosPonto={vm.getDadosPonto}
-          abrirModalPonto={vm.abrirModalPonto}
-          abrirModalLote={vm.abrirModalLote}
-          isColaborador={vm.isColaborador}
-          styles={vm.styles}
-          theme={vm.theme}
-        />
+        <div className="mb-6 inline-flex rounded-2xl border p-1.5 gap-1.5 bg-black/5">
+          <button
+            type="button"
+            onClick={() => vm.setAbaFalhas('abertas')}
+            className={`h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              vm.abaFalhas === 'abertas'
+                ? 'bg-red-600 text-white'
+                : vm.theme === 'dark'
+                  ? 'text-white/70 hover:bg-white/10'
+                  : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            Visualizar falhas ({vm.falhasAtivasHoje})
+          </button>
+          <button
+            type="button"
+            onClick={() => vm.setAbaFalhas('inoperantes')}
+            className={`h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              vm.abaFalhas === 'inoperantes'
+                ? 'bg-amber-500 text-white'
+                : vm.theme === 'dark'
+                  ? 'text-white/70 hover:bg-white/10'
+                  : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            Pontos inoperantes ({vm.falhasInoperantes.length})
+          </button>
+        </div>
+
+        {vm.abaFalhas === 'abertas' ? (
+          <FailureSectorBoard
+            setors={vm.setors}
+            falhasPorSetor={vm.falhasPorSetor}
+            setorAberto={vm.setorAberto}
+            setSetorAberto={vm.setSetorAberto}
+            traveAberta={vm.traveAberta}
+            setTraveAberta={vm.setTraveAberta}
+            traves={vm.traves}
+            pontos={vm.pontos}
+            getTraveChamados={vm.getTraveChamados}
+            getStatusTrave={vm.getStatusTrave}
+            getDadosPonto={vm.getDadosPonto}
+            abrirModalPonto={vm.abrirModalPonto}
+            abrirModalLote={vm.abrirModalLote}
+            isColaborador={vm.isColaborador}
+            styles={vm.styles}
+            theme={vm.theme}
+          />
+        ) : (
+          <InoperantPointsBoard
+            inoperantesPorSetor={vm.inoperantesPorSetor}
+            theme={vm.theme}
+            styles={vm.styles}
+            isColaborador={vm.isColaborador}
+            onReativar={vm.handleReativarInoperante}
+            enviando={vm.enviando}
+            formatDateTime={vm.formatDateTime}
+          />
+        )}
       </main>
 
       <CloseFailureModal
@@ -232,6 +278,7 @@ export default function VisualizarFalhasPage() {
         falhasSelecionadas={vm.falhasSelecionadas}
         toggleFalhaSelecionada={vm.toggleFalhaSelecionada}
         handleFinalizarChamado={vm.handleFinalizarChamado}
+        handleMarcarInoperante={vm.handleMarcarInoperante}
         handleEnviarParaSiga={vm.handleEnviarParaSiga}
         fecharModal={vm.fecharModal}
         historicoPonto={vm.historicoPonto}

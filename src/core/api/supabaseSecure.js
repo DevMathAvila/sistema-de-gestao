@@ -634,6 +634,143 @@ export async function fecharRegistros(ids, solucao, falhasSelecionadas = null) {
   }
 }
 
+export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null) {
+  if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatorios.' } };
+
+  const sessionUser = getStoredSessionUser();
+  if (!sessionUser || sessionUser.role === 'colaborador') {
+    return { error: { message: 'Nao autorizado.' } };
+  }
+
+  const idList = ids.filter((id) => id != null && id !== '');
+  if (idList.length === 0) return { error: { message: 'Nenhum ID valido.' } };
+  const idSet = new Set(idList.map((id) => String(id)));
+
+  const selecaoValida = Array.isArray(falhasSelecionadas)
+    ? falhasSelecionadas
+        .map((item) => ({
+          id: item?.id,
+          falha: sanitizeString(item?.falha, LIMITS.MAX_FALHA_TEXTO).trim(),
+        }))
+        .filter((item) => item.id != null && item.id !== '' && item.falha)
+        .filter((item) => idSet.has(String(item.id)))
+    : [];
+
+  if (selecaoValida.length === 0) {
+    try {
+      const { error } = await supabase
+        .from('registros_falhas')
+        .update({
+          ponto_inoperante: true,
+        })
+        .in('id', idList)
+        .ilike('status', '%aberto%');
+
+      return { error };
+    } catch (err) {
+      return { error: { message: err?.message || 'Erro ao marcar ponto inoperante.' } };
+    }
+  }
+
+  try {
+    const idsSelecao = [...new Set(selecaoValida.map((item) => item.id))];
+    const idsConsulta = [...new Set([...idList, ...idsSelecao])];
+    const { data: registros, error: errorFetch } = await supabase
+      .from('registros_falhas')
+      .select('id, usuario, setor, trave, ponto, falha, data, status, ponto_inoperante')
+      .in('id', idsConsulta);
+
+    if (errorFetch) return { error: errorFetch };
+    const rows = Array.isArray(registros) ? registros : [];
+    if (rows.length === 0) return { error: { message: 'Nenhum registro encontrado para atualizar.' } };
+
+    const selecaoPorId = new Map();
+    selecaoValida.forEach((item) => {
+      const bucket = selecaoPorId.get(item.id) || [];
+      bucket.push(item.falha);
+      selecaoPorId.set(item.id, bucket);
+    });
+
+    for (const row of rows) {
+      const falhasRow = splitFalhas(row?.falha);
+      const falhasDesejadas = selecaoPorId.get(row.id) || [];
+      if (falhasDesejadas.length === 0 || falhasRow.length === 0) continue;
+
+      const setDesejadas = new Set(falhasDesejadas);
+      const falhasInoperantes = falhasRow.filter((falha) => setDesejadas.has(falha));
+      if (falhasInoperantes.length === 0) continue;
+
+      const falhasRestantes = removeFalhasSelecionadas(falhasRow, falhasInoperantes);
+      const falhasInoperantesTexto = falhasInoperantes.join(', ');
+
+      if (falhasRestantes.length === 0) {
+        const { error: errorUpdateInoperante } = await supabase
+          .from('registros_falhas')
+          .update({
+            ponto_inoperante: true,
+            falha: falhasInoperantesTexto,
+          })
+          .eq('id', row.id)
+          .ilike('status', '%aberto%');
+        if (errorUpdateInoperante) return { error: errorUpdateInoperante };
+        continue;
+      }
+
+      const { error: errorUpdateAberto } = await supabase
+        .from('registros_falhas')
+        .update({
+          falha: falhasRestantes.join(', '),
+          ponto_inoperante: false,
+        })
+        .eq('id', row.id)
+        .ilike('status', '%aberto%');
+      if (errorUpdateAberto) return { error: errorUpdateAberto };
+
+      const { error: errorInsertInoperante } = await supabase
+        .from('registros_falhas')
+        .insert([{
+          usuario: row.usuario || 'Tecnico',
+          setor: row.setor,
+          trave: row.trave,
+          ponto: row.ponto,
+          falha: falhasInoperantesTexto,
+          data: row.data,
+          status: 'aberto',
+          ponto_inoperante: true,
+        }]);
+      if (errorInsertInoperante) return { error: errorInsertInoperante };
+    }
+
+    return { error: null };
+  } catch (err) {
+    return { error: { message: err?.message || 'Erro ao marcar ponto inoperante.' } };
+  }
+}
+
+export async function reativarFalhasInoperantes(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatorios.' } };
+
+  const sessionUser = getStoredSessionUser();
+  if (!sessionUser || sessionUser.role === 'colaborador') {
+    return { error: { message: 'Nao autorizado.' } };
+  }
+
+  const idsValidos = [...new Set(ids.filter((id) => id != null && id !== ''))];
+  if (idsValidos.length === 0) return { error: { message: 'Nenhum ID valido.' } };
+
+  try {
+    const { error } = await supabase
+      .from('registros_falhas')
+      .update({ ponto_inoperante: false })
+      .in('id', idsValidos)
+      .ilike('status', '%aberto%');
+
+    return { error };
+  } catch (err) {
+    return { error: { message: err?.message || 'Erro ao reativar ponto inoperante.' } };
+  }
+}
+
 export async function marcarFalhasParaSiga(ids) {
   if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatorios.' } };
 

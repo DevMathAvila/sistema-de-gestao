@@ -18,6 +18,7 @@ export default function CloseFailureModal({
   falhasSelecionadas,
   toggleFalhaSelecionada,
   handleFinalizarChamado,
+  handleMarcarInoperante,
   handleEnviarParaSiga,
   fecharModal,
   historicoPonto,
@@ -150,6 +151,15 @@ export default function CloseFailureModal({
                 >
                   Enviar para SIGA
                 </button>
+                <button
+                  onClick={handleMarcarInoperante}
+                  disabled={isColaborador || enviando || falhasSelecionadas.length === 0}
+                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Ponto Inoperante
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => setEtapaFechamento(true)}
                   disabled={isColaborador || falhasSelecionadas.length === 0}

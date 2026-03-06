@@ -7,13 +7,20 @@ import {
   listarFalhasSigaAguardando,
   listarFalhasSigaFinalizados,
   listarHistoricoRecentePorPonto,
+  marcarFalhasComoInoperantes,
   marcarFalhasParaSiga,
+  reativarFalhasInoperantes,
   salvarDadosSigaAguardando,
 } from '../../../core/api/supabaseSecure';
 
 const OPEN_FAILURES_CACHE_TTL_MS = 4000;
 let openFailuresCache = { timestamp: 0, data: [] };
 let openFailuresInFlight = null;
+
+function resetOpenFailuresCache() {
+  openFailuresCache = { timestamp: 0, data: [] };
+  openFailuresInFlight = null;
+}
 
 export function normalizeText(text) {
   return String(text || '').replace(/\s|-|_/g, '').toLowerCase().trim();
@@ -64,16 +71,31 @@ export async function fetchChamadosAbertosPorSetor(setor) {
 export async function createFalhaRegistro({ setor, trave, pontos, falhas }) {
   const { error } = await inserirRegistrosFalha(setor, trave, pontos, falhas);
   if (error) throw error;
+  resetOpenFailuresCache();
 }
 
 export async function concluirFalhas({ ids, solucao, falhasSelecionadas }) {
   const { error } = await fecharRegistros(ids, solucao, falhasSelecionadas);
   if (error) throw error;
+  resetOpenFailuresCache();
+}
+
+export async function marcarComoInoperante({ ids, falhasSelecionadas }) {
+  const { error } = await marcarFalhasComoInoperantes(ids, falhasSelecionadas);
+  if (error) throw error;
+  resetOpenFailuresCache();
+}
+
+export async function reativarInoperante({ ids }) {
+  const { error } = await reativarFalhasInoperantes(ids);
+  if (error) throw error;
+  resetOpenFailuresCache();
 }
 
 export async function enviarFalhasParaSiga({ ids }) {
   const { error } = await marcarFalhasParaSiga(ids);
   if (error) throw error;
+  resetOpenFailuresCache();
 }
 
 export async function fetchSigaAguardando() {
