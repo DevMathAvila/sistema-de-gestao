@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getSessionUser, isAdminUser, isMasterUser } from '../../../core/auth/session';
 import { SETOR_TODOS } from '../../../shared/constants/setores';
@@ -28,6 +28,11 @@ export function useAdminPage() {
 
   const [usuarios, setUsuarios] = useState([]);
   const [novoUser, setNovoUser] = useState({ username: '', senha: '', role: 'tecnico' });
+  const [salvandoUsuario, setSalvandoUsuario] = useState(false);
+  const [removendoUsuario, setRemovendoUsuario] = useState(false);
+  const [usuarioPendenteRemocao, setUsuarioPendenteRemocao] = useState(null);
+  const [userActionFeedback, setUserActionFeedback] = useState(null);
+  const feedbackTimerRef = useRef(null);
 
   const [setorFiltro, setSetorFiltro] = useState(SETOR_TODOS);
   const [falhasStats, setFalhasStats] = useState([]);
@@ -45,6 +50,14 @@ export function useAdminPage() {
   const isMaster = isMasterUser(currentUser);
   const roleOptions = useMemo(() => getRoleOptions(isMaster), [isMaster]);
   const s = useMemo(() => getAdminThemeClasses(theme), [theme]);
+
+  const showUserFeedback = useCallback((type, message) => {
+    setUserActionFeedback({ type, message });
+    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setUserActionFeedback(null);
+    }, 4200);
+  }, []);
 
   const toggleTheme = useCallback(() => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
@@ -100,14 +113,17 @@ export function useAdminPage() {
 
   const handleCreateUser = useCallback(async (e) => {
     e.preventDefault();
-    if (!novoUser.username || !novoUser.senha) return;
+    if (!novoUser.username || !novoUser.senha) {
+      showUserFeedback('error', 'Preencha username e senha para cadastrar.');
+      return;
+    }
 
     const roleSelecionada = String(novoUser.role || '').toLowerCase();
     const rolePermitida = roleOptions.some((opt) => opt.value === roleSelecionada)
       ? roleSelecionada
       : roleOptions[0].value;
 
-    setLoading(true);
+    setSalvandoUsuario(true);
     try {
       await createUsuario({
         username: novoUser.username,
@@ -116,22 +132,44 @@ export function useAdminPage() {
       });
       setNovoUser({ username: '', senha: '', role: roleOptions[0].value });
       await fetchUsuarios();
+      showUserFeedback('success', 'Usuario criado com sucesso.');
     } catch (err) {
-      alert(err?.message || 'Erro ao criar usuario');
+      showUserFeedback('error', err?.message || 'Erro ao criar usuario.');
     } finally {
-      setLoading(false);
+      setSalvandoUsuario(false);
     }
-  }, [novoUser, roleOptions, fetchUsuarios]);
+  }, [novoUser, roleOptions, fetchUsuarios, showUserFeedback]);
 
-  const handleRemoveUser = useCallback(async (userId) => {
-    if (!window.confirm('Remover acesso deste usuario?')) return;
-    try {
-      await removeUsuario(userId);
-      await fetchUsuarios();
-    } catch (err) {
-      alert(err?.message || 'Erro ao remover usuario');
+  const handleAskRemoveUser = useCallback((user) => {
+    if (!isMaster || !user) return;
+    setUsuarioPendenteRemocao(user);
+  }, [isMaster]);
+
+  const handleCancelRemoveUser = useCallback(() => {
+    if (removendoUsuario) return;
+    setUsuarioPendenteRemocao(null);
+  }, [removendoUsuario]);
+
+  const handleConfirmRemoveUser = useCallback(async () => {
+    const authUserId = usuarioPendenteRemocao?.auth_user_id || usuarioPendenteRemocao?.id;
+    if (!authUserId) {
+      showUserFeedback('error', 'ID de usuario invalido para remocao.');
+      return;
     }
-  }, [fetchUsuarios]);
+
+    setRemovendoUsuario(true);
+    try {
+      await removeUsuario(authUserId);
+      await fetchUsuarios();
+      showUserFeedback('success', `Usuario "${usuarioPendenteRemocao?.username || ''}" removido.`);
+      setUsuarioPendenteRemocao(null);
+    } catch (err) {
+      showUserFeedback('error', err?.message || 'Erro ao remover usuario.');
+    }
+    finally {
+      setRemovendoUsuario(false);
+    }
+  }, [fetchUsuarios, showUserFeedback, usuarioPendenteRemocao]);
 
   const handleExportHistorico = useCallback(() => {
     exportHistoricoConcluidoExcel(historico);
@@ -184,6 +222,12 @@ export function useAdminPage() {
     };
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+    };
+  }, []);
+
   return {
     s,
     theme,
@@ -200,8 +244,14 @@ export function useAdminPage() {
     novoUser,
     setNovoUser,
     usuarios,
+    salvandoUsuario,
+    removendoUsuario,
+    usuarioPendenteRemocao,
+    userActionFeedback,
     handleCreateUser,
-    handleRemoveUser,
+    handleAskRemoveUser,
+    handleCancelRemoveUser,
+    handleConfirmRemoveUser,
     setorFiltro,
     setSetorFiltro,
     falhasStats,

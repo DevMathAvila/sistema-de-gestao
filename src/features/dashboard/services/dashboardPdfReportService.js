@@ -80,6 +80,9 @@ function renderExecutiveSummary(metrics, sections) {
   if (metrics.tempoSemManutencao?.label) {
     linhas.push(`Tempo medio entre manutencoes de pontos: ${metrics.tempoSemManutencao.label}.`);
   }
+  if (metrics?.atendimentoGeralResumo?.mediaLabel && metrics.atendimentoGeralResumo.mediaLabel !== '-') {
+    linhas.push(`Tempo medio de atendimento (abertura ao fechamento): ${metrics.atendimentoGeralResumo.mediaLabel}.`);
+  }
   if (sections.sigaCalls && Array.isArray(metrics.sigaChamadosAbertos) && metrics.sigaChamadosAbertos.length > 0) {
     linhas.push(`Chamados SIGA aguardando: ${metrics.sigaChamadosAbertos.length}.`);
   }
@@ -544,6 +547,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
       <div class="card"><p class="k">Chamados inseridos no sistema</p><p class="v">${safe(chamadosInseridos, '0')}</p></div>
       <div class="card"><p class="k">Pendentes</p><p class="v">${safe(metrics.totalPendentes, '0')}</p></div>
       <div class="card"><p class="k">Concluidas</p><p class="v">${safe(metrics.totalConcluidas, '0')}</p></div>
+      <div class="card"><p class="k">Media atendimento</p><p class="v">${escapeHtml(safe(metrics?.atendimentoGeralResumo?.mediaLabel, '-'))}</p></div>
       <div class="card"><p class="k">SLA esperado</p><p class="v">${escapeHtml(`${expectedDays} dia`)}</p></div>
     </div>
   </div>

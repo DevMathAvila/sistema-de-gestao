@@ -42,6 +42,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
     setorInsights,
     pontosHistorico,
     tempoSemManutencao,
+    atendimentoGeralResumo,
     pontosStatusResumo,
     pendingAging,
     setorAgingResumo,
@@ -52,6 +53,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
     generatedAt,
     loadingKpi,
     intervaloInvalido,
+    datasetError,
   } = useDashboardKpi(dataInicio, dataFim);
 
   const periodoLabel = useMemo(
@@ -76,6 +78,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       sigaChamadosAbertos,
       sigaChamadosFinalizados,
       sigaResumo,
+      atendimentoGeralResumo,
       expectedMaintenanceDays,
       generatedAt,
       tempoSemManutencao,
@@ -94,6 +97,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       sigaResumo,
       setorInsights,
       tempoSemManutencao,
+      atendimentoGeralResumo,
       top5,
       totalConcluidas,
       chamadosInseridosNoSistema,
@@ -200,6 +204,12 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
         </p>
       )}
 
+      {datasetError && (
+        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-4">
+          {datasetError}
+        </p>
+      )}
+
       <div className={`${s.card} p-5 rounded-[2rem] mb-6 border border-red-600/15`}>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub}`}>Periodo: {periodoLabel}</p>
@@ -284,6 +294,9 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
             <SectionCard title="Insights por Setor" s={s} className="xl:col-span-2">
               <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-4`}>
                 Tempo medio sem manutencao: {tempoSemManutencao?.label || '-'}
+              </p>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-4`}>
+                Tempo medio de atendimento: {atendimentoGeralResumo?.mediaLabel || '-'} ({atendimentoGeralResumo?.totalChamados || 0} chamados)
               </p>
               {setorInsights.length === 0 ? (
                 <p className={`${s.sub} text-sm`}>Sem dados de setor para o periodo atual.</p>

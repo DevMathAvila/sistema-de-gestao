@@ -1,38 +1,62 @@
 import * as api from '../../../core/api/supabaseSecure';
 import { supabase } from '../../../core/api/supabaseClient';
 
-async function getAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  const token = data?.session?.access_token || '';
-  if (!token) throw new Error('Sessao expirada. Faca login novamente.');
-  return token;
+async function parseEdgeInvokeError(error) {
+  const status = error?.context?.status;
+  if (error?.context) {
+    try {
+      const body = await error.context.json();
+      const msg = body?.error || body?.message || error.message || 'Falha na Edge Function.';
+      return { status, message: status ? `Edge Function (${status}): ${msg}` : msg };
+    } catch {
+      try {
+        const raw = await error.context.text();
+        const msg = raw || error.message || 'Falha na Edge Function.';
+        return { status, message: status ? `Edge Function (${status}): ${msg}` : msg };
+      } catch {
+        const msg = error.message || 'Falha na Edge Function.';
+        return { status, message: status ? `Edge Function (${status}): ${msg}` : msg };
+      }
+    }
+  }
+  return { status, message: error?.message || 'Falha na Edge Function.' };
 }
 
 async function invokeAdminFunction(fnName, payload) {
-  const accessToken = await getAccessToken();
-  const { data, error } = await supabase.functions.invoke(fnName, {
-    body: payload,
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (error) {
-    if (error?.context) {
-      try {
-        const body = await error.context.json();
-        throw new Error(body?.error || body?.message || error.message || 'Falha na Edge Function.');
-      } catch {
-        throw new Error(error.message || 'Falha na Edge Function.');
-      }
-    }
-    throw new Error(error.message || 'Falha na Edge Function.');
+  const invoke = async () => {
+    const { data, error } = await supabase.functions.invoke(fnName, {
+      body: payload,
+    });
+    if (!error) return { data, error: null };
+    const parsed = await parseEdgeInvokeError(error);
+    return { data: null, error: parsed };
+  };
+
+  let result = await invoke();
+
+  if (result.error?.status === 401) {
+    await supabase.auth.refreshSession();
+    result = await invoke();
   }
-  if (data?.error) throw new Error(data.error);
-  return data;
+
+  if (result.error) throw new Error(result.error.message);
+  if (result.data?.error) throw new Error(result.data.error);
+  return result.data;
 }
 
 export async function loadUsuarios() {
-  const data = await invokeAdminFunction('admin-users-list');
-  return Array.isArray(data?.users) ? data.users : [];
+  try {
+    const data = await invokeAdminFunction('admin-users-list');
+    return Array.isArray(data?.users) ? data.users : [];
+  } catch {
+    // Fallback operacional: leitura direta via RLS (admin/master pode listar todos).
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, username, role, created_at, auth_user_id')
+      .order('username');
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  }
 }
 
 export async function createUsuario(payload) {
@@ -41,7 +65,15 @@ export async function createUsuario(payload) {
 
 export async function removeUsuario(authUserId) {
   if (!authUserId) throw new Error('Usuario invalido.');
-  await invokeAdminFunction('admin-users-delete', { authUserId });
+  try {
+    await invokeAdminFunction('admin-users-delete', { authUserId });
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (msg.includes('Invalid JWT')) {
+      throw new Error('Falha de autenticacao da Edge Function (Invalid JWT). Refaça login e confirme deploy da funcao admin-users-delete no mesmo projeto do .env.');
+    }
+    throw err;
+  }
 }
 
 export async function loadParetoStats(setorFiltro) {

@@ -158,6 +158,45 @@ function computeTempoSemManutencao(concluidasRows) {
   return { mediaDias: avg, label: `${avg.toFixed(1)} dias` };
 }
 
+function computeAtendimentoGeral(concluidasRows) {
+  const samples = (concluidasRows || [])
+    .map((row) => {
+      const opened = toValidDate(row?.data);
+      const closed = toValidDate(row?.resolvido_em);
+      if (!opened || !closed) return null;
+      const hours = (closed.getTime() - opened.getTime()) / (1000 * 60 * 60);
+      if (!Number.isFinite(hours) || hours < 0) return null;
+      return hours;
+    })
+    .filter((hours) => Number.isFinite(hours));
+
+  if (samples.length === 0) {
+    return {
+      totalHoras: null,
+      mediaHoras: null,
+      maxHoras: null,
+      totalLabel: '-',
+      mediaLabel: '-',
+      maxLabel: '-',
+      totalChamados: 0,
+    };
+  }
+
+  const totalHoras = samples.reduce((sum, value) => sum + value, 0);
+  const mediaHoras = totalHoras / samples.length;
+  const maxHoras = Math.max(...samples);
+
+  return {
+    totalHoras,
+    mediaHoras,
+    maxHoras,
+    totalLabel: formatDurationHours(totalHoras),
+    mediaLabel: formatDurationHours(mediaHoras),
+    maxLabel: formatDurationHours(maxHoras),
+    totalChamados: samples.length,
+  };
+}
+
 export async function fetchDashboardDataset(dataInicio, dataFim) {
   const [kpiRes, concluidasRes, abertasRes, inseridosRes] = await Promise.all([
     listarRegistrosParaKPI(dataInicio || null, dataFim || null),
@@ -166,12 +205,24 @@ export async function fetchDashboardDataset(dataInicio, dataFim) {
     listarRegistrosInseridosNoSistema(dataInicio || null, dataFim || null),
   ]);
 
+  const errors = {
+    kpi: kpiRes?.error || null,
+    concluidas: concluidasRes?.error || null,
+    abertas: abertasRes?.error || null,
+    inseridos: inseridosRes?.error || null,
+  };
+
+  const hasAnyError = Boolean(errors.kpi || errors.concluidas || errors.abertas || errors.inseridos);
+  const hasKpiError = Boolean(errors.kpi);
+
   return {
     kpiRows: Array.isArray(kpiRes?.data) ? kpiRes.data : [],
     concluidasRows: Array.isArray(concluidasRes?.data) ? concluidasRes.data : [],
     abertasRows: Array.isArray(abertasRes?.data) ? abertasRes.data : [],
     inseridosRows: Array.isArray(inseridosRes?.data) ? inseridosRes.data : [],
-    hasError: Boolean(kpiRes?.error || concluidasRes?.error || abertasRes?.error || inseridosRes?.error),
+    errors,
+    hasAnyError,
+    hasKpiError,
   };
 }
 
@@ -405,6 +456,7 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, in
     });
 
   const tempoSemManutencao = computeTempoSemManutencao(concluidasRows || []);
+  const atendimentoGeralResumo = computeAtendimentoGeral(concluidasRows || []);
 
   return {
     totalGeral,
@@ -427,5 +479,6 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, in
     expectedMaintenanceDays: EXPECTED_MAINTENANCE_DAYS,
     generatedAt: nowDate.toISOString(),
     tempoSemManutencao,
+    atendimentoGeralResumo,
   };
 }

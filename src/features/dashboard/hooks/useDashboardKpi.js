@@ -17,6 +17,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
     inseridosRows: [],
   });
   const [loadingKpi, setLoadingKpi] = useState(false);
+  const [datasetError, setDatasetError] = useState('');
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [datasetVersion, setDatasetVersion] = useState(() => localStorage.getItem('kpiDataVersion') || '0');
   const intervaloInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
@@ -48,6 +49,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
   useEffect(() => {
     if (intervaloInvalido) {
       setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], inseridosRows: [] });
+      setDatasetError('');
       setLoadingKpi(false);
       return;
     }
@@ -59,6 +61,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
 
     if (cacheIsValid) {
       setDataset(cached.dataset);
+      setDatasetError(cached.datasetError || '');
       setLoadingKpi(false);
       return;
     }
@@ -76,10 +79,18 @@ export function useDashboardKpi(dataInicio, dataFim) {
     request
       .then((res) => {
         if (cancelled) return;
-        if (res?.hasError) {
-          setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], inseridosRows: [] });
-          return;
-        }
+
+        const errorMessages = [
+          res?.errors?.kpi?.message,
+          res?.errors?.concluidas?.message,
+          res?.errors?.abertas?.message,
+          res?.errors?.inseridos?.message,
+        ].filter(Boolean);
+
+        const nextError = errorMessages.length > 0
+          ? `Falha parcial ao carregar KPI: ${errorMessages.join(' | ')}`
+          : '';
+
         const nextDataset = {
           kpiRows: Array.isArray(res?.kpiRows) ? res.kpiRows : [],
           concluidasRows: Array.isArray(res?.concluidasRows) ? res.concluidasRows : [],
@@ -89,12 +100,15 @@ export function useDashboardKpi(dataInicio, dataFim) {
         dashboardDatasetCache.set(cacheKey, {
           dataset: nextDataset,
           cachedAt: Date.now(),
+          datasetError: nextError,
         });
         setDataset(nextDataset);
+        setDatasetError(nextError);
       })
       .catch(() => {
         if (!cancelled) {
           setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], inseridosRows: [] });
+          setDatasetError('Falha total ao carregar KPI.');
         }
       })
       .finally(() => {
@@ -115,6 +129,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
     ...computed,
     loadingKpi,
     intervaloInvalido,
+    datasetError,
     rawDataset: dataset,
   };
 }

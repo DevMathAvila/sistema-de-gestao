@@ -9,9 +9,19 @@ export default function AdminUsersTab({
   novoUser,
   setNovoUser,
   roleOptions,
+  salvandoUsuario,
+  removendoUsuario,
+  usuarioPendenteRemocao,
+  userActionFeedback,
   onCreateUser,
-  onRemoveUser,
+  onAskRemoveUser,
+  onCancelRemoveUser,
+  onConfirmRemoveUser,
 }) {
+  const feedbackClass = userActionFeedback?.type === 'success'
+    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+    : 'border-red-600/30 bg-red-600/10 text-red-500';
+
   return (
     <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl">
       <header className="mb-10">
@@ -19,6 +29,11 @@ export default function AdminUsersTab({
           Controle de <span className="text-red-600">Acessos</span>
         </h2>
         <p className={s.sub}>Cadastre novos tecnicos ou gerencie permissoes administrativas.</p>
+        {userActionFeedback?.message && (
+          <div className={`mt-4 rounded-2xl border px-4 py-3 text-[11px] font-black uppercase tracking-wider ${feedbackClass}`}>
+            {userActionFeedback.message}
+          </div>
+        )}
       </header>
 
       <div className={`${s.card} p-8 rounded-[2.5rem] mb-10`}>
@@ -57,8 +72,11 @@ export default function AdminUsersTab({
               ))}
             </select>
           </div>
-          <button className="mt-6 h-[52px] bg-red-600 text-white font-black rounded-2xl hover:bg-red-700 transition-all uppercase text-xs flex items-center justify-center gap-2">
-            <UserPlus size={18} /> Criar Usuario
+          <button
+            disabled={salvandoUsuario}
+            className="mt-6 h-[52px] bg-red-600 text-white font-black rounded-2xl hover:bg-red-700 disabled:bg-slate-500 transition-all uppercase text-xs flex items-center justify-center gap-2"
+          >
+            <UserPlus size={18} /> {salvandoUsuario ? 'Criando...' : 'Criar Usuario'}
           </button>
         </form>
       </div>
@@ -88,7 +106,9 @@ export default function AdminUsersTab({
                 {isMaster && (
                   <td className="p-6 text-right">
                     <button
-                        onClick={() => onRemoveUser(u.auth_user_id || u.id)}
+                      type="button"
+                      onClick={() => onAskRemoveUser(u)}
+                      disabled={removendoUsuario}
                       className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                     >
                       <Trash2 size={18} />
@@ -113,7 +133,9 @@ export default function AdminUsersTab({
                 </span>
                 {isMaster && (
                   <button
-                    onClick={() => onRemoveUser(u.auth_user_id || u.id)}
+                    type="button"
+                    onClick={() => onAskRemoveUser(u)}
+                    disabled={removendoUsuario}
                     className="h-11 w-11 rounded-xl bg-red-600/10 text-red-600 flex items-center justify-center active:scale-95 transition-all"
                   >
                     <Trash2 size={16} />
@@ -125,6 +147,50 @@ export default function AdminUsersTab({
           ))}
         </div>
       </div>
+
+      {usuarioPendenteRemocao && (
+        <div className="fixed inset-0 z-[340]">
+          <button
+            type="button"
+            onClick={onCancelRemoveUser}
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            aria-label="Fechar confirmacao"
+          />
+          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-full max-w-md">
+            <div className={`rounded-3xl border shadow-2xl ${theme === 'dark' ? 'bg-[#090909] border-white/10' : 'bg-white border-slate-200'}`}>
+              <div className="p-6 border-b border-red-600/15">
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-2">Confirmar Exclusao</p>
+                <h3 className="text-lg font-black uppercase italic">
+                  Remover <span className="text-red-600">{usuarioPendenteRemocao.username}</span>?
+                </h3>
+                <p className={`mt-2 text-xs ${s.sub}`}>
+                  Esta acao remove o acesso do usuario no sistema.
+                </p>
+              </div>
+              <div className="p-5 flex flex-col sm:flex-row justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onCancelRemoveUser}
+                  disabled={removendoUsuario}
+                  className={`h-11 px-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest ${
+                    theme === 'dark' ? 'border-white/15 hover:bg-white/10' : 'border-slate-300 hover:bg-slate-100'
+                  }`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={onConfirmRemoveUser}
+                  disabled={removendoUsuario}
+                  className="h-11 px-4 rounded-2xl bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 disabled:bg-slate-500"
+                >
+                  {removendoUsuario ? 'Removendo...' : 'Sim, remover'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

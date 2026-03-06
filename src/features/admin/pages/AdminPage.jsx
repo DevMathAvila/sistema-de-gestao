@@ -44,8 +44,14 @@ export default function AdminPage() {
     novoUser,
     setNovoUser,
     usuarios,
+    salvandoUsuario,
+    removendoUsuario,
+    usuarioPendenteRemocao,
+    userActionFeedback,
     handleCreateUser,
-    handleRemoveUser,
+    handleAskRemoveUser,
+    handleCancelRemoveUser,
+    handleConfirmRemoveUser,
     setorFiltro,
     setSetorFiltro,
     falhasStats,
@@ -219,8 +225,14 @@ export default function AdminPage() {
               novoUser={novoUser}
               setNovoUser={setNovoUser}
               roleOptions={roleOptions}
+              salvandoUsuario={salvandoUsuario}
+              removendoUsuario={removendoUsuario}
+              usuarioPendenteRemocao={usuarioPendenteRemocao}
+              userActionFeedback={userActionFeedback}
               onCreateUser={handleCreateUser}
-              onRemoveUser={handleRemoveUser}
+              onAskRemoveUser={handleAskRemoveUser}
+              onCancelRemoveUser={handleCancelRemoveUser}
+              onConfirmRemoveUser={handleConfirmRemoveUser}
             />
           </Suspense>
         )}
