@@ -43,6 +43,8 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
     pontosHistorico,
     tempoSemManutencao,
     atendimentoGeralResumo,
+    inoperantesAbertosResumo,
+    inoperantesConcluidosResumo,
     pontosStatusResumo,
     pendingAging,
     setorAgingResumo,
@@ -79,6 +81,8 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       sigaChamadosFinalizados,
       sigaResumo,
       atendimentoGeralResumo,
+      inoperantesAbertosResumo,
+      inoperantesConcluidosResumo,
       expectedMaintenanceDays,
       generatedAt,
       tempoSemManutencao,
@@ -98,6 +102,8 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       setorInsights,
       tempoSemManutencao,
       atendimentoGeralResumo,
+      inoperantesAbertosResumo,
+      inoperantesConcluidosResumo,
       top5,
       totalConcluidas,
       chamadosInseridosNoSistema,
@@ -360,6 +366,82 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
                 </table>
               </div>
             )}
+          </SectionCard>
+
+          <SectionCard title="Pontos Inoperantes" s={s}>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-2`}>Inativos em aberto</p>
+                {inoperantesAbertosResumo.length === 0 ? (
+                  <p className={`${s.sub} text-sm`}>Nenhum ponto inoperante aberto no periodo.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px] text-left">
+                      <thead>
+                        <tr className={`${s.sub} text-[10px] uppercase tracking-widest border-b ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
+                          <th className="p-3">Setor</th>
+                          <th className="p-3">Trave</th>
+                          <th className="p-3">Ponto</th>
+                          <th className="p-3">Inicio inativo</th>
+                          <th className="p-3">Tempo inativo</th>
+                          <th className="p-3">Motivo</th>
+                          <th className="p-3">Apontado por</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inoperantesAbertosResumo.slice(0, 15).map((item) => (
+                          <tr key={`inop-open-${item.id}`} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+                            <td className="p-3 font-bold">{item.setor}</td>
+                            <td className="p-3 font-mono">{item.trave}</td>
+                            <td className="p-3 font-mono">{item.ponto}</td>
+                            <td className="p-3 font-mono">{item.inicioInativoLabel}</td>
+                            <td className="p-3">{item.tempoInativoLabel}</td>
+                            <td className="p-3">{item.motivo}</td>
+                            <td className="p-3">{item.apontadoPor}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-widest ${s.sub} mb-2`}>Inativos arrumados</p>
+                {inoperantesConcluidosResumo.length === 0 ? (
+                  <p className={`${s.sub} text-sm`}>Nenhum ponto inoperante concluido no periodo.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px] text-left">
+                      <thead>
+                        <tr className={`${s.sub} text-[10px] uppercase tracking-widest border-b ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'}`}>
+                          <th className="p-3">Setor</th>
+                          <th className="p-3">Trave</th>
+                          <th className="p-3">Ponto</th>
+                          <th className="p-3">Inicio inativo</th>
+                          <th className="p-3">Conclusao</th>
+                          <th className="p-3">Finalizado por</th>
+                          <th className="p-3">O que foi feito</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {inoperantesConcluidosResumo.slice(0, 15).map((item) => (
+                          <tr key={`inop-done-${item.id}`} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
+                            <td className="p-3 font-bold">{item.setor}</td>
+                            <td className="p-3 font-mono">{item.trave}</td>
+                            <td className="p-3 font-mono">{item.ponto}</td>
+                            <td className="p-3 font-mono">{item.inicioInativoLabel}</td>
+                            <td className="p-3 font-mono">{item.conclusaoInativoLabel}</td>
+                            <td className="p-3">{item.finalizadoPor}</td>
+                            <td className="p-3">{item.solucao}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           </SectionCard>
         </div>
       )}

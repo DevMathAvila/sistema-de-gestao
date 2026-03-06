@@ -129,7 +129,7 @@ async function exportRowsToExcel(rows, sheetName, filename) {
 export async function exportHistoricoConcluidoExcel(historico) {
   if (!Array.isArray(historico) || historico.length === 0) return;
   const rows = historico.map((item) => ({
-    'Run In': item.setor || '',
+    'Setor': item.setor || '',
     Trave: item.trave ?? '',
     Ponto: item.ponto ?? '',
     Falha: item.falha || '',
@@ -144,7 +144,7 @@ export async function exportHistoricoConcluidoExcel(historico) {
 export async function exportHistoricoAbertoExcel(historicoAbertas) {
   if (!Array.isArray(historicoAbertas) || historicoAbertas.length === 0) return;
   const rows = historicoAbertas.map((item) => ({
-    'Run In': item.setor || '',
+    'Setor': item.setor || '',
     Trave: item.trave ?? '',
     Ponto: item.ponto ?? '',
     Falha: item.falha || '',

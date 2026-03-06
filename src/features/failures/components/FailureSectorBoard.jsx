@@ -2,6 +2,7 @@ import React from 'react';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import Zap from 'lucide-react/dist/esm/icons/zap';
+import { isAvtSetor } from '../constants/failureConstants';
 import { normalizeText, traveTemParada } from '../services/failuresService';
 
 export default function FailureSectorBoard({
@@ -11,8 +12,8 @@ export default function FailureSectorBoard({
   setSetorAberto,
   traveAberta,
   setTraveAberta,
-  traves,
-  pontos,
+  getTravesDoSetor,
+  getPontosDoSetor,
   getTraveChamados,
   getStatusTrave,
   getDadosPonto,
@@ -26,9 +27,12 @@ export default function FailureSectorBoard({
     <div className="space-y-4">
       {setors.map((setor) => {
         const falhasDoSetor = falhasPorSetor[setor] || [];
+        const setorEhAvt = isAvtSetor(setor);
         const numTravesAfetadas = new Set(falhasDoSetor.map((f) => String(f.trave))).size;
         const setorTemParadaCritica = traveTemParada(falhasDoSetor);
         const isSetorAberto = setorAberto === setor;
+        const traves = getTravesDoSetor(setor);
+        const pontos = getPontosDoSetor(setor);
 
         return (
           <div key={setor} className={`${styles.card} rounded-2xl border overflow-hidden`}>
@@ -43,13 +47,80 @@ export default function FailureSectorBoard({
                   {setorTemParadaCritica && <span className="bg-purple-600 text-[8px] font-black px-2 py-0.5 rounded-full text-white">PARADA</span>}
                 </div>
                 <span className={`text-[10px] font-black uppercase mt-1 flex items-center gap-1.5 ${numTravesAfetadas > 0 ? (setorTemParadaCritica ? 'text-purple-400' : 'text-red-500') : 'text-gray-500'}`}>
-                  {numTravesAfetadas > 0 ? <><Zap size={10} /> {numTravesAfetadas} Traves Afetadas</> : 'Estavel'}
+                  {setorEhAvt
+                    ? (falhasDoSetor.length > 0 ? <><Zap size={10} /> {falhasDoSetor.length} Registros Abertos</> : 'Estavel')
+                    : (numTravesAfetadas > 0 ? <><Zap size={10} /> {numTravesAfetadas} Traves Afetadas</> : 'Estavel')}
                 </span>
               </div>
               <ChevronDown size={20} className={`transition-transform duration-500 ${isSetorAberto ? 'rotate-180' : ''} ${styles.subtext}`} />
             </button>
 
-            {isSetorAberto && (
+            {isSetorAberto && setorEhAvt && (
+              <div className="px-5 pb-5 space-y-3">
+                {(() => {
+                  const traveAvt = 1;
+                  const chamadosDaTrave = getTraveChamados(setor, traveAvt);
+                  const hasFalhas = chamadosDaTrave.length > 0;
+                  const status = getStatusTrave(chamadosDaTrave);
+                  return (
+                    <div id={`anchor-${normalizeText(setor)}-${traveAvt}`}>
+                      <div className={`flex items-center gap-2 p-2 rounded-xl border ${hasFalhas ? 'border-red-500/20' : 'border-transparent'}`}>
+                        <div className="flex-1 flex items-center justify-between px-3 py-1">
+                          <span className={`flex items-center gap-2 text-[10px] font-black uppercase italic ${hasFalhas ? (status.level === 4 ? 'text-purple-500' : 'text-red-600') : 'text-gray-400'}`}>
+                            <Zap size={14} /> Pontos AVT
+                          </span>
+                          {hasFalhas && (
+                            <span className={`px-3 py-1 ${status.color} ${status.textColor} text-[8px] font-black rounded-full`}>
+                              {status.label}
+                            </span>
+                          )}
+                        </div>
+                        {hasFalhas && !isColaborador && (
+                          <button onClick={() => abrirModalLote(setor, traveAvt)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg font-black text-[8px] uppercase hover:bg-red-700 transition-all">
+                            Resolver
+                          </button>
+                        )}
+                      </div>
+
+                      <div className={`p-4 mt-2 rounded-2xl grid ${pontos.length > 15 ? 'grid-cols-5 sm:grid-cols-8 md:grid-cols-10' : 'grid-cols-5 sm:grid-cols-8'} gap-2 border ${styles.mutedCard}`}>
+                        {pontos.map((p) => {
+                          const pontoNum = Number(p);
+                          const dadosPonto = getDadosPonto(setor, traveAvt, pontoNum);
+                          let bgClass = theme === 'dark' ? 'bg-white/5 text-gray-700' : 'bg-white border-slate-200 text-slate-300';
+                          if (dadosPonto) {
+                            if (dadosPonto.falha.toLowerCase().includes('travetoda') || dadosPonto.falha.toLowerCase().includes('inteira') || dadosPonto.falha.includes('1-15') || dadosPonto.falha.includes('1-40')) bgClass = 'bg-purple-600 text-white';
+                            else if (dadosPonto.isMonitor) bgClass = 'bg-orange-500 text-white';
+                            else bgClass = 'bg-red-600 text-white';
+                          }
+                          return (
+                            <div key={`${setor}-${traveAvt}-${p}`} className="relative group">
+                              <button
+                                onClick={() => abrirModalPonto(dadosPonto)}
+                                className={`w-full aspect-square rounded-lg flex flex-col items-center justify-center text-[9px] font-black transition-all duration-300 ${bgClass}`}
+                              >
+                                <span className="text-[6px] opacity-50 mb-0">PT</span>
+                                {p}
+                              </button>
+                              {dadosPonto && (
+                                <div className={`pointer-events-none absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl border p-2 opacity-0 group-hover:opacity-100 transition-all ${
+                                  theme === 'dark' ? 'bg-black/95 border-white/10' : 'bg-white border-slate-200 shadow-xl'
+                                }`}>
+                                  <p className={`text-[10px] font-black uppercase leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                    {dadosPonto.falha}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {isSetorAberto && !setorEhAvt && (
               <div className="px-5 pb-5 space-y-3">
                 {traves.map((traveNum) => {
                   const chamadosDaTrave = getTraveChamados(setor, traveNum);
@@ -77,13 +148,13 @@ export default function FailureSectorBoard({
                       </div>
 
                       {isTraveOpen && (
-                        <div className={`p-4 mt-2 rounded-2xl grid grid-cols-5 sm:grid-cols-8 gap-2 border ${styles.mutedCard}`}>
+                        <div className={`p-4 mt-2 rounded-2xl grid ${pontos.length > 15 ? 'grid-cols-5 sm:grid-cols-8 md:grid-cols-10' : 'grid-cols-5 sm:grid-cols-8'} gap-2 border ${styles.mutedCard}`}>
                           {pontos.map((p) => {
                             const pontoNum = Number(p);
                             const dadosPonto = getDadosPonto(setor, traveNum, pontoNum);
                             let bgClass = theme === 'dark' ? 'bg-white/5 text-gray-700' : 'bg-white border-slate-200 text-slate-300';
                             if (dadosPonto) {
-                              if (dadosPonto.falha.toLowerCase().includes('travetoda') || dadosPonto.falha.includes('1-15')) bgClass = 'bg-purple-600 text-white';
+                              if (dadosPonto.falha.toLowerCase().includes('travetoda') || dadosPonto.falha.toLowerCase().includes('inteira') || dadosPonto.falha.includes('1-15') || dadosPonto.falha.includes('1-40')) bgClass = 'bg-purple-600 text-white';
                               else if (dadosPonto.isMonitor) bgClass = 'bg-orange-500 text-white';
                               else bgClass = 'bg-red-600 text-white';
                             }

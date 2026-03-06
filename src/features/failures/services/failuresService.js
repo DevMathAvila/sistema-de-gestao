@@ -9,6 +9,7 @@ import {
   listarHistoricoRecentePorPonto,
   marcarFalhasComoInoperantes,
   marcarFalhasParaSiga,
+  atualizarFalhaInoperante,
   reativarFalhasInoperantes,
   salvarDadosSigaAguardando,
 } from '../../../core/api/supabaseSecure';
@@ -80,14 +81,20 @@ export async function concluirFalhas({ ids, solucao, falhasSelecionadas }) {
   resetOpenFailuresCache();
 }
 
-export async function marcarComoInoperante({ ids, falhasSelecionadas }) {
-  const { error } = await marcarFalhasComoInoperantes(ids, falhasSelecionadas);
+export async function marcarComoInoperante({ ids, falhasSelecionadas, inoperantePayload }) {
+  const { error } = await marcarFalhasComoInoperantes(ids, falhasSelecionadas, inoperantePayload);
   if (error) throw error;
   resetOpenFailuresCache();
 }
 
 export async function reativarInoperante({ ids }) {
   const { error } = await reativarFalhasInoperantes(ids);
+  if (error) throw error;
+  resetOpenFailuresCache();
+}
+
+export async function atualizarInoperante({ id, data, falha, motivo }) {
+  const { error } = await atualizarFalhaInoperante({ id, data, falha, motivo });
   if (error) throw error;
   resetOpenFailuresCache();
 }
@@ -142,7 +149,7 @@ export function buildFalhasDoChamado(chamados) {
 
 export function traveTemParada(chamados) {
   return chamados.some(
-    (f) => normalizeText(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15'),
+    (f) => normalizeText(f.ponto).includes('travetoda') || normalizeText(f.ponto).includes('inteira') || String(f.ponto).includes('1-15') || String(f.ponto).includes('1-40'),
   );
 }
 

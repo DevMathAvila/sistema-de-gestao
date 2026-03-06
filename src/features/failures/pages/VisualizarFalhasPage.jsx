@@ -241,8 +241,8 @@ export default function VisualizarFalhasPage() {
             setSetorAberto={vm.setSetorAberto}
             traveAberta={vm.traveAberta}
             setTraveAberta={vm.setTraveAberta}
-            traves={vm.traves}
-            pontos={vm.pontos}
+            getTravesDoSetor={vm.getTravesDoSetor}
+            getPontosDoSetor={vm.getPontosDoSetor}
             getTraveChamados={vm.getTraveChamados}
             getStatusTrave={vm.getStatusTrave}
             getDadosPonto={vm.getDadosPonto}
@@ -259,6 +259,8 @@ export default function VisualizarFalhasPage() {
             styles={vm.styles}
             isColaborador={vm.isColaborador}
             onReativar={vm.handleReativarInoperante}
+            onFinalizar={vm.handleFinalizarInoperante}
+            onEditar={vm.handleAtualizarInoperante}
             enviando={vm.enviando}
             formatDateTime={vm.formatDateTime}
           />
@@ -277,6 +279,14 @@ export default function VisualizarFalhasPage() {
         isColaborador={vm.isColaborador}
         falhasSelecionadas={vm.falhasSelecionadas}
         toggleFalhaSelecionada={vm.toggleFalhaSelecionada}
+        inoperantePresets={vm.inoperantePresets}
+        novoPresetInoperante={vm.novoPresetInoperante}
+        setNovoPresetInoperante={vm.setNovoPresetInoperante}
+        addCustomInoperantePreset={vm.addCustomInoperantePreset}
+        inoperanteSelecionadas={vm.inoperanteSelecionadas}
+        toggleInoperanteSelecionada={vm.toggleInoperanteSelecionada}
+        inoperanteDescricao={vm.inoperanteDescricao}
+        setInoperanteDescricao={vm.setInoperanteDescricao}
         handleFinalizarChamado={vm.handleFinalizarChamado}
         handleMarcarInoperante={vm.handleMarcarInoperante}
         handleEnviarParaSiga={vm.handleEnviarParaSiga}

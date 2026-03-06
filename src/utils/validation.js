@@ -10,7 +10,7 @@ const MAX_SOLUCAO = 2000;
 const TRAVE_MIN = 1;
 const TRAVE_MAX = 23;
 const PONTO_MIN = 1;
-const PONTO_MAX = 15;
+const PONTO_MAX = 40;
 
 /**
  * Remove caracteres perigosos e limita tamanho.

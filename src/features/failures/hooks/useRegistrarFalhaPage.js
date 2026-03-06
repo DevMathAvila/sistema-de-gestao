@@ -4,9 +4,14 @@ import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { FALHAS_COMUNS } from '../../../shared/constants/falhasComuns';
 import { LISTA_SETORES } from '../../../shared/constants/setores';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
-import { PONTOS } from '../constants/failureConstants';
+import { getPontosBySetor, getTravesBySetor, isAvtSetor } from '../constants/failureConstants';
 import { createFalhaRegistro, fetchChamadosAbertosPorSetor } from '../services/failuresService';
 import { getFailureTheme } from '../styles/failureTheme';
+
+function isTraveInteiraRegistro(pontoRaw) {
+  const texto = String(pontoRaw || '').toLowerCase();
+  return texto.includes('inteira') || texto.includes('travetoda') || texto.includes('1-15') || texto.includes('1-40');
+}
 
 export function useRegistrarFalhaPage() {
   const location = useLocation();
@@ -19,11 +24,24 @@ export function useRegistrarFalhaPage() {
     return s && LISTA_SETORES.includes(s) ? s : LISTA_SETORES[0] ?? 'Setor nao selecionado';
   }, [location.state]);
 
+  const pontos = useMemo(() => getPontosBySetor(setor), [setor]);
+  const traves = useMemo(() => getTravesBySetor(setor), [setor]);
+  const setorEhAvt = useMemo(() => isAvtSetor(setor), [setor]);
+
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [chamadosAbertos, setChamadosAbertos] = useState([]);
   const [formData, setFormData] = useState({ trave: '', pontos: [], falhas: [] });
   const isAdmin = isAdminUser(getSessionUser() || { role: 'colaborador' });
+
+  useEffect(() => {
+    if (setorEhAvt) {
+      setFormData((prev) => ({
+        ...prev,
+        trave: setorEhAvt ? 1 : prev.trave,
+      }));
+    }
+  }, [setorEhAvt]);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +64,7 @@ export function useRegistrarFalhaPage() {
     const chamadosDestePonto = chamadosAbertos.filter((c) => {
       if (String(c.trave) !== String(formData.trave)) return false;
       const pStr = String(c.ponto || '');
-      if (pStr === '1-15 (Inteira)') return true;
+      if (isTraveInteiraRegistro(pStr)) return true;
       const pontosArray = pStr.split(',').map((p) => p.replace('Ponto ', '').trim());
       return pontosArray.includes(String(numPonto));
     });
@@ -72,7 +90,7 @@ export function useRegistrarFalhaPage() {
   const selecionarTodosPontos = () => {
     setFormData((prev) => ({
       ...prev,
-      pontos: prev.pontos.length === PONTOS.length ? [] : PONTOS,
+      pontos: prev.pontos.length === pontos.length ? [] : pontos,
     }));
   };
 
@@ -97,6 +115,7 @@ export function useRegistrarFalhaPage() {
 
   return {
     setor,
+    setorEhAvt,
     loading,
     isSuccess,
     chamadosAbertos,
@@ -113,7 +132,8 @@ export function useRegistrarFalhaPage() {
     selecionarTodosPontos,
     handleSubmit,
     navigate,
-    pontos: PONTOS,
+    traves,
+    pontos,
     falhasComuns: FALHAS_COMUNS,
   };
 }

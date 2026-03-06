@@ -195,6 +195,40 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
     6
   );
 
+  const inoperantesAbertosRows = renderRows(
+    metrics.inoperantesAbertosResumo?.slice(0, 12),
+    (item, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${escapeHtml(item.setor)}</td>
+        <td>${escapeHtml(item.trave)}</td>
+        <td>${escapeHtml(item.ponto)}</td>
+        <td>${escapeHtml(item.inicioInativoLabel)}</td>
+        <td>${escapeHtml(item.tempoInativoLabel)}</td>
+        <td>${escapeHtml(item.motivo)}</td>
+        <td>${escapeHtml(item.apontadoPor)}</td>
+      </tr>`,
+    'Sem pontos inoperantes em aberto no periodo.',
+    8
+  );
+
+  const inoperantesConcluidosRows = renderRows(
+    metrics.inoperantesConcluidosResumo?.slice(0, 12),
+    (item, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${escapeHtml(item.setor)}</td>
+        <td>${escapeHtml(item.trave)}</td>
+        <td>${escapeHtml(item.ponto)}</td>
+        <td>${escapeHtml(item.inicioInativoLabel)}</td>
+        <td>${escapeHtml(item.conclusaoInativoLabel)}</td>
+        <td>${escapeHtml(item.finalizadoPor)}</td>
+        <td>${escapeHtml(item.solucao)}</td>
+      </tr>`,
+    'Sem pontos inoperantes concluidos no periodo.',
+    8
+  );
+
   const sigaRows = renderRows(
     metrics.sigaChamadosAbertos?.slice(0, 10),
     (item, idx) => `
@@ -255,7 +289,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
       <div class="box section">
         <h2>Aging de Pendencias (Mais Antigas)</h2>
         <table>
-          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Abertura</th><th>Tempo Aberto</th><th>SLA</th></tr></thead>
+          <thead><tr><th>#</th><th>Setor</th><th>Trave</th><th>Ponto</th><th>Abertura</th><th>Tempo Aberto</th><th>SLA</th></tr></thead>
           <tbody>${agingRows}</tbody>
         </table>
       </div>`
@@ -277,7 +311,7 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
       <div class="box section">
         <h2>Pontos com Mais Historico</h2>
         <table>
-          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Eventos</th></tr></thead>
+          <thead><tr><th>#</th><th>Setor</th><th>Trave</th><th>Ponto</th><th>Eventos</th></tr></thead>
           <tbody>${pontosRows}</tbody>
         </table>
       </div>`
@@ -307,11 +341,11 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
           </div>
         </div>
         <table>
-          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Falha</th><th>Enviado</th><th>Codigo</th></tr></thead>
+          <thead><tr><th>#</th><th>Setor</th><th>Trave</th><th>Ponto</th><th>Falha</th><th>Enviado</th><th>Codigo</th></tr></thead>
           <tbody>${sigaRows}</tbody>
         </table>
         <table class="section">
-          <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Codigo</th><th>Finalizado</th><th>Atendimento</th></tr></thead>
+          <thead><tr><th>#</th><th>Setor</th><th>Trave</th><th>Ponto</th><th>Codigo</th><th>Finalizado</th><th>Atendimento</th></tr></thead>
           <tbody>${sigaFinalizadosRows}</tbody>
         </table>
       </div>`
@@ -574,10 +608,22 @@ function buildReportHtml({ metrics, periodoLabel, sections, preset }) {
   ${sigaSection}
 
   <div class="box section">
+    <h2>Pontos Inoperantes</h2>
+    <table>
+      <thead><tr><th>#</th><th>Setor</th><th>Trave</th><th>Ponto</th><th>Inicio Inativo</th><th>Tempo Inativo</th><th>Motivo</th><th>Apontado por</th></tr></thead>
+      <tbody>${inoperantesAbertosRows}</tbody>
+    </table>
+    <table class="section">
+      <thead><tr><th>#</th><th>Setor</th><th>Trave</th><th>Ponto</th><th>Inicio Inativo</th><th>Conclusao</th><th>Finalizado por</th><th>O que foi feito</th></tr></thead>
+      <tbody>${inoperantesConcluidosRows}</tbody>
+    </table>
+  </div>
+
+  <div class="box section">
     <h2>Status por Ponto (Pendentes x Concluidas)</h2>
     <p class="section-note">Chamados inseridos no sistema: ${safe(chamadosInseridos, '0')}</p>
     <table>
-      <thead><tr><th>#</th><th>Run In</th><th>Trave</th><th>Ponto</th><th>Pendentes</th><th>Concluidas</th></tr></thead>
+      <thead><tr><th>#</th><th>Setor</th><th>Trave</th><th>Ponto</th><th>Pendentes</th><th>Concluidas</th></tr></thead>
       <tbody>${pontoStatusRows}</tbody>
     </table>
   </div>

@@ -61,7 +61,7 @@ export function useRuninKioskPage() {
     const chamadosDestePonto = chamadosAbertos.filter((c) => {
       if (String(c.trave) !== String(formData.trave)) return false;
       const pStr = String(c.ponto || '');
-      if (pStr === '1-15 (Inteira)') return true;
+      if (String(pStr).toLowerCase().includes('inteira') || String(pStr).toLowerCase().includes('travetoda') || pStr.includes('1-15') || pStr.includes('1-40')) return true;
       const pontosArray = pStr.split(',').map((p) => p.replace('Ponto ', '').trim());
       return pontosArray.includes(String(numPonto));
     });

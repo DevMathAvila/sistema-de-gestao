@@ -122,6 +122,9 @@ function inferRuninSetorFromUsername(username) {
   return `Runin ${String(runinNum).padStart(2, '0')}`;
 }
 
+function isAvtSetor(value) {
+  return /^AVT(\s|$)/i.test(String(value || '').trim());
+}
 function isConcludedRecord(item) {
   const status = normalizeStatus(item?.status);
   return status.includes('conclu');
@@ -365,7 +368,8 @@ export async function listarRegistrosFalhas(filtroSetor = null) {
 export async function listarRegistrosAbertos(dataInicio = null, dataFim = null) {
   const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
   const selectBase = 'id, usuario, setor, trave, ponto, falha, data, status, resolvido_em';
-  const selectWithSiga = `${selectBase}, siga_enviado, siga_status, siga_enviado_em, siga_codigo_chamado, siga_data_abertura, siga_finalizado_em`;
+  const selectWithInoperante = `${selectBase}, ponto_inoperante, inoperante_motivo, inoperante_observacao, inoperante_por, inoperante_em`;
+  const selectWithSiga = `${selectWithInoperante}, siga_enviado, siga_status, siga_enviado_em, siga_codigo_chamado, siga_data_abertura, siga_finalizado_em`;
 
   const loadBySelect = async (selectCols) => {
     return supabase
@@ -376,8 +380,14 @@ export async function listarRegistrosAbertos(dataInicio = null, dataFim = null) 
   };
 
   let { data, error } = await loadBySelect(selectWithSiga);
-  const maybeMissingSigaColumns = String(error?.message || '').includes('siga_');
-  if (error && maybeMissingSigaColumns) {
+  const maybeMissingOptionalColumns = String(error?.message || '').includes('siga_')
+    || String(error?.message || '').includes('inoperante_');
+  if (error && maybeMissingOptionalColumns) {
+    const fallback = await loadBySelect(selectWithInoperante);
+    data = fallback.data;
+    error = fallback.error;
+  }
+  if (error && String(error?.message || '').includes('inoperante_')) {
     const fallback = await loadBySelect(selectBase);
     data = fallback.data;
     error = fallback.error;
@@ -432,7 +442,8 @@ export async function listarRegistrosParaKPI(dataInicio = null, dataFim = null) 
 export async function listarOcorrenciasConcluidas(dataInicio = null, dataFim = null) {
   const { inicioMs, fimExclusiveMs } = getDateBounds(dataInicio, dataFim);
   const selectBase = 'id, usuario, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, status, data';
-  const selectWithSiga = `${selectBase}, siga_enviado, siga_status, siga_enviado_em, siga_codigo_chamado, siga_data_abertura, siga_finalizado_em`;
+  const selectWithInoperante = `${selectBase}, ponto_inoperante, inoperante_motivo, inoperante_observacao, inoperante_por, inoperante_em`;
+  const selectWithSiga = `${selectWithInoperante}, siga_enviado, siga_status, siga_enviado_em, siga_codigo_chamado, siga_data_abertura, siga_finalizado_em`;
 
   const loadBySelect = async (selectCols) => {
     return supabase
@@ -442,8 +453,14 @@ export async function listarOcorrenciasConcluidas(dataInicio = null, dataFim = n
   };
 
   let { data, error } = await loadBySelect(selectWithSiga);
-  const maybeMissingSigaColumns = String(error?.message || '').includes('siga_');
-  if (error && maybeMissingSigaColumns) {
+  const maybeMissingOptionalColumns = String(error?.message || '').includes('siga_')
+    || String(error?.message || '').includes('inoperante_');
+  if (error && maybeMissingOptionalColumns) {
+    const fallback = await loadBySelect(selectWithInoperante);
+    data = fallback.data;
+    error = fallback.error;
+  }
+  if (error && String(error?.message || '').includes('inoperante_')) {
     const fallback = await loadBySelect(selectBase);
     data = fallback.data;
     error = fallback.error;
@@ -464,7 +481,7 @@ function pontoCorrespondeAoAlvo(pontoRegistro, pontoAlvo) {
   if (!registro || !alvo) return false;
 
   const registroNorm = registro.toLowerCase();
-  if (registroNorm.includes('1-15')) return true;
+  if (registroNorm.includes('1-15') || registroNorm.includes('1-40') || registroNorm.includes('inteira')) return true;
   if (registroNorm.includes('travetoda')) return true;
 
   const alvoNum = alvo.match(/\d+/)?.[0];
@@ -483,16 +500,29 @@ export async function listarHistoricoRecentePorPonto(setor, trave, ponto, limite
   const pontoSanit = sanitizeString(ponto, 50).trim();
   const limiteSeguro = Number.isInteger(limite) ? Math.max(1, Math.min(limite, 20)) : 5;
 
-  const selectCols = 'id, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, usuario';
+  const selectColsBase = 'id, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, usuario';
+  const selectCols = `${selectColsBase}, ponto_inoperante, inoperante_motivo, inoperante_observacao, inoperante_por, inoperante_em`;
 
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('historico_concluidas')
       .select(selectCols)
       .eq('setor', setorSanit)
       .eq('trave', traveNum)
       .order('resolvido_em', { ascending: false })
       .limit(60);
+
+    if (error && String(error?.message || '').includes('inoperante_')) {
+      const fallback = await supabase
+        .from('historico_concluidas')
+        .select(selectColsBase)
+        .eq('setor', setorSanit)
+        .eq('trave', traveNum)
+        .order('resolvido_em', { ascending: false })
+        .limit(60);
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (!error) {
       const filtrado = (data || [])
@@ -504,7 +534,7 @@ export async function listarHistoricoRecentePorPonto(setor, trave, ponto, limite
     // fallback abaixo
   }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('registros_falhas')
     .select(selectCols)
     .eq('setor', setorSanit)
@@ -512,6 +542,19 @@ export async function listarHistoricoRecentePorPonto(setor, trave, ponto, limite
     .ilike('status', '%conclu%')
     .order('resolvido_em', { ascending: false })
     .limit(60);
+
+  if (error && String(error?.message || '').includes('inoperante_')) {
+    const fallback = await supabase
+      .from('registros_falhas')
+      .select(selectColsBase)
+      .eq('setor', setorSanit)
+      .eq('trave', traveNum)
+      .ilike('status', '%conclu%')
+      .order('resolvido_em', { ascending: false })
+      .limit(60);
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) return { data: [], error };
   const filtrado = (data || [])
@@ -543,10 +586,11 @@ export async function inserirRegistrosFalha(setor, trave, pontos, falhas) {
 
   const username = sessionUser?.username || 'Tecnico';
   const traveNum = Number(trave);
-  const listaPontos = [...Array(15)].map((_, i) => i + 1);
+  const totalPontos = isAvtSetor(setorAlvo) ? 40 : 15;
+  const listaPontos = [...Array(totalPontos)].map((_, i) => i + 1);
   const todosPontos = listaPontos.length === pontosSanit.length;
   const inserts = todosPontos
-    ? [{ usuario: username, setor: setorAlvo, trave: traveNum, ponto: '1-15 (Inteira)', falha: falhaTexto, status: 'aberto' }]
+    ? [{ usuario: username, setor: setorAlvo, trave: traveNum, ponto: `${listaPontos[0]}-${listaPontos[listaPontos.length - 1]} (Inteira)`, falha: falhaTexto, status: 'aberto' }]
     : pontosSanit.map((p) => ({
         usuario: username,
         setor: setorAlvo,
@@ -689,7 +733,7 @@ export async function fecharRegistros(ids, solucao, falhasSelecionadas = null) {
   }
 }
 
-export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null) {
+export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null, inoperantePayload = null) {
   if (!Array.isArray(ids) || ids.length === 0) return { error: { message: 'IDs obrigatorios.' } };
 
   const sessionUser = getStoredSessionUser();
@@ -700,6 +744,14 @@ export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null
   const idList = ids.filter((id) => id != null && id !== '');
   if (idList.length === 0) return { error: { message: 'Nenhum ID valido.' } };
   const idSet = new Set(idList.map((id) => String(id)));
+
+  const motivosSelecionados = Array.isArray(inoperantePayload?.motivosSelecionados)
+    ? inoperantePayload.motivosSelecionados.map((v) => sanitizeString(v, 160).trim()).filter(Boolean)
+    : [];
+  const descricao = sanitizeString(inoperantePayload?.descricao, 1000).trim();
+  const motivoTexto = [...motivosSelecionados, descricao].filter(Boolean).join(' | ');
+  const inoperantePor = sanitizeString(sessionUser?.username, LIMITS.MAX_USERNAME) || 'Sistema';
+  const inoperanteEmIso = new Date().toISOString();
 
   const selecaoValida = Array.isArray(falhasSelecionadas)
     ? falhasSelecionadas
@@ -717,6 +769,10 @@ export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null
         .from('registros_falhas')
         .update({
           ponto_inoperante: true,
+          inoperante_motivo: motivoTexto || null,
+          inoperante_observacao: descricao || null,
+          inoperante_por: inoperantePor,
+          inoperante_em: inoperanteEmIso,
         })
         .in('id', idList)
         .ilike('status', '%aberto%');
@@ -764,6 +820,10 @@ export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null
           .update({
             ponto_inoperante: true,
             falha: falhasInoperantesTexto,
+            inoperante_motivo: motivoTexto || null,
+            inoperante_observacao: descricao || null,
+            inoperante_por: inoperantePor,
+            inoperante_em: inoperanteEmIso,
           })
           .eq('id', row.id)
           .ilike('status', '%aberto%');
@@ -776,6 +836,10 @@ export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null
         .update({
           falha: falhasRestantes.join(', '),
           ponto_inoperante: false,
+          inoperante_motivo: null,
+          inoperante_observacao: null,
+          inoperante_por: null,
+          inoperante_em: null,
         })
         .eq('id', row.id)
         .ilike('status', '%aberto%');
@@ -792,6 +856,10 @@ export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null
           data: row.data,
           status: 'aberto',
           ponto_inoperante: true,
+          inoperante_motivo: motivoTexto || null,
+          inoperante_observacao: descricao || null,
+          inoperante_por: inoperantePor,
+          inoperante_em: inoperanteEmIso,
         }]);
       if (errorInsertInoperante) return { error: errorInsertInoperante };
     }
@@ -800,6 +868,44 @@ export async function marcarFalhasComoInoperantes(ids, falhasSelecionadas = null
   } catch (err) {
     return { error: { message: err?.message || 'Erro ao marcar ponto inoperante.' } };
   }
+}
+
+export async function atualizarFalhaInoperante({ id, data, falha, motivo }) {
+  if (id == null || id === '') return { error: { message: 'ID obrigatorio.' } };
+
+  const sessionUser = getStoredSessionUser();
+  if (!sessionUser || isRestrictedMaintenanceRole(sessionUser.role)) {
+    return { error: { message: 'Nao autorizado.' } };
+  }
+
+  const payload = {};
+  if (data) {
+    const dt = new Date(data);
+    if (Number.isNaN(dt.getTime())) return { error: { message: 'Data invalida.' } };
+    payload.data = dt.toISOString();
+  }
+
+  const falhaSanit = sanitizeString(falha, LIMITS.MAX_FALHA_TEXTO).trim();
+  if (falhaSanit) payload.falha = falhaSanit;
+
+  if (motivo !== undefined) {
+    const motivoSanit = sanitizeString(motivo, 1000).trim();
+    payload.inoperante_motivo = motivoSanit || null;
+    payload.inoperante_observacao = motivoSanit || null;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    return { error: { message: 'Nada para atualizar.' } };
+  }
+
+  const { error } = await supabase
+    .from('registros_falhas')
+    .update(payload)
+    .eq('id', id)
+    .eq('ponto_inoperante', true)
+    .ilike('status', '%aberto%');
+
+  return { error };
 }
 
 export async function reativarFalhasInoperantes(ids) {
@@ -949,6 +1055,9 @@ export async function salvarDadosSigaAguardando({ id, diaAbertura, codigoChamado
     return { error: withSigaSchemaHint({ message: err?.message || 'Erro ao salvar dados SIGA.' }) };
   }
 }
+
+
+
 
 
 

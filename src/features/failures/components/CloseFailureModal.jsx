@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import Clock3 from 'lucide-react/dist/esm/icons/clock-3';
 import Monitor from 'lucide-react/dist/esm/icons/monitor';
@@ -17,6 +17,14 @@ export default function CloseFailureModal({
   isColaborador,
   falhasSelecionadas,
   toggleFalhaSelecionada,
+  inoperantePresets,
+  novoPresetInoperante,
+  setNovoPresetInoperante,
+  addCustomInoperantePreset,
+  inoperanteSelecionadas,
+  toggleInoperanteSelecionada,
+  inoperanteDescricao,
+  setInoperanteDescricao,
   handleFinalizarChamado,
   handleMarcarInoperante,
   handleEnviarParaSiga,
@@ -31,6 +39,7 @@ export default function CloseFailureModal({
 }) {
   if (!modalData) return null;
   const [customPreset, setCustomPreset] = useState('');
+  const [etapaInoperante, setEtapaInoperante] = useState(false);
   const presetOptions = useMemo(
     () => ([
       'Testado - Validado - Funcionando',
@@ -53,12 +62,21 @@ export default function CloseFailureModal({
     setCustomPreset('');
   };
 
+  useEffect(() => {
+    setEtapaInoperante(false);
+  }, [modalData, etapaFechamento]);
+
+  const historicoInoperante = useMemo(
+    () => (historicoPonto || []).filter((item) => Boolean(item?.ponto_inoperante) || Boolean(item?.inoperante_motivo || item?.inoperante_observacao)),
+    [historicoPonto],
+  );
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 w-full max-w-sm rounded-[2rem] shadow-2xl max-h-[85vh] flex flex-col`}>
-        <div className={`p-6 flex justify-between items-center ${etapaFechamento ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+        <div className={`p-6 flex justify-between items-center ${etapaFechamento ? 'bg-green-500/10' : (etapaInoperante ? 'bg-amber-500/10' : 'bg-red-500/10')}`}>
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-xl ${etapaFechamento ? 'bg-green-500' : 'bg-red-600'} text-white`}>
+            <div className={`p-3 rounded-xl ${etapaFechamento ? 'bg-green-500' : (etapaInoperante ? 'bg-amber-500' : 'bg-red-600')} text-white`}>
               {modalData.isMonitor ? <Monitor size={20} /> : <ShieldAlert size={20} />}
             </div>
             <div>
@@ -143,31 +161,108 @@ export default function CloseFailureModal({
                   })}
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  onClick={handleEnviarParaSiga}
-                  disabled={isColaborador || enviando || falhasSelecionadas.length === 0}
-                  className="w-full py-4 bg-cyan-500/90 hover:bg-cyan-500 text-white font-black rounded-xl uppercase text-[10px] tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Enviar para SIGA
-                </button>
-                <button
-                  onClick={handleMarcarInoperante}
-                  disabled={isColaborador || enviando || falhasSelecionadas.length === 0}
-                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Ponto Inoperante
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                <button
-                  onClick={() => setEtapaFechamento(true)}
-                  disabled={isColaborador || falhasSelecionadas.length === 0}
-                  className={`w-full py-4 ${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} font-black rounded-xl flex items-center justify-center gap-2 uppercase text-[10px] disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  Reparar Selecionadas <ArrowRight size={14} />
-                </button>
-              </div>
+              {!etapaInoperante ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={handleEnviarParaSiga}
+                    disabled={isColaborador || enviando || falhasSelecionadas.length === 0}
+                    className="w-full py-4 bg-cyan-500/90 hover:bg-cyan-500 text-white font-black rounded-xl uppercase text-[10px] tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Enviar para SIGA
+                  </button>
+                  <button
+                    onClick={() => setEtapaInoperante(true)}
+                    disabled={isColaborador || enviando || falhasSelecionadas.length === 0}
+                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Ponto Inoperante
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 text-left">
+                  <div className={`rounded-xl p-3 ${theme === 'dark' ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'}`}>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-2">Historico de inoperante</p>
+                    {historicoInoperante.length > 0 ? (
+                      <p className="text-[11px]">Este ponto ja foi marcado como inoperante {historicoInoperante.length}x.</p>
+                    ) : (
+                      <p className="text-[11px]">Sem registros anteriores de inoperante para este ponto.</p>
+                    )}
+                  </div>
+                  <div className={`rounded-xl p-3 ${theme === 'dark' ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200'}`}>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-2">Motivo do ponto inoperante</p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {(inoperantePresets || []).map((opt) => {
+                        const selected = inoperanteSelecionadas.includes(opt);
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => toggleInoperanteSelecionada(opt)}
+                            className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase transition-all ${
+                              selected
+                                ? 'bg-amber-500 text-white'
+                                : theme === 'dark'
+                                  ? 'bg-white/10 text-white hover:bg-white/20'
+                                  : 'bg-white text-slate-700 border border-amber-200'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={novoPresetInoperante}
+                        onChange={(e) => setNovoPresetInoperante(e.target.value)}
+                        placeholder="Adicionar nova opcao (fica salva)"
+                        className={`flex-1 ${styles.input} h-10 px-3 rounded-xl outline-none text-[10px]`}
+                      />
+                      <button
+                        type="button"
+                        onClick={addCustomInoperantePreset}
+                        className="h-10 px-3 rounded-xl bg-amber-500 text-white text-[9px] font-black uppercase hover:bg-amber-600"
+                      >
+                        Salvar
+                      </button>
+                    </div>
+                    <textarea
+                      placeholder="Descricao adicional para o inoperante (opcional)"
+                      className={`w-full ${styles.input} p-3 rounded-xl outline-none min-h-[72px] text-[10px] resize-none`}
+                      value={inoperanteDescricao}
+                      onChange={(e) => setInoperanteDescricao(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setEtapaInoperante(false)}
+                      className={`py-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} text-[9px] font-black uppercase rounded-xl`}
+                    >
+                      Voltar
+                    </button>
+                    <button
+                      onClick={handleMarcarInoperante}
+                      disabled={isColaborador || enviando || falhasSelecionadas.length === 0 || (inoperanteSelecionadas.length === 0 && !String(inoperanteDescricao || '').trim())}
+                      className="py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black uppercase text-[9px] disabled:opacity-30"
+                    >
+                      Enviar para inoperante
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!etapaInoperante && (
+                <div className="grid grid-cols-1 gap-3">
+                  <button
+                    onClick={() => setEtapaFechamento(true)}
+                    disabled={isColaborador || falhasSelecionadas.length === 0}
+                    className={`w-full py-4 ${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} font-black rounded-xl flex items-center justify-center gap-2 uppercase text-[10px] disabled:opacity-40 disabled:cursor-not-allowed`}
+                  >
+                    Reparar Selecionadas <ArrowRight size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">

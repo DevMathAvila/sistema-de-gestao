@@ -197,6 +197,14 @@ function computeAtendimentoGeral(concluidasRows) {
   };
 }
 
+function computeInativeDurationLabel(inicio, fim = null, nowDate = new Date()) {
+  const dtInicio = toValidDate(inicio);
+  if (!dtInicio) return '-';
+  const dtFim = toValidDate(fim) || nowDate;
+  const hours = Math.max(0, (dtFim.getTime() - dtInicio.getTime()) / (1000 * 60 * 60));
+  return formatDurationHours(hours);
+}
+
 export async function fetchDashboardDataset(dataInicio, dataFim) {
   const [kpiRes, concluidasRes, abertasRes, inseridosRes] = await Promise.all([
     listarRegistrosParaKPI(dataInicio || null, dataFim || null),
@@ -457,6 +465,44 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, in
 
   const tempoSemManutencao = computeTempoSemManutencao(concluidasRows || []);
   const atendimentoGeralResumo = computeAtendimentoGeral(concluidasRows || []);
+  const inoperantesAbertosResumo = (abertasRows || [])
+    .filter((item) => Boolean(item?.ponto_inoperante) && isOpenRecord(item))
+    .map((item) => {
+      const inicio = item?.inoperante_em || item?.data;
+      return {
+        id: item?.id,
+        setor: item?.setor || 'N/I',
+        trave: item?.trave ?? '-',
+        ponto: item?.ponto || '-',
+        inicioInativo: inicio,
+        inicioInativoLabel: formatDateTimeBr(inicio),
+        tempoInativoLabel: computeInativeDurationLabel(inicio, null, nowDate),
+        motivo: item?.inoperante_motivo || item?.inoperante_observacao || item?.falha || '-',
+        apontadoPor: item?.inoperante_por || item?.usuario || '-',
+      };
+    })
+    .sort((a, b) => new Date(b.inicioInativo || 0) - new Date(a.inicioInativo || 0));
+
+  const inoperantesConcluidosResumo = (concluidasRows || [])
+    .filter((item) => Boolean(item?.ponto_inoperante) && isConcludedRecord(item))
+    .map((item) => {
+      const inicio = item?.inoperante_em || item?.data;
+      const fim = item?.resolvido_em;
+      return {
+        id: item?.id,
+        setor: item?.setor || 'N/I',
+        trave: item?.trave ?? '-',
+        ponto: item?.ponto || '-',
+        inicioInativo: inicio,
+        inicioInativoLabel: formatDateTimeBr(inicio),
+        conclusaoInativo: fim,
+        conclusaoInativoLabel: formatDateTimeBr(fim),
+        tempoInativoLabel: computeInativeDurationLabel(inicio, fim, nowDate),
+        finalizadoPor: item?.resolvido_por || '-',
+        solucao: item?.solucao || '-',
+      };
+    })
+    .sort((a, b) => new Date(b.conclusaoInativo || 0) - new Date(a.conclusaoInativo || 0));
 
   return {
     totalGeral,
@@ -480,5 +526,7 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, in
     generatedAt: nowDate.toISOString(),
     tempoSemManutencao,
     atendimentoGeralResumo,
+    inoperantesAbertosResumo,
+    inoperantesConcluidosResumo,
   };
 }

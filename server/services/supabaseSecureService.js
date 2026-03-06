@@ -121,6 +121,9 @@ function inferRuninSetorFromUsername(username) {
   return `Runin ${String(runinNum).padStart(2, '0')}`;
 }
 
+function isAvtSetor(value) {
+  return /^AVT(\s|$)/i.test(String(value || '').trim());
+}
 function isConcludedRecord(item) {
   const status = normalizeStatus(item?.status);
   return status.includes('conclu');
@@ -368,7 +371,7 @@ function pontoCorrespondeAoAlvo(pontoRegistro, pontoAlvo) {
   if (!registro || !alvo) return false;
 
   const registroNorm = registro.toLowerCase();
-  if (registroNorm.includes('1-15')) return true;
+  if (registroNorm.includes('1-15') || registroNorm.includes('1-40') || registroNorm.includes('inteira')) return true;
   if (registroNorm.includes('travetoda')) return true;
 
   const alvoNum = alvo.match(/\d+/)?.[0];
@@ -387,7 +390,7 @@ export async function listarHistoricoRecentePorPonto(setor, trave, ponto, limite
   const pontoSanit = sanitizeString(ponto, 50).trim();
   const limiteSeguro = Number.isInteger(limite) ? Math.max(1, Math.min(limite, 20)) : 5;
 
-  const selectCols = 'id, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, usuario';
+  const selectCols = 'id, setor, trave, ponto, falha, solucao, resolvido_em, resolvido_por, usuario, ponto_inoperante, inoperante_motivo, inoperante_observacao, inoperante_por, inoperante_em';
 
   try {
     const { data, error } = await supabase
@@ -446,10 +449,11 @@ export async function inserirRegistrosFalha(setor, trave, pontos, falhas, sessio
 
   const username = sessionUser?.username || 'Tecnico';
   const traveNum = Number(trave);
-  const listaPontos = [...Array(15)].map((_, i) => i + 1);
+  const totalPontos = isAvtSetor(setorAlvo) ? 40 : 15;
+  const listaPontos = [...Array(totalPontos)].map((_, i) => i + 1);
   const todosPontos = listaPontos.length === pontosSanit.length;
   const inserts = todosPontos
-    ? [{ usuario: username, setor: setorAlvo, trave: traveNum, ponto: '1-15 (Inteira)', falha: falhaTexto, status: 'aberto' }]
+    ? [{ usuario: username, setor: setorAlvo, trave: traveNum, ponto: `${listaPontos[0]}-${listaPontos[listaPontos.length - 1]} (Inteira)`, falha: falhaTexto, status: 'aberto' }]
     : pontosSanit.map((p) => ({
         usuario: username,
         setor: setorAlvo,
@@ -590,6 +594,9 @@ export async function fecharRegistros(ids, solucao, falhasSelecionadas = null, s
     return { error: { message: err?.message || 'Erro ao fechar chamado.' } };
   }
 }
+
+
+
 
 
 

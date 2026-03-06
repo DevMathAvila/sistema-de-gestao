@@ -4,9 +4,10 @@ import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { LISTA_SETORES } from '../../../shared/constants/setores';
 import { useBodyScrollLock } from '../../../shared/hooks/useBodyScrollLock';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
-import { PONTOS, TRAVES } from '../constants/failureConstants';
+import { getPontosBySetor, getTravesBySetor } from '../constants/failureConstants';
 import {
   buildFalhasDoChamado,
+  atualizarInoperante,
   concluirFalhas,
   concluirSiga,
   countFalhasReais,
@@ -28,6 +29,13 @@ import { getFailureTheme } from '../styles/failureTheme';
 import { logoutUser } from '../../auth/services/authService';
 
 const SIGA_PORTAL_URL = 'https://siga.auvo.com.br/Ticket/Novo';
+const INOPERANTE_PRESETS_KEY = 'inoperante_reason_presets_v1';
+const INOPERANTE_PRESETS_DEFAULT = [
+  'RJ45 Nao recebendo IP',
+  'RJ45 recebendo IP errado',
+  'Energia Y sem alimentacao',
+  'Ponto sem comunicacao',
+];
 
 function notifyKpiRefresh() {
   const version = String(Date.now());
@@ -38,7 +46,7 @@ function notifyKpiRefresh() {
 function isPointMatch(recordPoint, pointNum) {
   const pStr = String(recordPoint || '');
   const normalized = normalizeText(pStr);
-  if (normalized.includes('travetoda') || pStr.includes('1-15')) return true;
+  if (normalized.includes('travetoda') || normalized.includes('inteira') || pStr.includes('1-15') || pStr.includes('1-40')) return true;
   const pointRegex = new RegExp(`(^|,|\\s|ponto)${pointNum}($|,|\\s)`);
   return pointRegex.test(normalized);
 }
@@ -71,6 +79,10 @@ export function useVisualizarFalhasPage() {
   const [sigaSavingId, setSigaSavingId] = useState(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [mostrarHistoricoCompleto, setMostrarHistoricoCompleto] = useState(false);
+  const [inoperantePresets, setInoperantePresets] = useState(INOPERANTE_PRESETS_DEFAULT);
+  const [novoPresetInoperante, setNovoPresetInoperante] = useState('');
+  const [inoperanteSelecionadas, setInoperanteSelecionadas] = useState([]);
+  const [inoperanteDescricao, setInoperanteDescricao] = useState('');
 
   useBodyScrollLock(mobileMenuOpen);
 
@@ -143,12 +155,29 @@ export function useVisualizarFalhasPage() {
   }, [modalData]);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(INOPERANTE_PRESETS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const valid = parsed.map((v) => String(v || '').trim()).filter(Boolean);
+      if (valid.length) setInoperantePresets(valid);
+    } catch {
+      // ignore local cache errors
+    }
+  }, []);
+
+  useEffect(() => {
     if (!modalData) {
       setFalhasSelecionadas([]);
+      setInoperanteSelecionadas([]);
+      setInoperanteDescricao('');
       return;
     }
     const disponiveis = Array.isArray(modalData.falhasDisponiveis) ? modalData.falhasDisponiveis : [];
     setFalhasSelecionadas(disponiveis);
+    setInoperanteSelecionadas([]);
+    setInoperanteDescricao('');
   }, [modalData]);
 
   const falhasOperacionais = useMemo(
@@ -222,6 +251,9 @@ export function useVisualizarFalhasPage() {
     navigate(path);
   }, [navigate]);
 
+  const getPontosDoSetor = useCallback((setor) => getPontosBySetor(setor), []);
+  const getTravesDoSetor = useCallback((setor) => getTravesBySetor(setor), []);
+
   const getTraveChamados = useCallback((setor, trave) => {
     const key = `${normalizeText(setor)}|${String(trave)}`;
     return falhasPorSetorTrave[key] || [];
@@ -290,6 +322,25 @@ export function useVisualizarFalhasPage() {
     });
   }, []);
 
+  const toggleInoperanteSelecionada = useCallback((item) => {
+    setInoperanteSelecionadas((prev) => (
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]
+    ));
+  }, []);
+
+  const addCustomInoperantePreset = useCallback(() => {
+    const valor = String(novoPresetInoperante || '').trim();
+    if (!valor) return;
+    setInoperantePresets((prev) => {
+      if (prev.some((item) => normalizeText(item) === normalizeText(valor))) return prev;
+      const next = [...prev, valor];
+      localStorage.setItem(INOPERANTE_PRESETS_KEY, JSON.stringify(next));
+      return next;
+    });
+    setInoperanteSelecionadas((prev) => (prev.includes(valor) ? prev : [...prev, valor]));
+    setNovoPresetInoperante('');
+  }, [novoPresetInoperante]);
+
   const handleFinalizarChamado = useCallback(async () => {
     if (!solucaoTexto.trim() || falhasSelecionadas.length === 0) return;
     if (isColaborador) {
@@ -318,7 +369,14 @@ export function useVisualizarFalhasPage() {
     try {
       const idsParaMarcar = modalData?.ids || (modalData?.id ? [modalData.id] : []);
       const payloadFalhas = falhasSelecionadas.map((item) => ({ id: item.id, falha: item.falha }));
-      await marcarComoInoperante({ ids: idsParaMarcar, falhasSelecionadas: payloadFalhas });
+      await marcarComoInoperante({
+        ids: idsParaMarcar,
+        falhasSelecionadas: payloadFalhas,
+        inoperantePayload: {
+          motivosSelecionados: inoperanteSelecionadas,
+          descricao: inoperanteDescricao,
+        },
+      });
       fecharModal();
       await buscarFalhas();
     } catch (err) {
@@ -326,7 +384,40 @@ export function useVisualizarFalhasPage() {
     } finally {
       setEnviando(false);
     }
-  }, [buscarFalhas, falhasSelecionadas, fecharModal, isColaborador, modalData]);
+  }, [buscarFalhas, falhasSelecionadas, fecharModal, inoperanteDescricao, inoperanteSelecionadas, isColaborador, modalData]);
+
+  const handleFinalizarInoperante = useCallback(async ({ id, solucao }) => {
+    if (!id || isColaborador) return;
+    const texto = String(solucao || '').trim();
+    if (!texto) {
+      alert('Informe a descricao da finalizacao.');
+      return;
+    }
+    setEnviando(true);
+    try {
+      await concluirFalhas({ ids: [id], solucao: texto, falhasSelecionadas: null });
+      await buscarFalhas();
+      notifyKpiRefresh();
+    } catch (err) {
+      alert(err?.message || 'Erro ao finalizar ponto inoperante');
+    } finally {
+      setEnviando(false);
+    }
+  }, [buscarFalhas, isColaborador]);
+
+  const handleAtualizarInoperante = useCallback(async ({ id, data, falha, motivo }) => {
+    if (!id || isColaborador) return;
+    setEnviando(true);
+    try {
+      await atualizarInoperante({ id, data, falha, motivo });
+      await buscarFalhas();
+      notifyKpiRefresh();
+    } catch (err) {
+      alert(err?.message || 'Erro ao atualizar ponto inoperante');
+    } finally {
+      setEnviando(false);
+    }
+  }, [buscarFalhas, isColaborador]);
 
   const handleReativarInoperante = useCallback(async (id) => {
     if (!id || isColaborador) return;
@@ -514,8 +605,8 @@ export function useVisualizarFalhasPage() {
     setorAberto,
     setSetorAberto,
     setors: LISTA_SETORES,
-    traves: TRAVES,
-    pontos: PONTOS,
+    getTravesDoSetor,
+    getPontosDoSetor,
     getTraveChamados,
     getStatusTrave,
     countFalhasReais,
@@ -555,8 +646,18 @@ export function useVisualizarFalhasPage() {
     enviando,
     falhasSelecionadas,
     toggleFalhaSelecionada,
+    inoperantePresets,
+    novoPresetInoperante,
+    setNovoPresetInoperante,
+    addCustomInoperantePreset,
+    inoperanteSelecionadas,
+    toggleInoperanteSelecionada,
+    inoperanteDescricao,
+    setInoperanteDescricao,
     handleFinalizarChamado,
     handleMarcarInoperante,
+    handleFinalizarInoperante,
+    handleAtualizarInoperante,
     handleReativarInoperante,
     handleEnviarParaSiga,
     historicoPonto,
@@ -568,3 +669,6 @@ export function useVisualizarFalhasPage() {
     formatDateTime,
   };
 }
+
+
+

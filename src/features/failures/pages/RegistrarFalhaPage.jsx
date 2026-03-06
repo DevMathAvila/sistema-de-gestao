@@ -1,12 +1,12 @@
 import React from 'react';
 import { ArrowLeft, Check, CheckCircle2, Cpu, Hash, Layout, Loader2, Moon, Save, Sun, Zap } from 'lucide-react';
 import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
-import { TRAVES } from '../constants/failureConstants';
 import { useRegistrarFalhaPage } from '../hooks/useRegistrarFalhaPage';
 
 export default function RegistrarFalhaPage() {
   const {
     setor,
+    setorEhAvt,
     loading,
     isSuccess,
     formData,
@@ -22,6 +22,7 @@ export default function RegistrarFalhaPage() {
     selecionarTodosPontos,
     handleSubmit,
     navigate,
+    traves,
     pontos,
     falhasComuns,
   } = useRegistrarFalhaPage();
@@ -71,38 +72,48 @@ export default function RegistrarFalhaPage() {
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-8">
-            <div className={`${styles.card} p-8 rounded-[3rem]`}>
-              <div className="flex items-center justify-between mb-8 px-2">
-                <label className={`flex items-center gap-3 text-[11px] font-black ${styles.subtext} uppercase tracking-widest`}>
-                  <Hash size={18} className="text-red-600" /> Identificacao da Trave
-                </label>
-                {formData.trave && <span className="text-[10px] font-black bg-red-600 text-white px-3 py-1 rounded-lg">TRAVE {formData.trave} SELECIONADA</span>}
+            {!setorEhAvt && (
+              <div className={`${styles.card} p-8 rounded-[3rem]`}>
+                <div className="flex items-center justify-between mb-8 px-2">
+                  <label className={`flex items-center gap-3 text-[11px] font-black ${styles.subtext} uppercase tracking-widest`}>
+                    <Hash size={18} className="text-red-600" /> Identificacao da Trave
+                  </label>
+                  {formData.trave && <span className="text-[10px] font-black bg-red-600 text-white px-3 py-1 rounded-lg">TRAVE {formData.trave} SELECIONADA</span>}
+                </div>
+
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                  {traves.map((num) => {
+                    const erro = traveTemErro(num);
+                    const isSelected = String(formData.trave) === String(num);
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, trave: num, pontos: [] })}
+                        className={`h-16 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center relative overflow-hidden font-black text-xl ${
+                          isSelected
+                            ? 'bg-red-600 border-red-500 text-white'
+                            : erro
+                              ? theme === 'dark'
+                                ? 'bg-red-950/30 border-red-600/50 text-red-500'
+                                : 'bg-red-50 border-red-200 text-red-600'
+                              : `${styles.mutedCard} hover:border-slate-300`
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                {TRAVES.map((num) => {
-                  const erro = traveTemErro(num);
-                  const isSelected = String(formData.trave) === String(num);
-                  return (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, trave: num, pontos: [] })}
-                      className={`h-16 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center relative overflow-hidden font-black text-xl ${
-                        isSelected
-                          ? 'bg-red-600 border-red-500 text-white'
-                          : erro
-                            ? theme === 'dark'
-                              ? 'bg-red-950/30 border-red-600/50 text-red-500'
-                              : 'bg-red-50 border-red-200 text-red-600'
-                            : `${styles.mutedCard} hover:border-slate-300`
-                      }`}
-                    >
-                      {num}
-                    </button>
-                  );
-                })}
+            )}
+
+            {setorEhAvt && (
+              <div className={`${styles.card} p-6 rounded-[2rem] border border-blue-500/20 bg-blue-500/5`}>
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-500">Modo AVT</p>
+                <p className={`mt-2 text-sm ${styles.subtext}`}>Selecione os pontos e as falhas. Nao existe selecao de trave para AVT.</p>
               </div>
-            </div>
+            )}
 
             <div className={`${styles.card} p-8 rounded-[3rem] ${!formData.trave ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
               <div className="flex justify-between items-center mb-8 px-2">
@@ -113,7 +124,7 @@ export default function RegistrarFalhaPage() {
                   {formData.pontos.length === pontos.length ? '[ Desmarcar Todos ]' : '[ Selecionar Todos ]'}
                 </button>
               </div>
-              <div className="grid grid-cols-5 gap-3">
+              <div className={`grid gap-3 ${setorEhAvt ? 'grid-cols-5 sm:grid-cols-8 md:grid-cols-10' : 'grid-cols-5'}`}>
                 {pontos.map((p) => {
                   const selecionado = formData.pontos.includes(p);
                   const falhasNoPonto = getInfoPonto(p);

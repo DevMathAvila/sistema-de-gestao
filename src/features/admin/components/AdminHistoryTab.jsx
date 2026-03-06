@@ -21,7 +21,7 @@ function HistoricoConcluidoTable({ theme, s, historico }) {
       <table className="hidden md:table w-full text-left">
         <thead>
           <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'} text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
-            <th className="p-4 md:p-5 text-red-600">Run In</th>
+            <th className="p-4 md:p-5 text-red-600">Setor</th>
             <th className="p-4 md:p-5">Trave</th>
             <th className="p-4 md:p-5">Ponto</th>
             <th className="p-4 md:p-5">Tipo de Falha</th>
@@ -78,7 +78,7 @@ function HistoricoAbertoTable({ theme, s, historicoAbertas }) {
       <table className="hidden md:table w-full text-left">
         <thead>
           <tr className={`${theme === 'dark' ? 'bg-white/[0.02]' : 'bg-slate-50'} text-[10px] font-black uppercase tracking-widest ${s.sub} border-b ${theme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
-            <th className="p-4 md:p-5 text-red-600">Run In</th>
+            <th className="p-4 md:p-5 text-red-600">Setor</th>
             <th className="p-4 md:p-5">Trave</th>
             <th className="p-4 md:p-5">Ponto</th>
             <th className="p-4 md:p-5">Tipo de Falha</th>
