@@ -3,6 +3,17 @@ function safe(value, fallback = '-') {
   return String(value);
 }
 
+const BRAZIL_TIME_ZONE = 'America/Sao_Paulo';
+const BRAZIL_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: BRAZIL_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
 function escapeHtml(value) {
   return safe(value, '')
     .replaceAll('&', '&amp;')
@@ -15,7 +26,7 @@ function escapeHtml(value) {
 function formatDateTime(value) {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString('pt-BR');
+  return BRAZIL_DATE_TIME_FORMATTER.format(date);
 }
 
 function renderRows(items, rowRenderer, emptyText, columns) {

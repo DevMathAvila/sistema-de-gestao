@@ -7,6 +7,22 @@ import {
 import { EXPECTED_MAINTENANCE_DAYS } from '../constants/maintenance';
 
 const CORES_PIE = ['#dc2626', '#16a34a'];
+const BRAZIL_TIME_ZONE = 'America/Sao_Paulo';
+const BRAZIL_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: BRAZIL_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+const BRAZIL_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: BRAZIL_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
 
 function normalizeStatus(value) {
   return String(value || '')
@@ -35,14 +51,14 @@ function formatDateBr(value) {
   if (!value) return '-';
   const dt = new Date(value);
   if (Number.isNaN(dt.getTime())) return '-';
-  return dt.toLocaleDateString('pt-BR');
+  return BRAZIL_DATE_FORMATTER.format(dt);
 }
 
 function formatDateTimeBr(value) {
   if (!value) return '-';
   const dt = new Date(value);
   if (Number.isNaN(dt.getTime())) return '-';
-  return dt.toLocaleString('pt-BR');
+  return BRAZIL_DATE_TIME_FORMATTER.format(dt);
 }
 
 function toValidDate(value) {

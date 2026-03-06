@@ -15,6 +15,8 @@ import {
   LIMITS,
 } from '../validation/validation';
 
+const BRAZIL_TIME_ZONE = 'America/Sao_Paulo';
+
 function normalizeDate(value) {
   const s = sanitizeString(value, 20);
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -25,20 +27,45 @@ function normalizeDate(value) {
   return null;
 }
 
-function getLocalDayStartUtcIso(dateKey) {
+function getTimeZoneOffsetMinutes(timeZone, date) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    timeZoneName: 'shortOffset',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const zonePart = formatter.formatToParts(date).find((part) => part.type === 'timeZoneName')?.value || 'GMT';
+  const match = zonePart.match(/^GMT(?:(\+|-)(\d{1,2})(?::?(\d{2}))?)?$/i);
+  if (!match) return 0;
+
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = Number(match[2] || 0);
+  const minutes = Number(match[3] || 0);
+  return sign * (hours * 60 + minutes);
+}
+
+function getBrazilDayStartUtcDate(dateKey) {
   const normalized = normalizeDate(dateKey);
   if (!normalized) return null;
-  const dt = new Date(`${normalized}T00:00:00`);
-  if (Number.isNaN(dt.getTime())) return null;
+
+  const [year, month, day] = normalized.split('-').map(Number);
+  const probe = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const offsetMinutes = getTimeZoneOffsetMinutes(BRAZIL_TIME_ZONE, probe);
+  const utcMs = Date.UTC(year, month - 1, day, 0, 0, 0) - offsetMinutes * 60 * 1000;
+  const dt = new Date(utcMs);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function getLocalDayStartUtcIso(dateKey) {
+  const dt = getBrazilDayStartUtcDate(dateKey);
+  if (!dt) return null;
   return dt.toISOString();
 }
 
 function getNextLocalDayStartUtcIso(dateKey) {
-  const normalized = normalizeDate(dateKey);
-  if (!normalized) return null;
-  const dt = new Date(`${normalized}T00:00:00`);
-  if (Number.isNaN(dt.getTime())) return null;
-  dt.setDate(dt.getDate() + 1);
+  const dt = getBrazilDayStartUtcDate(dateKey);
+  if (!dt) return null;
+  dt.setUTCDate(dt.getUTCDate() + 1);
   return dt.toISOString();
 }
 
@@ -49,8 +76,8 @@ function toEpochMs(value) {
 
   const onlyDate = normalizeDate(s);
   if (onlyDate) {
-    const dt = new Date(`${onlyDate}T00:00:00`);
-    return Number.isNaN(dt.getTime()) ? null : dt.getTime();
+    const dt = getBrazilDayStartUtcDate(onlyDate);
+    return dt ? dt.getTime() : null;
   }
 
   const dt = new Date(s.replace(' ', 'T'));
