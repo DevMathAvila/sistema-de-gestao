@@ -1,9 +1,10 @@
 import { serve } from 'https://deno.land/std@0.192.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getRequesterProfile } from '../_shared/auth.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY') || '';
+const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
@@ -34,23 +35,6 @@ function inferRuninSetorFromUsername(username: string) {
   return `Runin ${String(runinNum).padStart(2, '0')}`;
 }
 
-async function getRequesterProfile(authHeader: string | null) {
-  if (!authHeader) return null;
-  const token = authHeader.replace('Bearer ', '').trim();
-  if (!token) return null;
-
-  const { data: authData, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !authData?.user) return null;
-
-  const { data: profile } = await supabase
-    .from('usuarios')
-    .select('role')
-    .eq('auth_user_id', authData.user.id)
-    .maybeSingle();
-
-  return profile || null;
-}
-
 async function findAuthUserByEmail(email: string) {
   // Compatibilidade: nem todo runtime expõe getUserByEmail.
   const maybeFn = (supabase.auth.admin as unknown as { getUserByEmail?: (e: string) => Promise<{ data?: { user?: { id: string } } }> }).getUserByEmail;
@@ -71,7 +55,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const profile = await getRequesterProfile(req.headers.get('Authorization'));
+  const profile = await getRequesterProfile(supabase, req.headers.get('Authorization'));
   if (!profile || !['admin', 'master'].includes(String(profile.role || '').toLowerCase())) {
     return new Response(JSON.stringify({ error: 'Nao autorizado.' }), {
       status: 403,

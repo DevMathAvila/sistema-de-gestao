@@ -24,8 +24,15 @@ async function parseEdgeInvokeError(error) {
 
 async function invokeAdminFunction(fnName, payload) {
   const invoke = async () => {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      throw new Error(sessionError.message || 'Falha ao obter sessao atual.');
+    }
+
+    const accessToken = sessionData?.session?.access_token || '';
     const { data, error } = await supabase.functions.invoke(fnName, {
       body: payload,
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     });
     if (!error) return { data, error: null };
     const parsed = await parseEdgeInvokeError(error);
