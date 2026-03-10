@@ -14,6 +14,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
     kpiRows: [],
     concluidasRows: [],
     abertasRows: [],
+    abertasAtuaisRows: [],
     inseridosRows: [],
   });
   const [loadingKpi, setLoadingKpi] = useState(false);
@@ -48,7 +49,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
 
   useEffect(() => {
     if (intervaloInvalido) {
-      setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], inseridosRows: [] });
+      setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], abertasAtuaisRows: [], inseridosRows: [] });
       setDatasetError('');
       setLoadingKpi(false);
       return;
@@ -84,6 +85,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
           res?.errors?.kpi?.message,
           res?.errors?.concluidas?.message,
           res?.errors?.abertas?.message,
+          res?.errors?.abertasAtuais?.message,
           res?.errors?.inseridos?.message,
         ].filter(Boolean);
 
@@ -95,6 +97,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
           kpiRows: Array.isArray(res?.kpiRows) ? res.kpiRows : [],
           concluidasRows: Array.isArray(res?.concluidasRows) ? res.concluidasRows : [],
           abertasRows: Array.isArray(res?.abertasRows) ? res.abertasRows : [],
+          abertasAtuaisRows: Array.isArray(res?.abertasAtuaisRows) ? res.abertasAtuaisRows : [],
           inseridosRows: Array.isArray(res?.inseridosRows) ? res.inseridosRows : [],
         };
         dashboardDatasetCache.set(cacheKey, {
@@ -107,7 +110,7 @@ export function useDashboardKpi(dataInicio, dataFim) {
       })
       .catch(() => {
         if (!cancelled) {
-          setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], inseridosRows: [] });
+          setDataset({ kpiRows: [], concluidasRows: [], abertasRows: [], abertasAtuaisRows: [], inseridosRows: [] });
           setDatasetError('Falha total ao carregar KPI.');
         }
       })
@@ -121,7 +124,14 @@ export function useDashboardKpi(dataInicio, dataFim) {
   }, [dataInicio, dataFim, intervaloInvalido, datasetVersion]);
 
   const computed = useMemo(
-    () => computeDashboardMetrics(dataset.kpiRows, dataset.concluidasRows, dataset.abertasRows, dataset.inseridosRows, new Date(nowTick)),
+    () => computeDashboardMetrics(
+      dataset.kpiRows,
+      dataset.concluidasRows,
+      dataset.abertasRows,
+      dataset.inseridosRows,
+      new Date(nowTick),
+      dataset.abertasAtuaisRows
+    ),
     [dataset, nowTick]
   );
 

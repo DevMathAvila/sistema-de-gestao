@@ -1,9 +1,3 @@
-import {
-  listarOcorrenciasConcluidas,
-  listarRegistrosInseridosNoSistema,
-  listarRegistrosAbertos,
-  listarRegistrosParaKPI,
-} from '../../../core/api/supabaseSecure';
 import { EXPECTED_MAINTENANCE_DAYS } from '../constants/maintenance';
 
 const CORES_PIE = ['#dc2626', '#16a34a'];
@@ -45,14 +39,6 @@ function splitFalhas(raw) {
     .split(/[,+]/)
     .map((v) => v.trim())
     .filter(Boolean);
-}
-
-function normalizeLabel(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
 }
 
 function formatDateBr(value) {
@@ -136,201 +122,20 @@ function parseEvent(item) {
   };
 }
 
-function getOperationTypeLabel(value) {
-  const label = normalizeLabel(value);
-  if (!label) return 'Outros';
-  if (label.includes('rj45') || label.includes('rede') || label.includes('cabeamento') || label.includes('switch')) return 'Cabeamento / Rede';
-  if (label.includes('hdmi') || label.includes('vga') || label.includes('displayport') || label.includes('video')) return 'Video / Conectividade';
-  if (label.includes('energia') || label.includes('fonte') || label.includes('alimentacao')) return 'Energia';
-  if (label.includes('monitor')) return 'Monitoria';
-  if (label.includes('instal')) return 'Instalacao';
-  if (label.includes('infra') || label.includes('servidor') || label.includes('rack')) return 'Infraestrutura';
-  return 'Outros';
-}
-
-function buildOperationTypeDistribution(registros) {
-  const totals = {};
-
-  (registros || []).forEach((registro) => {
-    splitFalhas(registro?.falha).forEach((falha) => {
-      const tipo = getOperationTypeLabel(falha);
-      totals[tipo] = (totals[tipo] || 0) + 1;
-    });
-  });
-
-  return Object.entries(totals)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
-}
-
-function buildSetorStatusResumo(registros) {
-  const grouped = {};
-
-  (registros || []).forEach((registro) => {
-    const setor = registro?.setor || 'N/I';
-    if (!grouped[setor]) {
-      grouped[setor] = { setor, pendentes: 0, concluidas: 0, total: 0 };
-    }
-
-    grouped[setor].total += 1;
-    if (isOpenRecord(registro)) grouped[setor].pendentes += 1;
-    if (isConcludedRecord(registro)) grouped[setor].concluidas += 1;
-  });
-
-  return Object.values(grouped).sort((a, b) => b.pendentes - a.pendentes || b.total - a.total);
-}
-
-function formatSetorLabel(value) {
-  const text = String(value || 'N/I').trim();
-  const match = text.match(/^runin\s*(\d+)$/i);
-  if (match) return `Run in ${String(match[1]).padStart(2, '0')}`;
-  return text;
-}
-
-function buildExecutiveHighlight(setorStatusResumo, concluidasRows, abertasRows) {
-  const conclusoesPorSetor = {};
-
-  (concluidasRows || []).forEach((row) => {
-    const setor = row?.setor || 'N/I';
-    conclusoesPorSetor[setor] = (conclusoesPorSetor[setor] || 0) + 1;
-  });
-
-  const rankingConclusoes = Object.entries(conclusoesPorSetor)
-    .map(([setor, concluidas]) => ({ setor, concluidas }))
-    .sort((a, b) => b.concluidas - a.concluidas);
-
-  const focoConcluido = rankingConclusoes[0] || null;
-  if (!focoConcluido) {
-    return {
-      criticalPoint: {
-        setor: 'Operacao geral',
-        trave: '-',
-        ponto: '-',
-        falhas: 0,
-      },
-      pendingCount: 0,
-      resolvedCount: 0,
-      remainingCount: 0,
-      affectedBars: 0,
-      topFailure: '-',
-      summary: 'No periodo analisado, nao houve volume suficiente de ocorrencias para destacar uma celula critica.',
-    };
-  }
-
-  const abertasDoSetor = (abertasRows || []).filter((row) => {
-    if ((row?.setor || 'N/I') !== focoConcluido.setor) return false;
-    if (!isOpenRecord(row)) return false;
-    if (!row?.trave || !row?.ponto) return false;
-    if (Boolean(row?.ponto_inoperante)) return false;
-    if (isSigaWaiting(row)) return false;
-    return true;
-  });
-  const pendingPointMap = {};
-  const traveSet = new Set();
-  const topFailureMap = {};
-  const traveFailureMap = {};
-
-  abertasDoSetor.forEach((row) => {
-    const setor = row?.setor || 'N/I';
-    const trave = row?.trave ?? '-';
-    const ponto = row?.ponto || '-';
-    const key = `${setor}|${trave}|${ponto}`;
-
-    if (!pendingPointMap[key]) {
-      pendingPointMap[key] = {
-        setor,
-        trave,
-        ponto,
-        pendentes: 0,
-      };
-    }
-
-    pendingPointMap[key].pendentes += 1;
-    traveSet.add(String(trave));
-
-    const falhas = splitFalhas(row?.falha);
-    const traveKey = `${setor}|${trave}`;
-    traveFailureMap[traveKey] = (traveFailureMap[traveKey] || 0) + (falhas.length || 1);
-
-    falhas.forEach((falha) => {
-      topFailureMap[falha] = (topFailureMap[falha] || 0) + 1;
-    });
-  });
-
-  const traveMaisCritica = Object.entries(traveFailureMap)
-    .map(([key, falhas]) => {
-      const [setor, trave] = key.split('|');
-      return { key, setor, trave, falhas };
-    })
-    .sort((a, b) => b.falhas - a.falhas || String(a.trave).localeCompare(String(b.trave)))[0] || null;
-  const pendentesRestantes = Object.keys(pendingPointMap).length;
-  const affectedBars = traveSet.size;
-  const topFailure = Object.entries(topFailureMap)
-    .map(([falha, total]) => ({ falha, total }))
-    .sort((a, b) => b.total - a.total || a.falha.localeCompare(b.falha))[0]?.falha || 'sem falha dominante';
-  const resumoSetor = (setorStatusResumo || []).find((item) => item.setor === focoConcluido.setor) || null;
-  const totalConcluidas = focoConcluido.concluidas || resumoSetor?.concluidas || 0;
-  const criticalPoint = traveMaisCritica
-    ? {
-        setor: formatSetorLabel(traveMaisCritica.setor),
-        trave: String(traveMaisCritica.trave ?? '-').padStart(2, '0'),
-        ponto: '-',
-        falhas: traveMaisCritica.falhas || 0,
-      }
-    : {
-        setor: formatSetorLabel(focoConcluido.setor),
-        trave: '-',
-        ponto: '-',
-        falhas: 0,
-      };
-  const summary = pendentesRestantes > 0
-    ? `No periodo analisado, o maior volume de conclusoes ficou concentrado em ${focoConcluido.setor}, com ${totalConcluidas} falhas finalizadas. Restam ${pendentesRestantes} pendencias para encerramento de falhas em pontos, afetando ${affectedBars} traves e com o maior volume de falhas sendo ${topFailure}, mantendo o fluxo operacional desta celula sob acompanhamento direto.`
-    : `No periodo analisado, o maior volume de conclusoes ficou concentrado em ${focoConcluido.setor}, com ${totalConcluidas} falhas finalizadas, sem pendencias abertas em pontos para a celula no fechamento do periodo.`;
-
-  return {
-    criticalPoint,
-    pendingCount: pendentesRestantes,
-    resolvedCount: totalConcluidas,
-    remainingCount: pendentesRestantes,
-    affectedBars,
-    topFailure,
-    summary,
-  };
-}
-
-function getSigaPriorityLabel(item) {
-  const falha = normalizeLabel(item?.falha);
-  const ponto = normalizeLabel(item?.ponto);
-
-  if (ponto.includes('travetoda') || ponto.includes('inteira')) return 'Critica';
-  if (falha.includes('rj45') || falha.includes('energia') || falha.includes('switch')) return 'Alta';
-  if (falha.includes('hdmi') || falha.includes('vga') || falha.includes('monitor')) return 'Media';
-  return 'Normal';
-}
-
-function shortenDescription(value, max = 46) {
-  const text = String(value || '-').trim();
-  if (text.length <= max) return text;
-  return `${text.slice(0, max - 3)}...`;
-}
-
 function isSigaWaiting(item) {
   if (!item) return false;
   const enviado = Boolean(item.siga_enviado);
   const status = String(item.siga_status || '').toUpperCase();
-  return enviado || status === 'AGUARDANDO';
+  return (enviado || status === 'AGUARDANDO') && status !== 'FINALIZADO';
 }
 
 function isSigaFinalized(item) {
   if (!item) return false;
-  const enviado = Boolean(item.siga_enviado);
   const status = String(item.siga_status || '').toUpperCase();
-  return enviado || status === 'FINALIZADO';
+  return status === 'FINALIZADO';
 }
 
 function getSigaOpenedAt(item) {
-  // Usa preferencialmente timestamp real de envio para SIGA.
-  // `siga_data_abertura` e um campo de data sem hora (00:00), que distorce o tempo.
   return item?.siga_enviado_em || item?.data || item?.siga_data_abertura || null;
 }
 
@@ -407,49 +212,9 @@ function computeInativeDurationLabel(inicio, fim = null, nowDate = new Date()) {
   return formatDurationHours(hours);
 }
 
-export async function fetchDashboardDataset(dataInicio, dataFim) {
-  const [kpiRes, concluidasRes, abertasRes, abertasAtuaisRes, inseridosRes] = await Promise.all([
-    listarRegistrosParaKPI(dataInicio || null, dataFim || null),
-    listarOcorrenciasConcluidas(dataInicio || null, dataFim || null),
-    listarRegistrosAbertos(dataInicio || null, dataFim || null),
-    listarRegistrosAbertos(),
-    listarRegistrosInseridosNoSistema(dataInicio || null, dataFim || null),
-  ]);
-
-  const errors = {
-    kpi: kpiRes?.error || null,
-    concluidas: concluidasRes?.error || null,
-    abertas: abertasRes?.error || null,
-    abertasAtuais: abertasAtuaisRes?.error || null,
-    inseridos: inseridosRes?.error || null,
-  };
-
-  const hasAnyError = Boolean(errors.kpi || errors.concluidas || errors.abertas || errors.abertasAtuais || errors.inseridos);
-  const hasKpiError = Boolean(errors.kpi);
-
-  return {
-    kpiRows: Array.isArray(kpiRes?.data) ? kpiRes.data : [],
-    concluidasRows: Array.isArray(concluidasRes?.data) ? concluidasRes.data : [],
-    abertasRows: Array.isArray(abertasRes?.data) ? abertasRes.data : [],
-    abertasAtuaisRows: Array.isArray(abertasAtuaisRes?.data) ? abertasAtuaisRes.data : [],
-    inseridosRows: Array.isArray(inseridosRes?.data) ? inseridosRes.data : [],
-    errors,
-    hasAnyError,
-    hasKpiError,
-  };
-}
-
-export function computeDashboardMetrics(
-  kpiRows,
-  concluidasRows,
-  abertasRows,
-  inseridosRows = [],
-  referenceNow = null,
-  abertasAtuaisRows = null
-) {
+export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, inseridosRows = [], referenceNow = null) {
   const registros = Array.isArray(kpiRows) ? kpiRows : [];
   const nowDate = referenceNow instanceof Date ? referenceNow : new Date();
-  const abertasParaDestaque = Array.isArray(abertasAtuaisRows) ? abertasAtuaisRows : abertasRows;
   const totalGeral = registros.length;
   const totalPendentes = registros.filter((r) => isOpenRecord(r)).length;
   const totalConcluidas = registros.filter((r) => isConcludedRecord(r)).length;
@@ -479,10 +244,6 @@ export function computeDashboardMetrics(
     .map(([nome, total]) => ({ nome, total }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
-  const operationTypeDistribution = buildOperationTypeDistribution(registros);
-  const topCategory = operationTypeDistribution[0] || { name: 'Sem categoria', value: 0 };
-  const setorStatusResumo = buildSetorStatusResumo(registros);
-  const executiveHighlight = buildExecutiveHighlight(setorStatusResumo, concluidasRows || [], abertasParaDestaque || []);
 
   const setorFalhas = {};
   registros.forEach((r) => {
@@ -620,14 +381,6 @@ export function computeDashboardMetrics(
       };
     })
     .sort((a, b) => new Date(b.fechadoEm || 0) - new Date(a.fechadoEm || 0));
-  const sigaTrackingRows = [...sigaChamadosAbertos, ...sigaChamadosFinalizados]
-    .slice(0, 10)
-    .map((item) => ({
-      id: item.codigoChamado && item.codigoChamado !== '-' ? item.codigoChamado : item.id,
-      descricao: shortenDescription(item.falha),
-      statusAtual: item.status || (item.fechadoEm ? 'FINALIZADO' : 'AGUARDANDO'),
-      prioridade: getSigaPriorityLabel(item),
-    }));
 
   const atendimentoSamplesFinalizados = sigaChamadosFinalizados
     .map((item) => item.atendimentoHours)
@@ -734,24 +487,18 @@ export function computeDashboardMetrics(
     totalPendentes,
     totalConcluidas,
     chamadosInseridosNoSistema,
-    conversionRate: totalGeral ? (totalConcluidas / totalGeral) * 100 : 0,
     pendentesDetalhe: (abertasRows || []).length,
     concluidasDetalhe: (concluidasRows || []).length,
     porSetor,
     porStatus,
-    operationTypeDistribution,
-    topCategory,
     top5,
     setorInsights,
-    setorStatusResumo,
-    executiveHighlight,
     pontosHistorico,
     pontosStatusResumo,
     pendingAging,
     setorAgingResumo,
     sigaChamadosAbertos,
     sigaChamadosFinalizados,
-    sigaTrackingRows,
     sigaResumo,
     expectedMaintenanceDays: EXPECTED_MAINTENANCE_DAYS,
     generatedAt: nowDate.toISOString(),

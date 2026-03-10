@@ -183,10 +183,14 @@ export default function DashboardExecutivePdfDocument({ metrics, periodoLabel })
           <p className="max-w-4xl text-[24px] font-black italic leading-tight tracking-tight">
             {metrics?.executiveHighlight?.summary}
           </p>
-          <div className="mt-6 grid grid-cols-3 gap-4">
+          <div className="mt-6 grid grid-cols-5 gap-4">
             <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-300">Ponto Mais Crítico</p>
-              <p className="mt-2 text-2xl font-black text-white">{metrics?.executiveHighlight?.criticalPoint || '-'}</p>
+              <div className="mt-2 space-y-1 leading-tight text-white">
+                <p className="text-lg font-black">{metrics?.executiveHighlight?.criticalPoint?.setor || '-'}</p>
+                <p className="text-lg font-black">Trave {metrics?.executiveHighlight?.criticalPoint?.trave || '-'}</p>
+                <p className="text-lg font-black">Falhas {String(metrics?.executiveHighlight?.criticalPoint?.falhas || 0).padStart(2, '0')}</p>
+              </div>
             </div>
             <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-300">Concluídas</p>
@@ -195,6 +199,14 @@ export default function DashboardExecutivePdfDocument({ metrics, periodoLabel })
             <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-300">Pendentes Restantes</p>
               <p className="mt-2 text-2xl font-black text-red-300">{metrics?.executiveHighlight?.remainingCount || 0}</p>
+            </div>
+            <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-300">Traves Afetadas</p>
+              <p className="mt-2 text-2xl font-black text-amber-300">{metrics?.executiveHighlight?.affectedBars || 0}</p>
+            </div>
+            <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-300">Top Falha</p>
+              <p className="mt-2 text-2xl font-black text-sky-200">{metrics?.executiveHighlight?.topFailure || '-'}</p>
             </div>
           </div>
         </section>
