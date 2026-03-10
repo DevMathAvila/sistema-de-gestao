@@ -14,6 +14,7 @@ import {
   sanitizePontosArray,
   LIMITS,
 } from '../validation/validation';
+import { TOTAL_PONTOS_AVT, isTraveInteiraLabel } from '../../features/failures/constants/failureConstants';
 
 const BRAZIL_TIME_ZONE = 'America/Sao_Paulo';
 
@@ -508,8 +509,7 @@ function pontoCorrespondeAoAlvo(pontoRegistro, pontoAlvo) {
   if (!registro || !alvo) return false;
 
   const registroNorm = registro.toLowerCase();
-  if (registroNorm.includes('1-15') || registroNorm.includes('1-40') || registroNorm.includes('inteira')) return true;
-  if (registroNorm.includes('travetoda')) return true;
+  if (isTraveInteiraLabel(registroNorm)) return true;
 
   const alvoNum = alvo.match(/\d+/)?.[0];
   if (!alvoNum) return registroNorm === alvo.toLowerCase();
@@ -613,7 +613,7 @@ export async function inserirRegistrosFalha(setor, trave, pontos, falhas) {
 
   const username = sessionUser?.username || 'Tecnico';
   const traveNum = Number(trave);
-  const totalPontos = isAvtSetor(setorAlvo) ? 40 : 15;
+  const totalPontos = isAvtSetor(setorAlvo) ? TOTAL_PONTOS_AVT : 15;
   const listaPontos = [...Array(totalPontos)].map((_, i) => i + 1);
   const todosPontos = listaPontos.length === pontosSanit.length;
   const inserts = todosPontos

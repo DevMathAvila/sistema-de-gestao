@@ -13,6 +13,7 @@ import {
   reativarFalhasInoperantes,
   salvarDadosSigaAguardando,
 } from '../../../core/api/supabaseSecure';
+import { isTraveInteiraLabel } from '../constants/failureConstants';
 
 const OPEN_FAILURES_CACHE_TTL_MS = 4000;
 let openFailuresCache = { timestamp: 0, data: [] };
@@ -148,9 +149,7 @@ export function buildFalhasDoChamado(chamados) {
 }
 
 export function traveTemParada(chamados) {
-  return chamados.some(
-    (f) => normalizeText(f.ponto).includes('travetoda') || normalizeText(f.ponto).includes('inteira') || String(f.ponto).includes('1-15') || String(f.ponto).includes('1-40'),
-  );
+  return chamados.some((f) => isTraveInteiraLabel(f.ponto));
 }
 
 export function countFalhasReais(chamados) {

@@ -1,4 +1,5 @@
 import { supabase } from '../../../core/api/supabaseClient';
+import { isTraveInteiraLabel } from '../../failures/constants/failureConstants';
 
 function normalizeText(text) {
   return String(text || '').replace(/\s|-|_/g, '').toLowerCase().trim();
@@ -27,8 +28,7 @@ export function buildMonitorPanel(falhas) {
         qtd: chamados.length,
         detalhes: Object.entries(resumoFalhas).sort((a, b) => b[1] - a[1]).slice(0, 2),
         critico: chamados.some((f) => {
-          const p = normalizeText(f.ponto);
-          return p.includes('travetoda') || p.includes('1-15');
+          return isTraveInteiraLabel(f.ponto);
         }),
       };
     })
@@ -36,8 +36,5 @@ export function buildMonitorPanel(falhas) {
 }
 
 export function countCriticalStops(falhas) {
-  return falhas.filter((f) => {
-    const p = normalizeText(f.ponto);
-    return p.includes('travetoda') || p.includes('1-15');
-  }).length;
+  return falhas.filter((f) => isTraveInteiraLabel(f.ponto)).length;
 }

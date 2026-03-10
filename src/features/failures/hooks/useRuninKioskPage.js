@@ -3,7 +3,7 @@ import { getSessionUser } from '../../../core/auth/session';
 import { FALHAS_COMUNS } from '../../../shared/constants/falhasComuns';
 import { LISTA_SETORES } from '../../../shared/constants/setores';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
-import { PONTOS, TRAVES } from '../constants/failureConstants';
+import { PONTOS, TRAVES, isTraveInteiraLabel } from '../constants/failureConstants';
 import { createFalhaRegistro, fetchChamadosAbertosPorSetor } from '../services/failuresService';
 import { getFailureTheme } from '../styles/failureTheme';
 
@@ -61,7 +61,7 @@ export function useRuninKioskPage() {
     const chamadosDestePonto = chamadosAbertos.filter((c) => {
       if (String(c.trave) !== String(formData.trave)) return false;
       const pStr = String(c.ponto || '');
-      if (String(pStr).toLowerCase().includes('inteira') || String(pStr).toLowerCase().includes('travetoda') || pStr.includes('1-15') || pStr.includes('1-40')) return true;
+      if (isTraveInteiraLabel(pStr)) return true;
       const pontosArray = pStr.split(',').map((p) => p.replace('Ponto ', '').trim());
       return pontosArray.includes(String(numPonto));
     });

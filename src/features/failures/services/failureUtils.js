@@ -1,3 +1,5 @@
+import { isTraveInteiraLabel } from '../constants/failureConstants';
+
 export function normalizeText(text) {
   return String(text || '').replace(/\s|-|_/g, '').toLowerCase().trim();
 }
@@ -25,9 +27,8 @@ const INSUMO_RULES = [
 
 function getPointTargets(pointRaw) {
   const raw = String(pointRaw || '').trim();
-  const normalized = normalizeText(raw);
   if (!raw) return [];
-  if (normalized.includes('travetoda') || normalized.includes('inteira') || raw.includes('1-15') || raw.includes('1-40')) {
+  if (isTraveInteiraLabel(raw)) {
     return ['Todos'];
   }
 
@@ -123,9 +124,7 @@ export function buildFalhasDoChamado(chamados) {
 }
 
 export function traveTemParada(chamados) {
-  return chamados.some(
-    (f) => normalizeText(f.ponto).includes('travetoda') || normalizeText(f.ponto).includes('inteira') || String(f.ponto).includes('1-15') || String(f.ponto).includes('1-40'),
-  );
+  return chamados.some((f) => isTraveInteiraLabel(f.ponto));
 }
 
 export function countFalhasReais(chamados) {

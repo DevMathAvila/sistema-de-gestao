@@ -4,7 +4,7 @@ import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import Wrench from 'lucide-react/dist/esm/icons/wrench';
 import Zap from 'lucide-react/dist/esm/icons/zap';
-import { isAvtSetor } from '../constants/failureConstants';
+import { isAvtSetor, isTraveInteiraLabel } from '../constants/failureConstants';
 import { normalizeText, traveTemParada } from '../services/failuresService';
 
 export default function FailureSectorBoard({
@@ -239,7 +239,7 @@ export default function FailureSectorBoard({
                             const dadosPonto = getDadosPonto(setor, traveAvt, pontoNum);
                             let bgClass = theme === 'dark' ? 'bg-white/5 text-gray-700' : 'bg-white border-slate-200 text-slate-300';
                             if (dadosPonto) {
-                              if (dadosPonto.falha.toLowerCase().includes('travetoda') || dadosPonto.falha.toLowerCase().includes('inteira') || dadosPonto.falha.includes('1-15') || dadosPonto.falha.includes('1-40')) bgClass = 'bg-purple-600 text-white';
+                              if (isTraveInteiraLabel(dadosPonto.falha)) bgClass = 'bg-purple-600 text-white';
                               else if (dadosPonto.isMonitor) bgClass = 'bg-orange-500 text-white';
                               else bgClass = 'bg-red-600 text-white';
                             }
@@ -478,7 +478,7 @@ export default function FailureSectorBoard({
                               const dadosPonto = getDadosPonto(setor, traveNum, pontoNum);
                               let bgClass = theme === 'dark' ? 'bg-white/5 text-gray-700' : 'bg-white border-slate-200 text-slate-300';
                               if (dadosPonto) {
-                                if (dadosPonto.falha.toLowerCase().includes('travetoda') || dadosPonto.falha.toLowerCase().includes('inteira') || dadosPonto.falha.includes('1-15') || dadosPonto.falha.includes('1-40')) bgClass = 'bg-purple-600 text-white';
+                                if (isTraveInteiraLabel(dadosPonto.falha)) bgClass = 'bg-purple-600 text-white';
                                 else if (dadosPonto.isMonitor) bgClass = 'bg-orange-500 text-white';
                                 else bgClass = 'bg-red-600 text-white';
                               }

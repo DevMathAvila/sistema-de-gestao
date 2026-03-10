@@ -4,7 +4,7 @@ import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { LISTA_SETORES } from '../../../shared/constants/setores';
 import { useBodyScrollLock } from '../../../shared/hooks/useBodyScrollLock';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
-import { getPontosBySetor, getTravesBySetor } from '../constants/failureConstants';
+import { getPontosBySetor, getTravesBySetor, isTraveInteiraLabel } from '../constants/failureConstants';
 import {
   buildFalhasDoChamado,
   atualizarInoperante,
@@ -46,8 +46,8 @@ function notifyKpiRefresh() {
 
 function isPointMatch(recordPoint, pointNum) {
   const pStr = String(recordPoint || '');
+  if (isTraveInteiraLabel(pStr)) return true;
   const normalized = normalizeText(pStr);
-  if (normalized.includes('travetoda') || normalized.includes('inteira') || pStr.includes('1-15') || pStr.includes('1-40')) return true;
   const pointRegex = new RegExp(`(^|,|\\s|ponto)${pointNum}($|,|\\s)`);
   return pointRegex.test(normalized);
 }

@@ -1,5 +1,6 @@
-﻿import React from 'react';
+import React from 'react';
 import { Box, ChevronDown, HardDrive, Hash, Octagon, Zap } from 'lucide-react';
+import { isTraveInteiraLabel } from '../../features/failures/constants/failureConstants';
 
 export default function SetorFalhasList({
   setores,
@@ -105,7 +106,7 @@ export default function SetorFalhasList({
                             {[...Array(15)].map((_, j) => {
                               const pNum = j + 1;
                               const dadosPonto = getDadosPonto(falhas, setor, tNum, pNum);
-                              const isInteira = dadosPonto && (normalizar(dadosPonto.falha).includes('travetoda') || String(falhas.find((f) => f.id === dadosPonto.id)?.ponto).includes('1-15'));
+                              const isInteira = dadosPonto && isTraveInteiraLabel(falhas.find((f) => f.id === dadosPonto.id)?.ponto);
 
                               let pulseClass = '';
                               let bgClass = theme === 'dark' ? 'bg-white/5 text-gray-700' : 'bg-white border-slate-200 text-slate-300';
@@ -154,3 +155,4 @@ export default function SetorFalhasList({
     </div>
   );
 }
+

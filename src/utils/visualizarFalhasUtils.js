@@ -1,4 +1,6 @@
-﻿export function normalizeText(texto) {
+import { isTraveInteiraLabel } from '../features/failures/constants/failureConstants';
+
+export function normalizeText(texto) {
   return String(texto || '').replace(/\s|-|_/g, '').toLowerCase().trim();
 }
 
@@ -45,7 +47,7 @@ export function formatarDataHora(value) {
 
 export function getStatusTrave(chamados) {
   const temTraveParada = chamados.some(
-    (f) => normalizeText(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15'),
+    (f) => isTraveInteiraLabel(f.ponto),
   );
 
   let totalFalhasReais = 0;
@@ -74,7 +76,7 @@ export function getAlertasSininho(falhas) {
     const numFalhasNoRegistro = parseFalhas(f.falha).length || 1;
     grupos[chave].count += numFalhasNoRegistro;
 
-    if (normalizeText(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15')) {
+    if (isTraveInteiraLabel(f.ponto)) {
       grupos[chave].isTraveToda = true;
     }
   });
@@ -117,7 +119,7 @@ export function countTravesComFalha(falhas, setor) {
 export function temParadaCritica(falhas, setor) {
   return falhas.some(
     (f) => normalizeText(f.setor) === normalizeText(setor)
-      && (normalizeText(f.ponto).includes('travetoda') || String(f.ponto).includes('1-15')),
+      && isTraveInteiraLabel(f.ponto),
   );
 }
 
@@ -127,7 +129,7 @@ export function getDadosPonto(falhas, setor, trave, ponto) {
 
     const pStr = String(f.ponto);
     const pNorm = normalizeText(pStr);
-    const isInteira = pNorm.includes('travetoda') || pStr.includes('1-15');
+    const isInteira = isTraveInteiraLabel(pStr);
     const isEstePonto = new RegExp(`(^|,|\\s|ponto)${ponto}($|,|\\s)`).test(pNorm);
 
     return isInteira || isEstePonto;
@@ -149,3 +151,4 @@ export function getDadosPonto(falhas, setor, trave, ponto) {
     isMonitor: falhaConcatenada.toLowerCase().includes('monitor'),
   };
 }
+

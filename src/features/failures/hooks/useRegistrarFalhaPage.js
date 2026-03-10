@@ -4,13 +4,12 @@ import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { FALHAS_COMUNS } from '../../../shared/constants/falhasComuns';
 import { LISTA_SETORES } from '../../../shared/constants/setores';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
-import { getPontosBySetor, getTravesBySetor, isAvtSetor } from '../constants/failureConstants';
+import { getPontosBySetor, getTravesBySetor, isAvtSetor, isTraveInteiraLabel } from '../constants/failureConstants';
 import { createFalhaRegistro, fetchChamadosAbertosPorSetor } from '../services/failuresService';
 import { getFailureTheme } from '../styles/failureTheme';
 
 function isTraveInteiraRegistro(pontoRaw) {
-  const texto = String(pontoRaw || '').toLowerCase();
-  return texto.includes('inteira') || texto.includes('travetoda') || texto.includes('1-15') || texto.includes('1-40');
+  return isTraveInteiraLabel(pontoRaw);
 }
 
 export function useRegistrarFalhaPage() {
