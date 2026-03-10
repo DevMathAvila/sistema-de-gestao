@@ -36,10 +36,15 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
     totalPendentes,
     totalConcluidas,
     chamadosInseridosNoSistema,
+    conversionRate,
+    operationTypeDistribution,
+    topCategory,
     porSetor,
     porStatus,
     top5,
     setorInsights,
+    setorStatusResumo,
+    executiveHighlight,
     pontosHistorico,
     tempoSemManutencao,
     atendimentoGeralResumo,
@@ -50,6 +55,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
     setorAgingResumo,
     sigaChamadosAbertos,
     sigaChamadosFinalizados,
+    sigaTrackingRows,
     sigaResumo,
     expectedMaintenanceDays,
     generatedAt,
@@ -69,16 +75,22 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       totalPendentes,
       totalConcluidas,
       chamadosInseridosNoSistema,
+      conversionRate,
+      operationTypeDistribution,
+      topCategory,
       porSetor,
       porStatus,
       top5,
       setorInsights,
+      setorStatusResumo,
+      executiveHighlight,
       pontosHistorico,
       pontosStatusResumo,
       pendingAging,
       setorAgingResumo,
       sigaChamadosAbertos,
       sigaChamadosFinalizados,
+      sigaTrackingRows,
       sigaResumo,
       atendimentoGeralResumo,
       inoperantesAbertosResumo,
@@ -91,6 +103,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       expectedMaintenanceDays,
       generatedAt,
       pendingAging,
+      operationTypeDistribution,
       pontosHistorico,
       pontosStatusResumo,
       porSetor,
@@ -98,15 +111,20 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
       setorAgingResumo,
       sigaChamadosAbertos,
       sigaChamadosFinalizados,
+      sigaTrackingRows,
       sigaResumo,
       setorInsights,
+      setorStatusResumo,
+      executiveHighlight,
       tempoSemManutencao,
       atendimentoGeralResumo,
       inoperantesAbertosResumo,
       inoperantesConcluidosResumo,
+      topCategory,
       top5,
       totalConcluidas,
       chamadosInseridosNoSistema,
+      conversionRate,
       totalGeral,
       totalPendentes,
     ]
@@ -154,14 +172,23 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
 
   const handleExportPdf = useCallback(() => {
     if (!hasAtLeastOneSection) return;
-    import('../services/dashboardPdfReportService').then(({ exportDashboardKpiReportPdf }) => {
-      exportDashboardKpiReportPdf({
-        metrics: reportMetrics,
-        periodoLabel,
-        sections: reportSections,
-        preset: reportPreset,
+    if (reportPreset === 'weeklyExecutive') {
+      import('../services/dashboardExecutivePdfService').then(({ exportDashboardExecutivePdf }) => {
+        exportDashboardExecutivePdf({
+          metrics: reportMetrics,
+          periodoLabel,
+        });
       });
-    });
+    } else {
+      import('../services/dashboardPdfReportService').then(({ exportDashboardKpiReportPdf }) => {
+        exportDashboardKpiReportPdf({
+          metrics: reportMetrics,
+          periodoLabel,
+          sections: reportSections,
+          preset: reportPreset,
+        });
+      });
+    }
     setIsExportModalOpen(false);
   }, [hasAtLeastOneSection, periodoLabel, reportMetrics, reportPreset, reportSections]);
 

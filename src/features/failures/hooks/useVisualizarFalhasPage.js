@@ -19,6 +19,7 @@ import {
   fetchSigaFinalizados,
   formatDateTime,
   getStatusTrave,
+  getTraveWorkItems,
   normalizeText,
   reativarInoperante,
   splitFalhas,
@@ -258,6 +259,11 @@ export function useVisualizarFalhasPage() {
     const key = `${normalizeText(setor)}|${String(trave)}`;
     return falhasPorSetorTrave[key] || [];
   }, [falhasPorSetorTrave]);
+
+  const getMesaTrabalhoTrave = useCallback((setor, trave) => {
+    const chamados = getTraveChamados(setor, trave);
+    return getTraveWorkItems(chamados);
+  }, [getTraveChamados]);
 
   const getDadosPonto = useCallback((setor, trave, ponto) => {
     const key = `${normalizeText(setor)}|${String(trave)}`;
@@ -608,6 +614,7 @@ export function useVisualizarFalhasPage() {
     getTravesDoSetor,
     getPontosDoSetor,
     getTraveChamados,
+    getMesaTrabalhoTrave,
     getStatusTrave,
     countFalhasReais,
     getDadosPonto,

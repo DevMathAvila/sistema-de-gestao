@@ -47,6 +47,14 @@ function splitFalhas(raw) {
     .filter(Boolean);
 }
 
+function normalizeLabel(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function formatDateBr(value) {
   if (!value) return '-';
   const dt = new Date(value);
@@ -126,6 +134,101 @@ function parseEvent(item) {
     tecnico: item?.resolvido_por || item?.usuario || '-',
     solucao: item?.solucao || '-',
   };
+}
+
+function getOperationTypeLabel(value) {
+  const label = normalizeLabel(value);
+  if (!label) return 'Outros';
+  if (label.includes('rj45') || label.includes('rede') || label.includes('cabeamento') || label.includes('switch')) return 'Cabeamento / Rede';
+  if (label.includes('hdmi') || label.includes('vga') || label.includes('displayport') || label.includes('video')) return 'Video / Conectividade';
+  if (label.includes('energia') || label.includes('fonte') || label.includes('alimentacao')) return 'Energia';
+  if (label.includes('monitor')) return 'Monitoria';
+  if (label.includes('instal')) return 'Instalacao';
+  if (label.includes('infra') || label.includes('servidor') || label.includes('rack')) return 'Infraestrutura';
+  return 'Outros';
+}
+
+function buildOperationTypeDistribution(registros) {
+  const totals = {};
+
+  (registros || []).forEach((registro) => {
+    splitFalhas(registro?.falha).forEach((falha) => {
+      const tipo = getOperationTypeLabel(falha);
+      totals[tipo] = (totals[tipo] || 0) + 1;
+    });
+  });
+
+  return Object.entries(totals)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function buildSetorStatusResumo(registros) {
+  const grouped = {};
+
+  (registros || []).forEach((registro) => {
+    const setor = registro?.setor || 'N/I';
+    if (!grouped[setor]) {
+      grouped[setor] = { setor, pendentes: 0, concluidas: 0, total: 0 };
+    }
+
+    grouped[setor].total += 1;
+    if (isOpenRecord(registro)) grouped[setor].pendentes += 1;
+    if (isConcludedRecord(registro)) grouped[setor].concluidas += 1;
+  });
+
+  return Object.values(grouped).sort((a, b) => b.pendentes - a.pendentes || b.total - a.total);
+}
+
+function buildExecutiveHighlight(setorStatusResumo, concluidasRows) {
+  const conclusoesPorSetor = {};
+
+  (concluidasRows || []).forEach((row) => {
+    const setor = row?.setor || 'N/I';
+    conclusoesPorSetor[setor] = (conclusoesPorSetor[setor] || 0) + 1;
+  });
+
+  const rankingConclusoes = Object.entries(conclusoesPorSetor)
+    .map(([setor, concluidas]) => ({ setor, concluidas }))
+    .sort((a, b) => b.concluidas - a.concluidas);
+
+  const focoConcluido = rankingConclusoes[0] || null;
+  if (!focoConcluido) {
+    return {
+      criticalPoint: 'Operacao geral',
+      pendingCount: 0,
+      resolvedCount: 0,
+      remainingCount: 0,
+      summary: 'No periodo analisado, nao houve volume suficiente de ocorrencias para destacar uma celula critica.',
+    };
+  }
+
+  const resumoSetor = (setorStatusResumo || []).find((item) => item.setor === focoConcluido.setor) || null;
+  const pendentesRestantes = resumoSetor?.pendentes || 0;
+
+  return {
+    criticalPoint: focoConcluido.setor,
+    pendingCount: pendentesRestantes,
+    resolvedCount: focoConcluido.concluidas,
+    remainingCount: pendentesRestantes,
+    summary: `No periodo analisado, o maior volume de conclusoes ficou concentrado em ${focoConcluido.setor}, com ${focoConcluido.concluidas} falhas finalizadas. Restam ${pendentesRestantes} pendencias para encerramento, mantendo o fluxo operacional desta celula sob acompanhamento direto.`,
+  };
+}
+
+function getSigaPriorityLabel(item) {
+  const falha = normalizeLabel(item?.falha);
+  const ponto = normalizeLabel(item?.ponto);
+
+  if (ponto.includes('travetoda') || ponto.includes('inteira')) return 'Critica';
+  if (falha.includes('rj45') || falha.includes('energia') || falha.includes('switch')) return 'Alta';
+  if (falha.includes('hdmi') || falha.includes('vga') || falha.includes('monitor')) return 'Media';
+  return 'Normal';
+}
+
+function shortenDescription(value, max = 46) {
+  const text = String(value || '-').trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 3)}...`;
 }
 
 function isSigaWaiting(item) {
@@ -282,6 +385,10 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, in
     .map(([nome, total]) => ({ nome, total }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
+  const operationTypeDistribution = buildOperationTypeDistribution(registros);
+  const topCategory = operationTypeDistribution[0] || { name: 'Sem categoria', value: 0 };
+  const setorStatusResumo = buildSetorStatusResumo(registros);
+  const executiveHighlight = buildExecutiveHighlight(setorStatusResumo, concluidasRows || []);
 
   const setorFalhas = {};
   registros.forEach((r) => {
@@ -419,6 +526,14 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, in
       };
     })
     .sort((a, b) => new Date(b.fechadoEm || 0) - new Date(a.fechadoEm || 0));
+  const sigaTrackingRows = [...sigaChamadosAbertos, ...sigaChamadosFinalizados]
+    .slice(0, 10)
+    .map((item) => ({
+      id: item.codigoChamado && item.codigoChamado !== '-' ? item.codigoChamado : item.id,
+      descricao: shortenDescription(item.falha),
+      statusAtual: item.status || (item.fechadoEm ? 'FINALIZADO' : 'AGUARDANDO'),
+      prioridade: getSigaPriorityLabel(item),
+    }));
 
   const atendimentoSamplesFinalizados = sigaChamadosFinalizados
     .map((item) => item.atendimentoHours)
@@ -525,18 +640,24 @@ export function computeDashboardMetrics(kpiRows, concluidasRows, abertasRows, in
     totalPendentes,
     totalConcluidas,
     chamadosInseridosNoSistema,
+    conversionRate: totalGeral ? (totalConcluidas / totalGeral) * 100 : 0,
     pendentesDetalhe: (abertasRows || []).length,
     concluidasDetalhe: (concluidasRows || []).length,
     porSetor,
     porStatus,
+    operationTypeDistribution,
+    topCategory,
     top5,
     setorInsights,
+    setorStatusResumo,
+    executiveHighlight,
     pontosHistorico,
     pontosStatusResumo,
     pendingAging,
     setorAgingResumo,
     sigaChamadosAbertos,
     sigaChamadosFinalizados,
+    sigaTrackingRows,
     sigaResumo,
     expectedMaintenanceDays: EXPECTED_MAINTENANCE_DAYS,
     generatedAt: nowDate.toISOString(),

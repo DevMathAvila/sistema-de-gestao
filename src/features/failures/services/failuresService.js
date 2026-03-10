@@ -157,6 +157,40 @@ export function countFalhasReais(chamados) {
   return chamados.reduce((acc, c) => acc + (splitFalhas(c.falha).length || 1), 0);
 }
 
+function normalizeInsumoLabel(value) {
+  const item = String(value || '').trim();
+  const normalized = normalizeText(item);
+
+  if (!normalized) return null;
+  if (normalized.includes('rj45') || normalized.includes('rede')) return 'RJ45';
+  if (normalized.includes('hdmi')) return 'HDMI';
+  if (normalized.includes('vga')) return 'VGA';
+  if (normalized.includes('energia')) return 'Energia Y';
+  if (normalized.includes('mouse')) return 'Mouse';
+  if (normalized.includes('teclado')) return 'Teclado';
+  if (normalized.includes('monitor')) return 'Monitor';
+  if (normalized.includes('fonte')) return 'Fonte';
+  if (normalized.includes('displayport') || normalized.includes('dp')) return 'DisplayPort';
+  return item.toUpperCase();
+}
+
+export function getTraveWorkItems(chamados) {
+  const contagem = {};
+
+  chamados.forEach((chamado) => {
+    splitFalhas(chamado.falha).forEach((falha) => {
+      const item = normalizeInsumoLabel(falha);
+      if (!item) return;
+      contagem[item] = (contagem[item] || 0) + 1;
+    });
+  });
+
+  return Object.entries(contagem).sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return a[0].localeCompare(b[0]);
+  });
+}
+
 export function getStatusTrave(chamados) {
   const temParada = traveTemParada(chamados);
   const total = countFalhasReais(chamados);
