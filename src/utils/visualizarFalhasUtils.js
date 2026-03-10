@@ -98,6 +98,7 @@ export function calcularCarrinhoSetor(falhas, nomeSetor) {
     parseFalhas(f.falha).forEach((p) => {
       let item = p.trim();
       if (!item) return;
+      if (normalizeText(item).includes('rj45semtrava')) item = 'RJ45 Sem Trava';
       if (item.includes('Rede')) item = 'Rede';
       if (item.includes('VGA')) item = 'VGA';
       if (item.includes('Energia')) item = 'Energia Y';

@@ -15,6 +15,7 @@ export function splitFalhas(rawFalhas) {
 }
 
 const INSUMO_RULES = [
+  { match: ['rj45 sem trava', 'rj45semtrava', 'rede rj45 sem trava'], nome: 'RJ45 Sem Trava' },
   { match: ['rede', 'rj45', 'cabo rj'], nome: 'Cabo RJ' },
   { match: ['hdmi'], nome: 'HDMI' },
   { match: ['vga'], nome: 'VGA' },

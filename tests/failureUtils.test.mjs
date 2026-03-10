@@ -44,14 +44,15 @@ test('status helpers detect total stop and urgency', () => {
 test('buildTraveSupplySummary aggregates materials by beam and point', () => {
   const summary = buildTraveSupplySummary([
     { ponto: 'Ponto 1', falha: 'Rede (RJ45)' },
-    { ponto: 'Ponto 2', falha: 'HDMI, Rede (RJ45)' },
+    { ponto: 'Ponto 2', falha: 'HDMI, RJ45 Sem Trava' },
     { ponto: 'Ponto 3', falha: 'Rede (RJ45), HDMI, VGA' },
   ]);
 
   assert.equal(summary.totalMateriais, 6);
   assert.deepEqual(summary.porMaterial, [
-    { nome: 'Cabo RJ', quantidade: 3 },
+    { nome: 'Cabo RJ', quantidade: 2 },
     { nome: 'HDMI', quantidade: 2 },
+    { nome: 'RJ45 Sem Trava', quantidade: 1 },
     { nome: 'VGA', quantidade: 1 },
   ]);
   assert.equal(summary.porPonto.length, 3);

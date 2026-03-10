@@ -161,6 +161,7 @@ function normalizeInsumoLabel(value) {
   const normalized = normalizeText(item);
 
   if (!normalized) return null;
+  if (normalized.includes('rj45semtrava')) return 'RJ45 Sem Trava';
   if (normalized.includes('rj45') || normalized.includes('rede')) return 'RJ45';
   if (normalized.includes('hdmi')) return 'HDMI';
   if (normalized.includes('vga')) return 'VGA';
