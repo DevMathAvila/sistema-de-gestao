@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getSessionUser, isAdminUser, isMasterUser } from '../../../core/auth/session';
-import { SETOR_TODOS } from '../../../shared/constants/setores';
+import { LISTA_SETORES, SETOR_TODOS } from '../../../shared/constants/setores';
 import { ADMIN_NAV_ITEMS, getRoleOptions, resolveAdminTab } from '../constants/adminConfig';
 import {
   createUsuario,
@@ -52,6 +52,7 @@ export function useAdminPage() {
   const [historicoSubAba, setHistoricoSubAba] = useState('concluidas');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
+  const [historicoSetorFiltro, setHistoricoSetorFiltro] = useState(SETOR_TODOS);
   const [historico, setHistorico] = useState([]);
   const [historicoAbertas, setHistoricoAbertas] = useState([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
@@ -201,13 +202,23 @@ export function useAdminPage() {
     }));
   }, [novoUser.username]);
 
+  const historicoFiltrado = useMemo(() => {
+    if (historicoSetorFiltro === SETOR_TODOS) return historico;
+    return historico.filter((item) => String(item?.setor || '').trim() === historicoSetorFiltro);
+  }, [historico, historicoSetorFiltro]);
+
+  const historicoAbertasFiltrado = useMemo(() => {
+    if (historicoSetorFiltro === SETOR_TODOS) return historicoAbertas;
+    return historicoAbertas.filter((item) => String(item?.setor || '').trim() === historicoSetorFiltro);
+  }, [historicoAbertas, historicoSetorFiltro]);
+
   const handleExportHistorico = useCallback(() => {
-    exportHistoricoConcluidoExcel(historico);
-  }, [historico]);
+    exportHistoricoConcluidoExcel(historicoFiltrado);
+  }, [historicoFiltrado]);
 
   const handleExportAbertas = useCallback(() => {
-    exportHistoricoAbertoExcel(historicoAbertas);
-  }, [historicoAbertas]);
+    exportHistoricoAbertoExcel(historicoAbertasFiltrado);
+  }, [historicoAbertasFiltrado]);
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');
@@ -289,11 +300,14 @@ export function useAdminPage() {
     setDataInicio,
     dataFim,
     setDataFim,
+    historicoSetorFiltro,
+    setHistoricoSetorFiltro,
+    historicoSetores: [SETOR_TODOS, ...LISTA_SETORES],
     intervaloInvalido,
     historicoSubAba,
     setHistoricoSubAba,
-    historico,
-    historicoAbertas,
+    historico: historicoFiltrado,
+    historicoAbertas: historicoAbertasFiltrado,
     loadingHistorico,
     loadingHistoricoAbertas,
     handleExportHistorico,

@@ -245,6 +245,9 @@ export default function VisualizarFalhasPage() {
             getPontosDoSetor={vm.getPontosDoSetor}
             getTraveChamados={vm.getTraveChamados}
             getMesaTrabalhoTrave={vm.getMesaTrabalhoTrave}
+            getMesaTrabalhoSetor={vm.getMesaTrabalhoSetor}
+            getTotalFalhasSetor={vm.getTotalFalhasSetor}
+            getTotalInoperantesSetor={vm.getTotalInoperantesSetor}
             getStatusTrave={vm.getStatusTrave}
             getDadosPonto={vm.getDadosPonto}
             abrirModalPonto={vm.abrirModalPonto}

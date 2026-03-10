@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { FALHAS_COMUNS } from '../../../shared/constants/falhasComuns';
@@ -34,6 +34,21 @@ export function useRegistrarFalhaPage() {
   const [formData, setFormData] = useState({ trave: '', pontos: [], falhas: [] });
   const isAdmin = isAdminUser(getSessionUser() || { role: 'colaborador' });
 
+  const getInitialFormData = useCallback(() => ({
+    trave: setorEhAvt ? 1 : '',
+    pontos: [],
+    falhas: [],
+  }), [setorEhAvt]);
+
+  const carregarChamadosAbertos = useCallback(async () => {
+    try {
+      const data = await fetchChamadosAbertosPorSetor(setor);
+      setChamadosAbertos(data);
+    } catch {
+      setChamadosAbertos([]);
+    }
+  }, [setor]);
+
   useEffect(() => {
     if (setorEhAvt) {
       setFormData((prev) => ({
@@ -44,18 +59,8 @@ export function useRegistrarFalhaPage() {
   }, [setorEhAvt]);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchChamadosAbertosPorSetor(setor)
-      .then((data) => {
-        if (!cancelled) setChamadosAbertos(data);
-      })
-      .catch(() => {
-        if (!cancelled) setChamadosAbertos([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [setor]);
+    carregarChamadosAbertos();
+  }, [carregarChamadosAbertos]);
 
   const traveTemErro = (numTrave) => chamadosAbertos.some((c) => String(c.trave) === String(numTrave));
 
@@ -106,7 +111,12 @@ export function useRegistrarFalhaPage() {
         falhas: formData.falhas,
       });
       setIsSuccess(true);
-      setTimeout(() => navigate('/abrir-chamado'), 1500);
+      await carregarChamadosAbertos();
+      setTimeout(() => {
+        setFormData(getInitialFormData());
+        setIsSuccess(false);
+        setLoading(false);
+      }, 1500);
     } catch (err) {
       alert(err?.message || 'Erro ao registrar.');
       setLoading(false);

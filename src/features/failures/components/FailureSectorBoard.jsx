@@ -18,6 +18,9 @@ export default function FailureSectorBoard({
   getPontosDoSetor,
   getTraveChamados,
   getMesaTrabalhoTrave,
+  getMesaTrabalhoSetor,
+  getTotalFalhasSetor,
+  getTotalInoperantesSetor,
   getStatusTrave,
   getDadosPonto,
   abrirModalPonto,
@@ -37,6 +40,9 @@ export default function FailureSectorBoard({
         const isSetorAberto = setorAberto === setor;
         const traves = getTravesDoSetor(setor);
         const pontos = getPontosDoSetor(setor);
+        const mesaTrabalhoSetor = getMesaTrabalhoSetor(setor);
+        const totalFalhasSetor = getTotalFalhasSetor(setor);
+        const totalInoperantesSetor = getTotalInoperantesSetor(setor);
         const alertBadgeClass = setorTemParadaCritica
           ? 'border-purple-400/60 bg-gradient-to-r from-purple-700 via-fuchsia-600 to-purple-500 text-white shadow-[0_0_28px_rgba(168,85,247,0.35)]'
           : theme === 'dark'
@@ -89,6 +95,86 @@ export default function FailureSectorBoard({
 
             {isSetorAberto && setorEhAvt && (
               <div className="px-5 pb-5 space-y-3">
+                {mesaTrabalhoSetor.length > 0 && (
+                  <div className={`relative overflow-hidden rounded-[1.8rem] border p-4 ${
+                    theme === 'dark'
+                      ? 'border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]'
+                      : 'border-slate-200 bg-[linear-gradient(135deg,rgba(255,255,255,1),rgba(248,250,252,1))] shadow-[0_18px_44px_rgba(15,23,42,0.08)]'
+                  }`}>
+                    <div className="absolute inset-y-0 left-0 w-1 rounded-full bg-gradient-to-b from-red-500 via-rose-500 to-amber-400" />
+                    <div className="flex items-start justify-between gap-4 pl-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
+                            theme === 'dark'
+                              ? 'border-white/10 bg-white/5 text-red-300'
+                              : 'border-red-200 bg-red-50 text-red-600'
+                          }`}>
+                            <Wrench size={16} />
+                          </span>
+                          <div>
+                            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>Mesa de Trabalho</p>
+                            <p className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>Total consolidado de materiais deste setor</p>
+                          </div>
+                        </div>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${
+                        theme === 'dark'
+                          ? 'bg-white/5 text-white border border-white/10'
+                          : 'bg-slate-900 text-white'
+                      }`}>
+                        Falhas Totais: {totalFalhasSetor}
+                      </span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2 pl-3">
+                      {totalInoperantesSetor > 0 && (
+                        <div
+                          className={`group relative overflow-hidden rounded-2xl border px-3 py-2 ${
+                            theme === 'dark'
+                              ? 'border-amber-400/20 bg-amber-500/10 text-white'
+                              : 'border-amber-200 bg-amber-50 text-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                              theme === 'dark' ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              <Box size={14} />
+                            </span>
+                            <div>
+                              <p className={`text-[11px] font-black uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>P. Inop</p>
+                              <p className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>{totalInoperantesSetor} ponto{totalInoperantesSetor > 1 ? 's' : ''}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {mesaTrabalhoSetor.map(([item, qtd]) => (
+                        <div
+                          key={`${setor}-total-${item}`}
+                          className={`group relative overflow-hidden rounded-2xl border px-3 py-2 ${
+                            theme === 'dark'
+                              ? 'border-white/10 bg-white/5 text-white'
+                              : 'border-slate-200 bg-white text-slate-900'
+                          }`}
+                        >
+                          <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-400/70 to-transparent" />
+                          <div className="flex items-center gap-2">
+                            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                              theme === 'dark' ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-600'
+                            }`}>
+                              <Box size={14} />
+                            </span>
+                            <div>
+                              <p className={`text-[11px] font-black uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{item}</p>
+                              <p className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{qtd} {item}{qtd > 1 ? "'s" : ''}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {(() => {
                   const traveAvt = 1;
                   const chamadosDaTrave = getTraveChamados(setor, traveAvt);
@@ -147,65 +233,6 @@ export default function FailureSectorBoard({
                       </div>
 
                       <div className="mt-3 space-y-3">
-                        {mesaTrabalho.length > 0 && (
-                          <div className={`relative overflow-hidden rounded-[1.6rem] border p-4 ${
-                            theme === 'dark'
-                              ? 'border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]'
-                              : 'border-slate-200 bg-[linear-gradient(135deg,rgba(255,255,255,1),rgba(248,250,252,1))] shadow-[0_18px_44px_rgba(15,23,42,0.08)]'
-                          }`}>
-                            <div className="absolute inset-y-0 left-0 w-1 rounded-full bg-gradient-to-b from-red-500 via-rose-500 to-amber-400" />
-                            <div className="flex items-start justify-between gap-4 pl-3">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
-                                    theme === 'dark'
-                                      ? 'border-white/10 bg-white/5 text-red-300'
-                                      : 'border-red-200 bg-red-50 text-red-600'
-                                  }`}>
-                                    <Wrench size={16} />
-                                  </span>
-                                  <div>
-                                    <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>Mesa de Trabalho</p>
-                                    <p className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>Materiais sugeridos para atender esta trave</p>
-                                  </div>
-                                </div>
-                              </div>
-                              <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${
-                                theme === 'dark'
-                                  ? 'bg-white/5 text-white border border-white/10'
-                                  : 'bg-slate-900 text-white'
-                              }`}>
-                                {mesaTrabalho.reduce((acc, [, qtd]) => acc + qtd, 0)} itens
-                              </span>
-                            </div>
-                            <div className="mt-4 flex flex-wrap gap-2 pl-3">
-                              {mesaTrabalho.map(([item, qtd]) => (
-                                <div
-                                  key={`${setor}-${traveAvt}-${item}`}
-                                  className={`group relative overflow-hidden rounded-2xl border px-3 py-2 ${
-                                    theme === 'dark'
-                                      ? 'border-white/10 bg-white/5 text-white'
-                                      : 'border-slate-200 bg-white text-slate-900'
-                                  }`}
-                                >
-                                  <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-400/70 to-transparent" />
-                                  <div className="flex items-center gap-2">
-                                    <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${
-                                      theme === 'dark' ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-600'
-                                    }`}>
-                                      <Box size={14} />
-                                    </span>
-                                    <div>
-                                      <p className={`text-[11px] font-black uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{item}</p>
-                                      <p className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{qtd} unidade{qtd > 1 ? 's' : ''}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
                         <div className={`p-4 rounded-2xl grid ${pontos.length > 15 ? 'grid-cols-5 sm:grid-cols-8 md:grid-cols-10' : 'grid-cols-5 sm:grid-cols-8'} gap-2 border ${styles.mutedCard}`}>
                           {pontos.map((p) => {
                             const pontoNum = Number(p);
@@ -247,6 +274,86 @@ export default function FailureSectorBoard({
 
             {isSetorAberto && !setorEhAvt && (
               <div className="px-5 pb-5 space-y-3">
+                {mesaTrabalhoSetor.length > 0 && (
+                  <div className={`relative overflow-hidden rounded-[1.8rem] border p-4 ${
+                    theme === 'dark'
+                      ? 'border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]'
+                      : 'border-slate-200 bg-[linear-gradient(135deg,rgba(255,255,255,1),rgba(248,250,252,1))] shadow-[0_18px_44px_rgba(15,23,42,0.08)]'
+                  }`}>
+                    <div className="absolute inset-y-0 left-0 w-1 rounded-full bg-gradient-to-b from-red-500 via-rose-500 to-amber-400" />
+                    <div className="flex items-start justify-between gap-4 pl-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
+                            theme === 'dark'
+                              ? 'border-white/10 bg-white/5 text-red-300'
+                              : 'border-red-200 bg-red-50 text-red-600'
+                          }`}>
+                            <Wrench size={16} />
+                          </span>
+                          <div>
+                            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>Mesa de Trabalho</p>
+                            <p className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>Total consolidado de materiais deste setor</p>
+                          </div>
+                        </div>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${
+                        theme === 'dark'
+                          ? 'bg-white/5 text-white border border-white/10'
+                          : 'bg-slate-900 text-white'
+                      }`}>
+                        Falhas Totais: {totalFalhasSetor}
+                      </span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2 pl-3">
+                      {totalInoperantesSetor > 0 && (
+                        <div
+                          className={`group relative overflow-hidden rounded-2xl border px-3 py-2 ${
+                            theme === 'dark'
+                              ? 'border-amber-400/20 bg-amber-500/10 text-white'
+                              : 'border-amber-200 bg-amber-50 text-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                              theme === 'dark' ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              <Box size={14} />
+                            </span>
+                            <div>
+                              <p className={`text-[11px] font-black uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>P. Inop</p>
+                              <p className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>{totalInoperantesSetor} ponto{totalInoperantesSetor > 1 ? 's' : ''}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {mesaTrabalhoSetor.map(([item, qtd]) => (
+                        <div
+                          key={`${setor}-total-${item}`}
+                          className={`group relative overflow-hidden rounded-2xl border px-3 py-2 ${
+                            theme === 'dark'
+                              ? 'border-white/10 bg-white/5 text-white'
+                              : 'border-slate-200 bg-white text-slate-900'
+                          }`}
+                        >
+                          <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-400/70 to-transparent" />
+                          <div className="flex items-center gap-2">
+                            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                              theme === 'dark' ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-600'
+                            }`}>
+                              <Box size={14} />
+                            </span>
+                            <div>
+                              <p className={`text-[11px] font-black uppercase tracking-[0.08em] ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{item}</p>
+                              <p className={`text-[10px] font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{qtd} {item}{qtd > 1 ? "'s" : ''}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {traves.map((traveNum) => {
                   const chamadosDaTrave = getTraveChamados(setor, traveNum);
                   const mesaTrabalho = getMesaTrabalhoTrave(setor, traveNum);

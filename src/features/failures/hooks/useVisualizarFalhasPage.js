@@ -265,6 +265,23 @@ export function useVisualizarFalhasPage() {
     return getTraveWorkItems(chamados);
   }, [getTraveChamados]);
 
+  const getMesaTrabalhoSetor = useCallback((setor) => {
+    const chamados = falhasPorSetor[setor] || [];
+    return getTraveWorkItems(chamados);
+  }, [falhasPorSetor]);
+
+  const getTotalFalhasSetor = useCallback((setor) => {
+    return falhas.filter((item) => String(item?.setor || '').trim() === String(setor || '').trim()).length;
+  }, [falhas]);
+
+  const getTotalInoperantesSetor = useCallback((setor) => {
+    const itens = falhasInoperantes.filter((item) => String(item?.setor || '').trim() === String(setor || '').trim());
+    const pontosUnicos = new Set(
+      itens.map((item) => `${String(item?.trave || '')}|${String(item?.ponto || '').trim()}`),
+    );
+    return pontosUnicos.size;
+  }, [falhasInoperantes]);
+
   const getDadosPonto = useCallback((setor, trave, ponto) => {
     const key = `${normalizeText(setor)}|${String(trave)}`;
     const chamadosDaTrave = falhasPorSetorTrave[key] || [];
@@ -615,6 +632,9 @@ export function useVisualizarFalhasPage() {
     getPontosDoSetor,
     getTraveChamados,
     getMesaTrabalhoTrave,
+    getMesaTrabalhoSetor,
+    getTotalFalhasSetor,
+    getTotalInoperantesSetor,
     getStatusTrave,
     countFalhasReais,
     getDadosPonto,

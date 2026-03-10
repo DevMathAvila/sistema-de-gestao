@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import DateRangePicker from '../../../shared/components/filters/DateRangePicker';
+import { SETOR_TODOS } from '../../../shared/constants/setores';
 import { formatDateBr } from '../services/adminService';
 
 function EmptyState({ s, title, description }) {
@@ -136,6 +137,9 @@ export default function AdminHistoryTab({
   dataFim,
   setDataInicio,
   setDataFim,
+  historicoSetorFiltro,
+  setHistoricoSetorFiltro,
+  historicoSetores,
   intervaloInvalido,
   historicoSubAba,
   setHistoricoSubAba,
@@ -166,6 +170,17 @@ export default function AdminHistoryTab({
               compact
             />
           </div>
+          <select
+            value={historicoSetorFiltro}
+            onChange={(e) => setHistoricoSetorFiltro(e.target.value)}
+            className={`${s.input} min-w-[220px] font-black text-[10px] p-4 rounded-2xl outline-none border-2 border-red-600/20 uppercase tracking-widest`}
+          >
+            {historicoSetores.map((setorNome) => (
+              <option key={setorNome} value={setorNome}>
+                {setorNome === SETOR_TODOS ? 'TODOS OS SETORES' : setorNome.toUpperCase()}
+              </option>
+            ))}
+          </select>
           {intervaloInvalido && (
             <p className="text-[10px] font-black uppercase tracking-wider text-red-600">
               Intervalo invalido: a data inicial deve ser menor ou igual a final.
@@ -229,6 +244,14 @@ export default function AdminHistoryTab({
       <div className={`${s.card} rounded-[2.5rem] overflow-hidden rounded-tl-none`}>
         {historicoSubAba === 'concluidas' && (
           <>
+            <div className="px-6 pt-3 md:px-8 md:pt-2 flex justify-end">
+              <div className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest ${
+                theme === 'dark' ? 'border-white/10 bg-white/5 text-white' : 'border-slate-200 bg-white text-slate-900'
+              }`}>
+                <span className="text-red-600">Total</span>
+                <span>{historico.length} falhas concluidas</span>
+              </div>
+            </div>
             {loadingHistorico ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="animate-spin text-red-600" size={32} />
@@ -247,6 +270,14 @@ export default function AdminHistoryTab({
 
         {historicoSubAba === 'abertas' && (
           <>
+            <div className="px-6 pt-3 md:px-8 md:pt-2 flex justify-end">
+              <div className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest ${
+                theme === 'dark' ? 'border-white/10 bg-white/5 text-white' : 'border-slate-200 bg-white text-slate-900'
+              }`}>
+                <span className="text-red-600">Total</span>
+                <span>{historicoAbertas.length} falhas em aberto</span>
+              </div>
+            </div>
             {loadingHistoricoAbertas ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="animate-spin text-red-600" size={32} />

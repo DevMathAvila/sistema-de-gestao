@@ -59,6 +59,9 @@ export default function AdminPage() {
     setDataInicio,
     dataFim,
     setDataFim,
+    historicoSetorFiltro,
+    setHistoricoSetorFiltro,
+    historicoSetores,
     intervaloInvalido,
     historicoSubAba,
     setHistoricoSubAba,
@@ -258,6 +261,9 @@ export default function AdminPage() {
               dataFim={dataFim}
               setDataInicio={setDataInicio}
               setDataFim={setDataFim}
+              historicoSetorFiltro={historicoSetorFiltro}
+              setHistoricoSetorFiltro={setHistoricoSetorFiltro}
+              historicoSetores={historicoSetores}
               intervaloInvalido={intervaloInvalido}
               historicoSubAba={historicoSubAba}
               setHistoricoSubAba={setHistoricoSubAba}
