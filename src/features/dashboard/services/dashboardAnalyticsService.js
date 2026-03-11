@@ -187,7 +187,7 @@ function formatSetorLabel(value) {
   return text;
 }
 
-function buildExecutiveHighlight(setorStatusResumo, concluidasRows, abertasRows) {
+function buildExecutiveHighlight(setorStatusResumo, concluidasRows, abertasRows, abertasAtuaisRows) {
   const conclusoesPorSetor = {};
 
   (concluidasRows || []).forEach((row) => {
@@ -217,45 +217,45 @@ function buildExecutiveHighlight(setorStatusResumo, concluidasRows, abertasRows)
     };
   }
 
-  const abertasDoSetor = (abertasRows || []).filter((row) => {
-    if ((row?.setor || 'N/I') !== focoConcluido.setor) return false;
-    if (!isOpenRecord(row)) return false;
-    if (!row?.trave || !row?.ponto) return false;
-    if (Boolean(row?.ponto_inoperante)) return false;
-    if (isSigaWaiting(row)) return false;
-    return true;
+  const registrosDoSetorNoPeriodo = [...(concluidasRows || []), ...(abertasRows || [])].filter((row) => {
+    return (row?.setor || 'N/I') === focoConcluido.setor;
   });
-  const pendingPointMap = {};
-  const traveSet = new Set();
+  const abertasAtuaisDoSetor = (abertasAtuaisRows || []).filter((row) => {
+    return (row?.setor || 'N/I') === focoConcluido.setor && isOpenRecord(row);
+  });
+
   const topFailureMap = {};
   const traveFailureMap = {};
+  const concludedTraveSet = new Set();
+  const remainingTraveSet = new Set();
 
-  abertasDoSetor.forEach((row) => {
-    const setor = row?.setor || 'N/I';
-    const trave = row?.trave ?? '-';
-    const ponto = row?.ponto || '-';
-    const key = `${setor}|${trave}|${ponto}`;
-
-    if (!pendingPointMap[key]) {
-      pendingPointMap[key] = {
-        setor,
-        trave,
-        ponto,
-        pendentes: 0,
-      };
-    }
-
-    pendingPointMap[key].pendentes += 1;
-    traveSet.add(String(trave));
+  registrosDoSetorNoPeriodo.forEach((row) => {
+    const trave = row?.trave;
+    if (trave == null || trave === '') return;
 
     const falhas = splitFalhas(row?.falha);
-    const traveKey = `${setor}|${trave}`;
+    const traveKey = `${focoConcluido.setor}|${trave}`;
     traveFailureMap[traveKey] = (traveFailureMap[traveKey] || 0) + (falhas.length || 1);
+  });
 
-    falhas.forEach((falha) => {
+  (concluidasRows || []).forEach((row) => {
+    if ((row?.setor || 'N/I') !== focoConcluido.setor) return;
+
+    if (row?.trave != null && row?.trave !== '') {
+      concludedTraveSet.add(String(row.trave));
+    }
+
+    splitFalhas(row?.falha).forEach((falha) => {
       topFailureMap[falha] = (topFailureMap[falha] || 0) + 1;
     });
   });
+
+  const pendentesRestantes = abertasAtuaisDoSetor.reduce((acc, row) => {
+    if (row?.trave != null && row?.trave !== '') {
+      remainingTraveSet.add(String(row.trave));
+    }
+    return acc + Math.max(splitFalhas(row?.falha).length, 1);
+  }, 0);
 
   const traveMaisCritica = Object.entries(traveFailureMap)
     .map(([key, falhas]) => {
@@ -263,8 +263,8 @@ function buildExecutiveHighlight(setorStatusResumo, concluidasRows, abertasRows)
       return { key, setor, trave, falhas };
     })
     .sort((a, b) => b.falhas - a.falhas || String(a.trave).localeCompare(String(b.trave)))[0] || null;
-  const pendentesRestantes = Object.keys(pendingPointMap).length;
-  const affectedBars = traveSet.size;
+  const affectedBars = concludedTraveSet.size;
+  const remainingAffectedBars = remainingTraveSet.size;
   const topFailure = Object.entries(topFailureMap)
     .map(([falha, total]) => ({ falha, total }))
     .sort((a, b) => b.total - a.total || a.falha.localeCompare(b.falha))[0]?.falha || 'sem falha dominante';
@@ -284,8 +284,8 @@ function buildExecutiveHighlight(setorStatusResumo, concluidasRows, abertasRows)
         falhas: 0,
       };
   const summary = pendentesRestantes > 0
-    ? `No periodo analisado, o maior volume de conclusoes ficou concentrado em ${focoConcluido.setor}, com ${totalConcluidas} falhas finalizadas. Restam ${pendentesRestantes} pendencias para encerramento de falhas em pontos, afetando ${affectedBars} traves e com o maior volume de falhas sendo ${topFailure}, mantendo o fluxo operacional desta celula sob acompanhamento direto.`
-    : `No periodo analisado, o maior volume de conclusoes ficou concentrado em ${focoConcluido.setor}, com ${totalConcluidas} falhas finalizadas, sem pendencias abertas em pontos para a celula no fechamento do periodo.`;
+    ? `No periodo analisado, o maior volume de conclusoes ficou concentrado em ${formatSetorLabel(focoConcluido.setor)}, com ${totalConcluidas} falhas finalizadas. Ainda restam ${pendentesRestantes} falhas abertas para esta celula, distribuidas em ${remainingAffectedBars} traves, enquanto ${affectedBars} traves receberam conclusoes no periodo.`
+    : `No periodo analisado, o maior volume de conclusoes ficou concentrado em ${formatSetorLabel(focoConcluido.setor)}, com ${totalConcluidas} falhas finalizadas e sem pendencias abertas restantes para esta celula.`;
 
   return {
     criticalPoint,
@@ -293,6 +293,7 @@ function buildExecutiveHighlight(setorStatusResumo, concluidasRows, abertasRows)
     resolvedCount: totalConcluidas,
     remainingCount: pendentesRestantes,
     affectedBars,
+    remainingAffectedBars,
     topFailure,
     summary,
   };
@@ -482,7 +483,12 @@ export function computeDashboardMetrics(
   const operationTypeDistribution = buildOperationTypeDistribution(registros);
   const topCategory = operationTypeDistribution[0] || { name: 'Sem categoria', value: 0 };
   const setorStatusResumo = buildSetorStatusResumo(registros);
-  const executiveHighlight = buildExecutiveHighlight(setorStatusResumo, concluidasRows || [], abertasParaDestaque || []);
+  const executiveHighlight = buildExecutiveHighlight(
+    setorStatusResumo,
+    concluidasRows || [],
+    abertasRows || [],
+    abertasParaDestaque || []
+  );
 
   const setorFalhas = {};
   registros.forEach((r) => {
