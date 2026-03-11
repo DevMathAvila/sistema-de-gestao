@@ -7,6 +7,7 @@ import {
   createUsuario,
   exportHistoricoAbertoExcel,
   exportHistoricoConcluidoExcel,
+  importHistoricoConcluidoExcel,
   loadHistoricoAberto,
   loadHistoricoConcluido,
   loadParetoStats,
@@ -45,6 +46,7 @@ export function useAdminPage() {
   const [usuarioPendenteRemocao, setUsuarioPendenteRemocao] = useState(null);
   const [userActionFeedback, setUserActionFeedback] = useState(null);
   const feedbackTimerRef = useRef(null);
+  const historyFeedbackTimerRef = useRef(null);
 
   const [setorFiltro, setSetorFiltro] = useState(SETOR_TODOS);
   const [falhasStats, setFalhasStats] = useState([]);
@@ -57,6 +59,8 @@ export function useAdminPage() {
   const [historicoAbertas, setHistoricoAbertas] = useState([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
   const [loadingHistoricoAbertas, setLoadingHistoricoAbertas] = useState(false);
+  const [importandoHistoricoConcluido, setImportandoHistoricoConcluido] = useState(false);
+  const [historyActionFeedback, setHistoryActionFeedback] = useState(null);
 
   const intervaloInvalido = Boolean(dataInicio && dataFim && dataInicio > dataFim);
   const currentUser = getSessionUser() || { role: 'colaborador' };
@@ -77,6 +81,14 @@ export function useAdminPage() {
     setTheme(nextTheme);
     localStorage.setItem('theme', nextTheme);
   }, [theme]);
+
+  const showHistoryFeedback = useCallback((type, message) => {
+    setHistoryActionFeedback({ type, message });
+    if (historyFeedbackTimerRef.current) window.clearTimeout(historyFeedbackTimerRef.current);
+    historyFeedbackTimerRef.current = window.setTimeout(() => {
+      setHistoryActionFeedback(null);
+    }, 4200);
+  }, []);
 
   const fetchUsuarios = useCallback(async () => {
     try {
@@ -220,6 +232,24 @@ export function useAdminPage() {
     exportHistoricoAbertoExcel(historicoAbertasFiltrado);
   }, [historicoAbertasFiltrado]);
 
+  const handleImportHistoricoConcluido = useCallback(async (file) => {
+    if (!file) return;
+
+    setImportandoHistoricoConcluido(true);
+    try {
+      const result = await importHistoricoConcluidoExcel(file);
+      await fetchHistoricoConcluido();
+      showHistoryFeedback(
+        'success',
+        `${result?.importedCount || 0} falhas concluidas importadas. ${result?.ignoredDuplicates || 0} duplicadas foram ignoradas.`
+      );
+    } catch (err) {
+      showHistoryFeedback('error', err?.message || 'Erro ao importar concluidos.');
+    } finally {
+      setImportandoHistoricoConcluido(false);
+    }
+  }, [fetchHistoricoConcluido, showHistoryFeedback]);
+
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');
     if (tab) setActiveTab(resolveAdminTab(tab));
@@ -266,6 +296,7 @@ export function useAdminPage() {
   useEffect(() => {
     return () => {
       if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+      if (historyFeedbackTimerRef.current) window.clearTimeout(historyFeedbackTimerRef.current);
     };
   }, []);
 
@@ -310,7 +341,10 @@ export function useAdminPage() {
     historicoAbertas: historicoAbertasFiltrado,
     loadingHistorico,
     loadingHistoricoAbertas,
+    importandoHistoricoConcluido,
+    historyActionFeedback,
     handleExportHistorico,
     handleExportAbertas,
+    handleImportHistoricoConcluido,
   };
 }

@@ -69,8 +69,11 @@ export default function AdminPage() {
     historicoAbertas,
     loadingHistorico,
     loadingHistoricoAbertas,
+    importandoHistoricoConcluido,
+    historyActionFeedback,
     handleExportHistorico,
     handleExportAbertas,
+    handleImportHistoricoConcluido,
   } = useAdminPage();
 
   if (loading) {
@@ -271,8 +274,11 @@ export default function AdminPage() {
               historicoAbertas={historicoAbertas}
               loadingHistorico={loadingHistorico}
               loadingHistoricoAbertas={loadingHistoricoAbertas}
+              importandoHistoricoConcluido={importandoHistoricoConcluido}
+              historyActionFeedback={historyActionFeedback}
               onExportHistorico={handleExportHistorico}
               onExportAbertas={handleExportAbertas}
+              onImportHistoricoConcluido={handleImportHistoricoConcluido}
             />
           </Suspense>
         )}

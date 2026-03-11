@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Loader2, Upload } from 'lucide-react';
 import DateRangePicker from '../../../shared/components/filters/DateRangePicker';
 import { SETOR_TODOS } from '../../../shared/constants/setores';
 import { formatDateBr } from '../services/adminService';
@@ -130,6 +130,73 @@ function HistoricoAbertoTable({ theme, s, historicoAbertas }) {
   );
 }
 
+const ITEMS_PER_PAGE = 30;
+
+function PaginationControls({ theme, currentPage, totalPages, onPageChange, totalItems }) {
+  if (totalPages <= 1) return null;
+
+  const startPage = Math.max(1, currentPage - 2);
+  const endPage = Math.min(totalPages, startPage + 4);
+  const pages = [];
+  for (let page = startPage; page <= endPage; page += 1) {
+    pages.push(page);
+  }
+
+  return (
+    <div className="px-6 py-5 md:px-8 flex flex-col gap-4 border-t border-slate-200 dark:border-white/10 md:flex-row md:items-center md:justify-between">
+      <p className={`text-[11px] font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+        Exibindo {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalItems)}-{Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} de {totalItems}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`min-h-10 rounded-xl px-4 text-[10px] font-black uppercase tracking-widest ${
+            currentPage === 1
+              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              : theme === 'dark'
+                ? 'bg-white/5 text-white hover:bg-white/10'
+                : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
+          }`}
+        >
+          Anterior
+        </button>
+        {pages.map((page) => (
+          <button
+            key={page}
+            type="button"
+            onClick={() => onPageChange(page)}
+            className={`min-h-10 min-w-10 rounded-xl px-3 text-[10px] font-black uppercase tracking-widest ${
+              page === currentPage
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
+                : theme === 'dark'
+                  ? 'bg-white/5 text-white hover:bg-white/10'
+                  : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={`min-h-10 rounded-xl px-4 text-[10px] font-black uppercase tracking-widest ${
+            currentPage === totalPages
+              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              : theme === 'dark'
+                ? 'bg-white/5 text-white hover:bg-white/10'
+                : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
+          }`}
+        >
+          Proxima
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminHistoryTab({
   s,
   theme,
@@ -147,9 +214,48 @@ export default function AdminHistoryTab({
   historicoAbertas,
   loadingHistorico,
   loadingHistoricoAbertas,
+  importandoHistoricoConcluido,
+  historyActionFeedback,
   onExportHistorico,
   onExportAbertas,
+  onImportHistoricoConcluido,
 }) {
+  const fileInputRef = useRef(null);
+  const [historicoPage, setHistoricoPage] = useState(1);
+  const [historicoAbertasPage, setHistoricoAbertasPage] = useState(1);
+
+  const historicoTotalPages = Math.max(1, Math.ceil(historico.length / ITEMS_PER_PAGE));
+  const historicoAbertasTotalPages = Math.max(1, Math.ceil(historicoAbertas.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    setHistoricoPage(1);
+  }, [historicoSubAba, historicoSetorFiltro, dataInicio, dataFim, historico.length]);
+
+  useEffect(() => {
+    setHistoricoAbertasPage(1);
+  }, [historicoSubAba, historicoSetorFiltro, dataInicio, dataFim, historicoAbertas.length]);
+
+  const historicoPaginado = useMemo(() => {
+    const start = (historicoPage - 1) * ITEMS_PER_PAGE;
+    return historico.slice(start, start + ITEMS_PER_PAGE);
+  }, [historico, historicoPage]);
+
+  const historicoAbertasPaginado = useMemo(() => {
+    const start = (historicoAbertasPage - 1) * ITEMS_PER_PAGE;
+    return historicoAbertas.slice(start, start + ITEMS_PER_PAGE);
+  }, [historicoAbertas, historicoAbertasPage]);
+
+  const handlePickImportFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFileChange = async (event) => {
+    const file = event.target.files?.[0] || null;
+    if (!file) return;
+    await onImportHistoricoConcluido?.(file);
+    event.target.value = '';
+  };
+
   return (
     <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
       <header className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -187,18 +293,40 @@ export default function AdminHistoryTab({
             </p>
           )}
           {historicoSubAba === 'concluidas' ? (
-            <button
-              type="button"
-              onClick={onExportHistorico}
-              disabled={!historico.length}
-              className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest ${
-                historico.length
-                  ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              Exportar Excel
-            </button>
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleImportFileChange}
+              />
+              <button
+                type="button"
+                onClick={handlePickImportFile}
+                disabled={importandoHistoricoConcluido}
+                className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest inline-flex items-center justify-center gap-2 ${
+                  importandoHistoricoConcluido
+                    ? 'bg-slate-200 text-slate-400 cursor-wait'
+                    : 'bg-slate-900 text-white hover:bg-black shadow-lg'
+                }`}
+              >
+                {importandoHistoricoConcluido ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                Importar Concluidos
+              </button>
+              <button
+                type="button"
+                onClick={onExportHistorico}
+                disabled={!historico.length}
+                className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest ${
+                  historico.length
+                    ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                Exportar Excel
+              </button>
+            </>
           ) : (
             <button
               type="button"
@@ -215,6 +343,20 @@ export default function AdminHistoryTab({
           )}
         </div>
       </header>
+
+      {historicoSubAba === 'concluidas' && historyActionFeedback ? (
+        <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm font-semibold ${
+          historyActionFeedback.type === 'success'
+            ? theme === 'dark'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            : theme === 'dark'
+              ? 'border-red-500/30 bg-red-500/10 text-red-200'
+              : 'border-red-200 bg-red-50 text-red-700'
+        }`}>
+          {historyActionFeedback.message}
+        </div>
+      ) : null}
 
       <div className="flex border-b border-slate-200 dark:border-white/10 mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
         <button
@@ -263,7 +405,16 @@ export default function AdminHistoryTab({
                 description="Ajuste o intervalo de datas ou aguarde novas ocorrencias concluidas."
               />
             ) : (
-              <HistoricoConcluidoTable theme={theme} s={s} historico={historico} />
+              <>
+                <HistoricoConcluidoTable theme={theme} s={s} historico={historicoPaginado} />
+                <PaginationControls
+                  theme={theme}
+                  currentPage={historicoPage}
+                  totalPages={historicoTotalPages}
+                  onPageChange={setHistoricoPage}
+                  totalItems={historico.length}
+                />
+              </>
             )}
           </>
         )}
@@ -289,7 +440,16 @@ export default function AdminHistoryTab({
                 description="Ajuste o intervalo de datas ou nao ha falhas abertas no periodo."
               />
             ) : (
-              <HistoricoAbertoTable theme={theme} s={s} historicoAbertas={historicoAbertas} />
+              <>
+                <HistoricoAbertoTable theme={theme} s={s} historicoAbertas={historicoAbertasPaginado} />
+                <PaginationControls
+                  theme={theme}
+                  currentPage={historicoAbertasPage}
+                  totalPages={historicoAbertasTotalPages}
+                  onPageChange={setHistoricoAbertasPage}
+                  totalItems={historicoAbertas.length}
+                />
+              </>
             )}
           </>
         )}
