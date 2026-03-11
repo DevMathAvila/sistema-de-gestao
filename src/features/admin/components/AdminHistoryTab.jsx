@@ -358,42 +358,42 @@ export default function AdminHistoryTab({
         </div>
       ) : null}
 
-      <div className="flex border-b border-slate-200 dark:border-white/10 mb-6 overflow-x-auto whitespace-nowrap no-scrollbar">
-        <button
-          type="button"
-          onClick={() => setHistoricoSubAba('concluidas')}
-          className={`px-6 py-3 rounded-t-2xl font-black text-[10px] uppercase tracking-widest border border-b-0 transition-all ${
-            historicoSubAba === 'concluidas'
-              ? 'bg-red-600 text-white border-red-600 shadow-lg'
-              : `${s.sub} border-transparent hover:bg-slate-100 dark:hover:bg-white/5`
-          }`}
-        >
-          Falhas Concluidas
-        </button>
-        <button
-          type="button"
-          onClick={() => setHistoricoSubAba('abertas')}
-          className={`px-6 py-3 rounded-t-2xl font-black text-[10px] uppercase tracking-widest border border-b-0 transition-all ${
-            historicoSubAba === 'abertas'
-              ? 'bg-red-600 text-white border-red-600 shadow-lg'
-              : `${s.sub} border-transparent hover:bg-slate-100 dark:hover:bg-white/5`
-          }`}
-        >
-          Falhas em Aberto
-        </button>
+      <div className="mb-6 flex items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 whitespace-nowrap">
+        <div className="flex items-end overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setHistoricoSubAba('concluidas')}
+            className={`px-6 py-3 rounded-t-2xl font-black text-[10px] uppercase tracking-widest border border-b-0 transition-all ${
+              historicoSubAba === 'concluidas'
+                ? 'bg-red-600 text-white border-red-600 shadow-lg'
+                : `${s.sub} border-transparent hover:bg-slate-100 dark:hover:bg-white/5`
+            }`}
+          >
+            Falhas Concluidas
+          </button>
+          <button
+            type="button"
+            onClick={() => setHistoricoSubAba('abertas')}
+            className={`px-6 py-3 rounded-t-2xl font-black text-[10px] uppercase tracking-widest border border-b-0 transition-all ${
+              historicoSubAba === 'abertas'
+                ? 'bg-red-600 text-white border-red-600 shadow-lg'
+                : `${s.sub} border-transparent hover:bg-slate-100 dark:hover:bg-white/5`
+            }`}
+          >
+            Falhas em Aberto
+          </button>
+        </div>
+        <div className={`mb-[1px] inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-t-2xl border border-b-0 px-4 py-2 text-[10px] font-black uppercase tracking-widest ${
+          theme === 'dark' ? 'border-white/10 bg-white/5 text-white' : 'border-slate-200 bg-white text-slate-900'
+        }`}>
+          <span className="text-red-600">Total</span>
+          <span>{historicoSubAba === 'concluidas' ? `${historico.length} falhas concluidas` : `${historicoAbertas.length} falhas em aberto`}</span>
+        </div>
       </div>
 
       <div className={`${s.card} rounded-[2.5rem] overflow-hidden rounded-tl-none`}>
         {historicoSubAba === 'concluidas' && (
           <>
-            <div className="px-6 pt-3 md:px-8 md:pt-2 flex justify-end">
-              <div className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest ${
-                theme === 'dark' ? 'border-white/10 bg-white/5 text-white' : 'border-slate-200 bg-white text-slate-900'
-              }`}>
-                <span className="text-red-600">Total</span>
-                <span>{historico.length} falhas concluidas</span>
-              </div>
-            </div>
             {loadingHistorico ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="animate-spin text-red-600" size={32} />
@@ -421,14 +421,6 @@ export default function AdminHistoryTab({
 
         {historicoSubAba === 'abertas' && (
           <>
-            <div className="px-6 pt-3 md:px-8 md:pt-2 flex justify-end">
-              <div className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest ${
-                theme === 'dark' ? 'border-white/10 bg-white/5 text-white' : 'border-slate-200 bg-white text-slate-900'
-              }`}>
-                <span className="text-red-600">Total</span>
-                <span>{historicoAbertas.length} falhas em aberto</span>
-              </div>
-            </div>
             {loadingHistoricoAbertas ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="animate-spin text-red-600" size={32} />

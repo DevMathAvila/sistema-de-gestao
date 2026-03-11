@@ -204,15 +204,15 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
 
   return (
     <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
-      <header className="mb-6 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
-        <div>
+      <header className="mb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+        <div className="min-w-0">
           <h2 className="text-4xl font-black uppercase italic tracking-tighter">
             Dashboard <span className="text-red-600">KPI</span>
           </h2>
           <p className={s.sub}>Cockpit executivo de manutencao e performance operacional.</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 lg:ml-auto lg:items-center lg:justify-end shrink-0">
           <DateRangePicker
             dataInicio={dataInicio}
             dataFim={dataFim}
