@@ -12,8 +12,8 @@ import {
   atualizarFalhaInoperante,
   reativarFalhasInoperantes,
   salvarDadosSigaAguardando,
-} from '../../../core/api/supabaseSecure';
-import { isTraveInteiraLabel } from '../constants/failureConstants';
+} from '../../../core/api/supabaseSecure.js';
+import { isTraveInteiraLabel } from '../constants/failureConstants.js';
 
 const OPEN_FAILURES_CACHE_TTL_MS = 4000;
 let openFailuresCache = { timestamp: 0, data: [] };

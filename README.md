@@ -144,14 +144,35 @@ O perfil operacional fica em `public.usuarios`, incluindo:
 
 ## Variaveis de ambiente
 
-Crie `.env` ou `.env.local` na raiz:
+Crie `.env` ou `.env.local` na raiz usando o modelo de `.env.example`:
 
 ```env
 VITE_SUPABASE_URL=https://SEU_PROJECT_REF.supabase.co
 VITE_SUPABASE_ANON_KEY=SEU_ANON_KEY
+PROJECT_CONTEXT_SUMMARY="RESUMO_TECNICO_PRIVADO_DO_PROJETO"
 ```
 
-Sem essas variaveis o app nao inicializa.
+Regras importantes:
+
+- `.env` e `.env.local` nao devem ser commitados.
+- O valor real de `PROJECT_CONTEXT_SUMMARY` deve ficar apenas no `.env` local e nas Environment Variables da Vercel.
+- Use `.env.example` somente com placeholders seguros para onboarding.
+- A `VITE_SUPABASE_ANON_KEY` vai para o bundle cliente, mas ainda assim deve ser gerenciada por ambiente e nunca hardcoded em codigo ou documentacao privada.
+
+### Vercel
+
+No painel da Vercel, configure as mesmas variaveis em `Project Settings > Environment Variables`:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `PROJECT_CONTEXT_SUMMARY`
+
+As Edge Functions do Supabase precisam de secrets configuradas no proprio projeto Supabase, nao na Vercel:
+
+- `SUPABASE_URL`
+- `SERVICE_ROLE_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`
+
+Sem `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` o app nao inicializa.
 
 ## Banco de dados esperado
 
@@ -227,5 +248,4 @@ Comportamento atual:
 - normaliza `ponto` numerico para `Ponto X`
 - ignora duplicados quando ja existe combinacao igual de `setor + trave + ponto + falha`
 - importa registros diretamente como `CONCLUIDO`
-
 

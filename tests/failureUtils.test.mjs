@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 
 import {
   buildFalhasDoChamado,
-  buildTraveSupplySummary,
   countFalhasReais,
+  getTraveWorkItems,
   getStatusTrave,
   splitFalhas,
   traveTemParada,
-} from '../src/features/failures/services/failureUtils.js';
+} from '../src/features/failures/services/failuresService.js';
 
 test('splitFalhas parses strings and arrays', () => {
   assert.deepEqual(splitFalhas('Monitor, Fonte+Rede'), ['Monitor', 'Fonte', 'Rede']);
@@ -41,20 +41,17 @@ test('status helpers detect total stop and urgency', () => {
   assert.match(getStatusTrave(urgentes).label, /URGENCIA/);
 });
 
-test('buildTraveSupplySummary aggregates materials by beam and point', () => {
-  const summary = buildTraveSupplySummary([
+test('getTraveWorkItems aggregates normalized materials', () => {
+  const summary = getTraveWorkItems([
     { ponto: 'Ponto 1', falha: 'Rede (RJ45)' },
     { ponto: 'Ponto 2', falha: 'HDMI, RJ45 Sem Trava' },
     { ponto: 'Ponto 3', falha: 'Rede (RJ45), HDMI, VGA' },
   ]);
 
-  assert.equal(summary.totalMateriais, 6);
-  assert.deepEqual(summary.porMaterial, [
-    { nome: 'Cabo RJ', quantidade: 2 },
-    { nome: 'HDMI', quantidade: 2 },
-    { nome: 'RJ45 Sem Trava', quantidade: 1 },
-    { nome: 'VGA', quantidade: 1 },
+  assert.deepEqual(summary, [
+    ['HDMI', 2],
+    ['RJ45', 2],
+    ['RJ45 Sem Trava', 1],
+    ['VGA', 1],
   ]);
-  assert.equal(summary.porPonto.length, 3);
-  assert.equal(summary.porPonto[1].ponto, 2);
 });

@@ -3,8 +3,8 @@ import {
   listarRegistrosInseridosNoSistema,
   listarRegistrosAbertos,
   listarRegistrosParaKPI,
-} from '../../../core/api/supabaseSecure';
-import { EXPECTED_MAINTENANCE_DAYS } from '../constants/maintenance';
+} from '../../../core/api/supabaseSecure.js';
+import { EXPECTED_MAINTENANCE_DAYS } from '../constants/maintenance.js';
 
 const CORES_PIE = ['#dc2626', '#16a34a'];
 const BRAZIL_TIME_ZONE = 'America/Sao_Paulo';

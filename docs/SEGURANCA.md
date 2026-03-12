@@ -1,51 +1,58 @@
-# Segurança — Lenovo Asset System
+# Seguranca - Lenovo Asset System
 
-Este documento descreve as medidas de segurança do projeto e o que você precisa configurar no Supabase para proteger seus dados na Vercel.
+Este documento descreve as medidas de seguranca do projeto e o que precisa ser configurado no Supabase e na Vercel para proteger o ambiente de producao.
 
-## 1. O que já está protegido no código
+## 1. O que ja esta protegido no codigo
 
-- **Validação de entradas**: Todos os dados enviados ao banco passam por `src/lib/validation.js` (tamanhos máximos, caracteres inválidos, setores e falhas permitidas).
-- **Camada segura**: Nenhuma página usa `supabase` direto para insert/update/delete. Tudo passa por `src/services/supabaseSecure.js`, que valida e sanitiza antes de escrever.
-- **Remoção de usuário**: Só um ID por vez; exige confirmação e sessão de admin.
-- **Fechamento de chamados**: Apenas por lista explícita de IDs e texto de solução validado.
-- **Login**: Busca de usuário por username com sanitização; senha comparada no cliente (veja seção 4 sobre senhas).
-- **Rotas protegidas**: `PrivateRoute` verifica `lenovo_user` no localStorage e redireciona se inválido.
+- **Validacao de entradas**: os dados enviados ao banco passam por `src/core/validation/validation.js`.
+- **Camada segura**: as operacoes principais de leitura e escrita passam por `src/core/api/supabaseSecure.js`.
+- **Criacao e exclusao de usuarios**: os fluxos administrativos usam Edge Functions e sessao autenticada.
+- **Fechamento de chamados**: o fluxo exige IDs explicitos, permissao valida e texto de solucao validado.
+- **Rotas protegidas**: `src/app/router/AppRouter.jsx` aplica guardas por sessao e role.
 
-**Importante:** No front-end (Vercel), a chave que vai no bundle é a anon key do Supabase. Ela é pública. A proteção real dos dados vem das políticas RLS (Row Level Security) no Supabase. Sem RLS, qualquer pessoa que inspecione o site pode usar essa chave para ler/escrever no banco.
+Importante: na Vercel, a chave enviada ao frontend e a `anon key` do Supabase. Ela e publica por natureza. A protecao real dos dados depende de `RLS` no Supabase.
 
-## 2. Obrigatório: ativar RLS no Supabase
+## 2. Obrigatorio: ativar RLS no Supabase
 
-1. Acesse o Dashboard do Supabase, seu projeto.
-2. Vá em Authentication / Policies ou Table Editor, selecione a tabela, RLS.
-3. Ative Enable Row Level Security (RLS) nas tabelas `usuarios` e `registros_falhas`.
+1. Acesse o dashboard do Supabase.
+2. Ative `Enable Row Level Security` nas tabelas `usuarios` e `registros_falhas`.
+3. Execute o SQL de `supabase/RLS_POLICIES.sql`.
 
-Depois, crie as políticas usando o arquivo `supabase/RLS_POLICIES.sql` na raiz do projeto. Execute esse SQL no Supabase (SQL Editor, New query, cole o conteúdo, Run).
+Politicas esperadas:
 
-As políticas sugeridas:
-- **usuarios**: leitura permitida para login; insert/update/delete bloqueados para anon (evita criar/remover usuários pela API pública). Criação/remoção de usuários pode ser feita pelo Dashboard do Supabase ou por uma Edge Function com service role.
-- **registros_falhas**: leitura permitida; insert permitido; update apenas para os campos de fechamento; delete bloqueado para anon.
+- `usuarios`: leitura controlada e operacoes administrativas protegidas.
+- `registros_falhas`: leitura controlada, escrita e update limitados conforme role e regras de negocio.
 
-Assim, mesmo que alguém tenha a anon key, não conseguirá apagar usuários nem apagar registros de falhas em massa.
+## 3. Variaveis de ambiente
 
-## 3. Variáveis de ambiente (Vercel)
+### Vercel
 
-- Use apenas a anon (public) key do Supabase nas variáveis do projeto na Vercel.
-- Nunca coloque a service_role key no front-end ou em variáveis expostas ao cliente.
-- Configure no Vercel: VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.
+Configure no projeto da Vercel:
 
-## 4. Senhas (recomendações)
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `PROJECT_CONTEXT_SUMMARY`
 
-Hoje o sistema compara senha em texto no cliente. Para produção ideal:
-1. Migrar para Supabase Auth (supabase.auth.signInWithPassword) e tabela auth.users.
-2. Se manter tabela usuarios: usar uma Edge Function para hash no cadastro e comparação no login; não armazenar senha em texto.
+### Supabase Edge Functions Secrets
 
-## 5. Resumo rápido
+Configure no projeto Supabase:
+
+- `SUPABASE_URL`
+- `SERVICE_ROLE_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`
+
+Nunca exponha `SERVICE_ROLE_KEY` no frontend ou em variaveis `VITE_*`.
+
+## 4. Senhas
+
+O fluxo ativo usa `Supabase Auth`. A tabela `public.usuarios` guarda o perfil operacional e metadados como role, `auth_user_id`, `force_password_change` e `setor_fixo`.
+
+Se ainda existir alguma coluna `senha` residual no banco por historico de migracao, trate-a como legado e remova quando a migracao estiver concluida.
+
+## 5. Resumo rapido
 
 | Onde | O que fazer |
 |------|-------------|
-| Supabase Dashboard | Ativar RLS em usuarios e registros_falhas e rodar supabase/RLS_POLICIES.sql. |
-| Vercel | Usar só VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY. |
-| Código | Já usa validação e supabaseSecure.js; não usar supabase direto para escrita. |
-| Senhas (futuro) | Preferir Supabase Auth ou Edge Function com hash. |
-
-Com RLS ativado e políticas aplicadas, o uso do app na Vercel fica muito mais seguro contra acesso e exclusão indevida dos seus dados.
+| Supabase Dashboard | Ativar RLS e aplicar `supabase/RLS_POLICIES.sql`. |
+| Vercel | Configurar `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` e `PROJECT_CONTEXT_SUMMARY`. |
+| Supabase Functions Secrets | Configurar `SUPABASE_URL` e `SERVICE_ROLE_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`. |
+| Codigo | Centralizar escrita em `src/core/api/supabaseSecure.js` e validacao em `src/core/validation/validation.js`. |

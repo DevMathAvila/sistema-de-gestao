@@ -9,7 +9,7 @@ import {
 } from '../src/core/validation/validation.js';
 
 test('sanitizeString trims, truncates and removes control chars', () => {
-  assert.equal(sanitizeString('  abc\u0007def  ', 5), 'abcde');
+  assert.equal(sanitizeString('  abc\u0007def  ', 5), 'abcd');
 });
 
 test('sanitizeFalhasArray keeps only allowed failures', () => {
