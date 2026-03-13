@@ -1,17 +1,6 @@
 import buildSystemPrompt from '../constants/aiSystemPrompt';
 import { AI_TOOL_DECLARATIONS } from './aiTools';
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`;
-
-function getApiKey() {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('VITE_GEMINI_API_KEY nao configurada.');
-  }
-  return apiKey;
-}
-
 function extractTextFromParts(parts = []) {
   return parts
     .map((part) => (typeof part?.text === 'string' ? part.text.trim() : ''))
@@ -25,9 +14,11 @@ function extractFunctionCall(parts = []) {
   if (!callPart?.functionCall) return null;
   return {
     name: callPart.functionCall.name,
-    args: callPart.functionCall.args && typeof callPart.functionCall.args === 'object'
-      ? callPart.functionCall.args
-      : {},
+    args:
+      callPart.functionCall.args &&
+      typeof callPart.functionCall.args === 'object'
+        ? callPart.functionCall.args
+        : {},
   };
 }
 
@@ -46,12 +37,14 @@ function buildRequestBody(history) {
 }
 
 export async function generateAssistantTurn(history) {
-  const apiKey = getApiKey();
-  const response = await fetch(GEMINI_ENDPOINT, {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error('VITE_GEMINI_API_KEY nao configurada.');
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+
+  const response = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(buildRequestBody(history)),
   });
 
