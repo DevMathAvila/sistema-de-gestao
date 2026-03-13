@@ -149,6 +149,7 @@ Crie `.env` ou `.env.local` na raiz usando o modelo de `.env.example`:
 ```env
 VITE_SUPABASE_URL=https://SEU_PROJECT_REF.supabase.co
 VITE_SUPABASE_ANON_KEY=SEU_ANON_KEY
+VITE_GEMINI_API_KEY=SUA_GEMINI_API_KEY
 PROJECT_CONTEXT_SUMMARY="RESUMO_TECNICO_PRIVADO_DO_PROJETO"
 ```
 
@@ -158,6 +159,7 @@ Regras importantes:
 - O valor real de `PROJECT_CONTEXT_SUMMARY` deve ficar apenas no `.env` local e nas Environment Variables da Vercel.
 - Use `.env.example` somente com placeholders seguros para onboarding.
 - A `VITE_SUPABASE_ANON_KEY` vai para o bundle cliente, mas ainda assim deve ser gerenciada por ambiente e nunca hardcoded em codigo ou documentacao privada.
+- A `VITE_GEMINI_API_KEY` tambem deve ser configurada por ambiente e nunca exposta em logs, telas de erro ou respostas do assistente.
 
 ### Vercel
 
@@ -165,6 +167,7 @@ No painel da Vercel, configure as mesmas variaveis em `Project Settings > Enviro
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_GEMINI_API_KEY`
 - `PROJECT_CONTEXT_SUMMARY`
 
 As Edge Functions do Supabase precisam de secrets configuradas no proprio projeto Supabase, nao na Vercel:
@@ -248,4 +251,3 @@ Comportamento atual:
 - normaliza `ponto` numerico para `Ponto X`
 - ignora duplicados quando ja existe combinacao igual de `setor + trave + ponto + falha`
 - importa registros diretamente como `CONCLUIDO`
-

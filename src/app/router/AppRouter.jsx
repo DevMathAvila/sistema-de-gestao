@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { getSessionUser, isAdminUser, isRuninKioskUser } from '../../core/auth/session';
+import LeiaWidget from '../../features/ai-assistant/components/LeiaWidget';
 
 const LoginPage = React.lazy(() => import('../../features/auth/pages/LoginPage'));
 const DashboardPage = React.lazy(() => import('../../features/dashboard/pages/DashboardPage'));
@@ -12,6 +13,7 @@ const AdminCockpitPage = React.lazy(() => import('../../features/admin/pages/Adm
 const HomePage = React.lazy(() => import('../../features/home/pages/HomePage'));
 const FaleConoscoPage = React.lazy(() => import('../../features/home/pages/FaleConoscoPage'));
 const MonitorTvPage = React.lazy(() => import('../../features/monitoring/pages/MonitorTvPage'));
+const AIAssistantPage = React.lazy(() => import('../../features/ai-assistant/pages/AIAssistantPage'));
 const RuninKioskPage = React.lazy(() => import('../../features/failures/pages/RuninKioskPage'));
 const AbrirChamadoEntry = React.lazy(() => import('../../features/failures/pages/FabricaStatusPage'));
 
@@ -19,7 +21,12 @@ const NonKioskLayout = () => {
   const user = getSessionUser();
   if (!user) return <Navigate to="/" replace />;
   if (isRuninKioskUser(user)) return <Navigate to="/abrir-chamado" replace />;
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <LeiaWidget />
+    </>
+  );
 };
 
 const AdminLayout = () => {
@@ -27,13 +34,23 @@ const AdminLayout = () => {
   if (!user) return <Navigate to="/" replace />;
   if (isRuninKioskUser(user)) return <Navigate to="/abrir-chamado" replace />;
   if (!isAdminUser(user)) return <Navigate to="/dashboard" replace />;
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <LeiaWidget />
+    </>
+  );
 };
 
 const AuthenticatedLayout = () => {
   const user = getSessionUser();
   if (!user) return <Navigate to="/" replace />;
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      {!isRuninKioskUser(user) && <LeiaWidget />}
+    </>
+  );
 };
 
 const PublicOnlyLayout = () => {
@@ -69,6 +86,7 @@ function AppRouter() {
           <Route path="/registrar" element={<RegistrarFalhaPage />} />
           <Route path="/visualizar" element={<VisualizarFalhasPage />} />
           <Route path="/monitor-tv" element={<MonitorTvPage />} />
+          <Route path="/assistente" element={<AIAssistantPage />} />
         </Route>
 
         <Route element={<AuthenticatedLayout />}>
