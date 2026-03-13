@@ -1,8 +1,8 @@
-import AI_SYSTEM_PROMPT from '../constants/aiSystemPrompt';
+import buildSystemPrompt from '../constants/aiSystemPrompt';
 import { AI_TOOL_DECLARATIONS } from './aiTools';
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`;
 
 function getApiKey() {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -34,7 +34,7 @@ function extractFunctionCall(parts = []) {
 function buildRequestBody(history) {
   return {
     system_instruction: {
-      parts: [{ text: AI_SYSTEM_PROMPT }],
+      parts: [{ text: buildSystemPrompt() }],
     },
     contents: history,
     tools: [{ function_declarations: AI_TOOL_DECLARATIONS }],
@@ -47,7 +47,7 @@ function buildRequestBody(history) {
 
 export async function generateAssistantTurn(history) {
   const apiKey = getApiKey();
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+  const response = await fetch(GEMINI_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
