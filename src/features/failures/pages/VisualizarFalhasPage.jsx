@@ -11,7 +11,7 @@ import ShieldAlert from 'lucide-react/dist/esm/icons/shield-alert';
 import Sun from 'lucide-react/dist/esm/icons/sun';
 import User from 'lucide-react/dist/esm/icons/user';
 import X from 'lucide-react/dist/esm/icons/x';
-import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
+import AppBottomNav from '@/shared/components/layout/AppBottomNav';
 import CloseFailureModal from '../components/CloseFailureModal';
 import FailureSectorBoard from '../components/FailureSectorBoard';
 import InoperantPointsBoard from '../components/InoperantPointsBoard';
@@ -132,17 +132,17 @@ export default function VisualizarFalhasPage() {
         </div>
       </aside>
 
-      <main className="flex-1 p-4 sm:p-6 md:p-10 pb-24 md:pb-10 overflow-y-auto z-10">
+      <main className="z-10 flex-1 overflow-y-auto p-4 pb-24 sm:p-6 md:p-10 md:pb-10">
         <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter">Visualizar <span className="text-red-600">Falhas</span></h2>
+            <h2 className="text-3xl font-black uppercase italic tracking-tighter sm:text-4xl md:text-5xl">Visualizar <span className="text-red-600">Falhas</span></h2>
             <p className={`${vm.styles.subtext} text-xs`}>
               {vm.abaFalhas === 'abertas'
                 ? 'Monitoramento em tempo real de falhas abertas.'
                 : 'Lista dedicada de pontos em aberto marcados como inoperantes.'}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 self-start sm:gap-4 md:self-auto">
             <div className="relative">
               <button
                 type="button"
@@ -205,11 +205,11 @@ export default function VisualizarFalhasPage() {
           </div>
         </header>
 
-        <div className="mb-6 inline-flex rounded-2xl border p-1.5 gap-1.5 bg-black/5">
+        <div className="mb-6 flex w-full flex-col gap-1.5 rounded-2xl border bg-black/5 p-1.5 sm:inline-flex sm:w-auto sm:flex-row">
           <button
             type="button"
             onClick={() => vm.setAbaFalhas('abertas')}
-            className={`h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            className={`min-h-[44px] px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
               vm.abaFalhas === 'abertas'
                 ? 'bg-red-600 text-white'
                 : vm.theme === 'dark'
@@ -222,7 +222,7 @@ export default function VisualizarFalhasPage() {
           <button
             type="button"
             onClick={() => vm.setAbaFalhas('inoperantes')}
-            className={`h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            className={`min-h-[44px] px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
               vm.abaFalhas === 'inoperantes'
                 ? 'bg-amber-500 text-white'
                 : vm.theme === 'dark'

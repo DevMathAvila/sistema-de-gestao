@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Check, CheckCircle2, Cpu, Hash, Layout, Loader2, Moon, Save, Sun, Zap } from 'lucide-react';
-import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
+import AppBottomNav from '@/shared/components/layout/AppBottomNav';
 import { useRegistrarFalhaPage } from '../hooks/useRegistrarFalhaPage';
 
 export default function RegistrarFalhaPage() {
@@ -28,7 +28,7 @@ export default function RegistrarFalhaPage() {
   } = useRegistrarFalhaPage();
 
   return (
-    <div className={`min-h-screen ${styles.bg} ${styles.text} p-4 md:p-10 pb-24 md:pb-10 font-sans relative transition-colors duration-500 overflow-x-hidden`}>
+    <div className={`min-h-screen ${styles.bg} ${styles.text} p-4 pb-24 font-sans relative transition-colors duration-500 overflow-x-hidden md:p-10 md:pb-10`}>
       {isSuccess && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center">
           <div className="text-center">
@@ -41,14 +41,14 @@ export default function RegistrarFalhaPage() {
       )}
 
       <div className="relative z-10 max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-12">
-          <button onClick={() => navigate('/abrir-chamado')} className={`group flex items-center gap-3 ${styles.subtext} hover:text-red-600 transition-all`}>
+        <div className="mb-8 flex items-start justify-between gap-4 md:mb-12 md:items-center">
+          <button onClick={() => navigate('/abrir-chamado')} className={`group flex min-h-11 items-center gap-3 ${styles.subtext} hover:text-red-600 transition-all`}>
             <div className={`p-2 rounded-full ${styles.mutedCard} border group-hover:bg-red-600 group-hover:border-red-600 group-hover:text-white transition-all`}>
               <ArrowLeft size={18} />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Voltar ao Inicio</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.24em] sm:text-[10px] sm:tracking-[0.3em]">Voltar ao Inicio</span>
           </button>
-          <button onClick={toggleTheme} className={`p-3 rounded-2xl border ${styles.card}`}>
+          <button onClick={toggleTheme} className={`min-h-11 min-w-11 p-3 rounded-2xl border ${styles.card}`}>
             {theme === 'dark' ? <Sun size={20} className="text-yellow-500" /> : <Moon size={20} className="text-red-600" />}
           </button>
         </div>
@@ -59,9 +59,9 @@ export default function RegistrarFalhaPage() {
               <div className="h-[2px] w-12 bg-red-600" />
               <span className="text-red-600 text-[11px] font-black uppercase tracking-[0.2em]">Diagnostic Terminal</span>
             </div>
-            <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter italic leading-none">{setor}</h2>
+            <h2 className="text-4xl font-black uppercase tracking-tighter italic leading-none sm:text-5xl md:text-8xl">{setor}</h2>
           </div>
-          <div className={`flex items-center gap-4 ${styles.mutedCard} border px-6 py-3 rounded-3xl`}>
+          <div className={`flex w-full items-center gap-4 rounded-3xl border px-4 py-3 sm:w-auto sm:px-6 ${styles.mutedCard}`}>
             <Cpu size={20} className="text-red-600" />
             <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-wider">Lenovo System</span>
@@ -73,7 +73,7 @@ export default function RegistrarFalhaPage() {
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-8">
             {!setorEhAvt && (
-              <div className={`${styles.card} p-8 rounded-[3rem]`}>
+              <div className={`${styles.card} rounded-[2rem] p-5 sm:p-6 md:rounded-[3rem] md:p-8`}>
                 <div className="flex items-center justify-between mb-8 px-2">
                   <label className={`flex items-center gap-3 text-[11px] font-black ${styles.subtext} uppercase tracking-widest`}>
                     <Hash size={18} className="text-red-600" /> Identificacao da Trave
@@ -81,7 +81,7 @@ export default function RegistrarFalhaPage() {
                   {formData.trave && <span className="text-[10px] font-black bg-red-600 text-white px-3 py-1 rounded-lg">TRAVE {formData.trave} SELECIONADA</span>}
                 </div>
 
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 md:grid-cols-6">
                   {traves.map((num) => {
                     const erro = traveTemErro(num);
                     const isSelected = String(formData.trave) === String(num);
@@ -90,7 +90,7 @@ export default function RegistrarFalhaPage() {
                         key={num}
                         type="button"
                         onClick={() => setFormData({ ...formData, trave: num, pontos: [] })}
-                        className={`h-16 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center relative overflow-hidden font-black text-xl ${
+                        className={`min-h-[44px] h-14 rounded-2xl border-2 transition-all duration-300 flex items-center justify-center relative overflow-hidden font-black text-lg sm:h-16 sm:text-xl ${
                           isSelected
                             ? 'bg-red-600 border-red-500 text-white'
                             : erro
@@ -109,13 +109,13 @@ export default function RegistrarFalhaPage() {
             )}
 
             {setorEhAvt && (
-              <div className={`${styles.card} p-6 rounded-[2rem] border border-blue-500/20 bg-blue-500/5`}>
+              <div className={`${styles.card} rounded-[2rem] border border-blue-500/20 bg-blue-500/5 p-5 sm:p-6`}>
                 <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-500">Modo AVT</p>
                 <p className={`mt-2 text-sm ${styles.subtext}`}>Selecione os pontos e as falhas. Nao existe selecao de trave para AVT.</p>
               </div>
             )}
 
-            <div className={`${styles.card} p-8 rounded-[3rem] ${!formData.trave ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
+            <div className={`${styles.card} rounded-[2rem] p-5 sm:p-6 md:rounded-[3rem] md:p-8 ${!formData.trave ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
               <div className="flex justify-between items-center mb-8 px-2">
                 <label className={`flex items-center gap-3 text-[11px] font-black ${styles.subtext} uppercase tracking-widest`}>
                   <Layout size={18} className="text-blue-500" /> Slots da Unidade
@@ -124,7 +124,7 @@ export default function RegistrarFalhaPage() {
                   {formData.pontos.length === pontos.length ? '[ Desmarcar Todos ]' : '[ Selecionar Todos ]'}
                 </button>
               </div>
-              <div className={`grid gap-3 ${setorEhAvt ? 'grid-cols-5 sm:grid-cols-8 md:grid-cols-10' : 'grid-cols-5'}`}>
+              <div className={`grid gap-2 sm:gap-3 ${setorEhAvt ? 'grid-cols-4 sm:grid-cols-6 md:grid-cols-10' : 'grid-cols-4 sm:grid-cols-5'}`}>
                 {pontos.map((p) => {
                   const selecionado = formData.pontos.includes(p);
                   const falhasNoPonto = getInfoPonto(p);
@@ -133,7 +133,7 @@ export default function RegistrarFalhaPage() {
                       <button
                         type="button"
                         onClick={() => togglePonto(p)}
-                        className={`h-14 w-full rounded-2xl border-2 transition-all duration-300 flex items-center justify-center font-black ${
+                        className={`min-h-[44px] h-12 w-full rounded-2xl border-2 transition-all duration-300 flex items-center justify-center font-black sm:h-14 ${
                           selecionado
                             ? 'bg-blue-600 border-blue-500 text-white'
                             : falhasNoPonto
@@ -162,7 +162,7 @@ export default function RegistrarFalhaPage() {
           </div>
 
           <div className="lg:col-span-5 space-y-8 flex flex-col">
-            <div className={`${styles.card} p-8 rounded-[3rem] flex-1`}>
+            <div className={`${styles.card} rounded-[2rem] p-5 sm:p-6 md:rounded-[3rem] md:p-8 flex-1`}>
               <label className={`flex items-center gap-3 text-[11px] font-black ${styles.subtext} uppercase tracking-widest mb-10`}>
                 <Zap size={18} className="text-yellow-500" /> Tipos de Ocorrencia
               </label>
@@ -174,7 +174,7 @@ export default function RegistrarFalhaPage() {
                       key={falha}
                       type="button"
                       onClick={() => toggleFalha(falha)}
-                      className={`w-full p-5 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between font-black uppercase tracking-tighter text-sm ${
+                      className={`w-full min-h-[44px] p-4 sm:p-5 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between font-black uppercase tracking-tighter text-sm ${
                         isSelected ? 'bg-gradient-to-r from-red-600 to-rose-500 border-red-400 text-white' : `${styles.mutedCard} hover:bg-slate-200/50`
                       }`}
                     >
@@ -189,7 +189,7 @@ export default function RegistrarFalhaPage() {
             <button
               type="submit"
               disabled={formData.falhas.length === 0 || !formData.trave || formData.pontos.length === 0 || loading}
-              className={`w-full p-10 rounded-[2.5rem] font-black text-2xl flex items-center justify-center gap-4 transition-all duration-500 ${
+              className={`flex w-full min-h-[56px] items-center justify-center gap-4 rounded-[2rem] p-5 text-lg font-black transition-all duration-500 sm:rounded-[2.5rem] sm:p-8 sm:text-2xl ${
                 loading ? 'bg-slate-800' : `${theme === 'dark' ? 'bg-white text-black' : 'bg-slate-900 text-white'} hover:bg-red-600 hover:text-white disabled:opacity-20`
               }`}
             >

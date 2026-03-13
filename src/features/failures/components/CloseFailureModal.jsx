@@ -73,7 +73,7 @@ export default function CloseFailureModal({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 w-full max-w-sm rounded-[2rem] shadow-2xl max-h-[85vh] flex flex-col`}>
+      <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 h-auto max-h-[85vh] w-[calc(100vw-32px)] max-w-sm rounded-[2rem] shadow-2xl flex flex-col`}>
         <div className={`p-6 flex justify-between items-center ${etapaFechamento ? 'bg-green-500/10' : (etapaInoperante ? 'bg-amber-500/10' : 'bg-red-500/10')}`}>
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-xl ${etapaFechamento ? 'bg-green-500' : (etapaInoperante ? 'bg-amber-500' : 'bg-red-600')} text-white`}>
@@ -89,7 +89,7 @@ export default function CloseFailureModal({
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto">
+        <div className="overflow-y-auto p-4 sm:p-6">
           {String(modalData.ponto) !== 'Todos' && (
             <section className={`mb-5 p-4 rounded-xl border ${styles.mutedCard}`}>
               <div className="flex items-center gap-2 mb-3">
@@ -234,7 +234,7 @@ export default function CloseFailureModal({
                       onChange={(e) => setInoperanteDescricao(e.target.value)}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button
                       onClick={() => setEtapaInoperante(false)}
                       className={`py-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} text-[9px] font-black uppercase rounded-xl`}
@@ -326,7 +326,7 @@ export default function CloseFailureModal({
                 value={solucaoTexto}
                 onChange={(e) => setSolucaoTexto(e.target.value)}
               />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button onClick={() => setEtapaFechamento(false)} className={`py-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'} text-[9px] font-black uppercase rounded-xl`}>
                   Voltar
                 </button>

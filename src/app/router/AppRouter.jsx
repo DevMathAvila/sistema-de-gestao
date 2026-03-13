@@ -1,6 +1,12 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
-import { getSessionUser, isAdminUser, isRuninKioskUser } from '../../core/auth/session';
+import {
+  clearSessionData,
+  getSessionUser,
+  isAdminUser,
+  isRuninKioskUser,
+} from '../../core/auth/session';
+import { supabase } from '../../core/api/supabaseClient';
 import LeiaWidget from '../../features/ai-assistant/components/LeiaWidget';
 import NewsPopup from '../../features/news/components/NewsPopup';
 
@@ -18,8 +24,63 @@ const AIAssistantPage = React.lazy(() => import('../../features/ai-assistant/pag
 const RuninKioskPage = React.lazy(() => import('../../features/failures/pages/RuninKioskPage'));
 const AbrirChamadoEntry = React.lazy(() => import('../../features/failures/pages/FabricaStatusPage'));
 
+function RouterFallback() {
+  return (
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="h-12 w-12 rounded-full border-4 border-red-600 border-t-transparent animate-spin" />
+    </div>
+  );
+}
+
+function useVerifiedSession(localUser) {
+  const [state, setState] = useState({
+    checking: Boolean(localUser),
+    hasSession: Boolean(localUser),
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!localUser) {
+      setState({ checking: false, hasSession: false });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    async function verifySession() {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
+      if (error || !session) {
+        clearSessionData();
+        setState({ checking: false, hasSession: false });
+        return;
+      }
+
+      setState({ checking: false, hasSession: true });
+    }
+
+    setState({ checking: true, hasSession: Boolean(localUser) });
+    verifySession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [localUser?.id, localUser?.role, localUser?.username, localUser?.setor_fixo]);
+
+  return state;
+}
+
 const NonKioskLayout = () => {
   const user = getSessionUser();
+  const { checking, hasSession } = useVerifiedSession(user);
+  if (checking) return <RouterFallback />;
+  if (!hasSession) return <Navigate to="/" replace />;
   if (!user) return <Navigate to="/" replace />;
   if (isRuninKioskUser(user)) return <Navigate to="/abrir-chamado" replace />;
   return (
@@ -33,6 +94,9 @@ const NonKioskLayout = () => {
 
 const AdminLayout = () => {
   const user = getSessionUser();
+  const { checking, hasSession } = useVerifiedSession(user);
+  if (checking) return <RouterFallback />;
+  if (!hasSession) return <Navigate to="/" replace />;
   if (!user) return <Navigate to="/" replace />;
   if (isRuninKioskUser(user)) return <Navigate to="/abrir-chamado" replace />;
   if (!isAdminUser(user)) return <Navigate to="/dashboard" replace />;
@@ -47,6 +111,9 @@ const AdminLayout = () => {
 
 const AuthenticatedLayout = () => {
   const user = getSessionUser();
+  const { checking, hasSession } = useVerifiedSession(user);
+  if (checking) return <RouterFallback />;
+  if (!hasSession) return <Navigate to="/" replace />;
   if (!user) return <Navigate to="/" replace />;
   return (
     <>
@@ -59,7 +126,48 @@ const AuthenticatedLayout = () => {
 
 const PublicOnlyLayout = () => {
   const user = getSessionUser();
-  if (user) return <Navigate to={isRuninKioskUser(user) ? '/abrir-chamado' : '/dashboard'} replace />;
+  const [checking, setChecking] = useState(Boolean(user));
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function verifySession() {
+      if (!user) {
+        setChecking(false);
+        setHasSession(false);
+        return;
+      }
+
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
+      if (error || !session) {
+        clearSessionData();
+        setHasSession(false);
+        setChecking(false);
+        return;
+      }
+
+      setHasSession(true);
+      setChecking(false);
+    }
+
+    verifySession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.role, user?.username, user?.setor_fixo]);
+
+  if (checking) return <RouterFallback />;
+  if (hasSession && user) {
+    return <Navigate to={isRuninKioskUser(user) ? '/abrir-chamado' : '/dashboard'} replace />;
+  }
   return <Outlet />;
 };
 
@@ -72,11 +180,7 @@ function AbrirChamadoRoute() {
 function AppRouter() {
   return (
     <Suspense
-      fallback={(
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-          <div className="h-12 w-12 rounded-full border-4 border-red-600 border-t-transparent animate-spin" />
-        </div>
-      )}
+      fallback={<RouterFallback />}
     >
       <Routes>
         <Route element={<PublicOnlyLayout />}>

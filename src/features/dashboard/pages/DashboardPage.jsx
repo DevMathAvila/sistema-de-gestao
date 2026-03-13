@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Check, Eye, HardDrive, LogOut, Menu, Moon, Settings, Shield, Sparkles, Sun, User, X } from 'lucide-react';
-import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
-import { NEWS_DATA } from '../../news/constants/newsData';
-import { useNews } from '../../news/hooks/useNews';
-import { useDashboardPage } from '../hooks/useDashboardPage';
+import AppBottomNav from '@/shared/components/layout/AppBottomNav';
+import { NEWS_DATA } from '@/features/news/constants/newsData';
+import { useNews } from '@/features/news/hooks/useNews';
+import { useDashboardPage } from '@/features/dashboard/hooks/useDashboardPage';
 
 const navItems = [
   { id: 'abrir', label: 'Abrir chamado', path: '/abrir-chamado', icon: HardDrive },
@@ -133,51 +133,51 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      <main className="flex-1 p-4 sm:p-6 md:p-10 pb-24 md:pb-10 overflow-y-auto z-10">
-        <section className="relative overflow-hidden rounded-[2.5rem] border border-red-600/20 p-8 md:p-10 bg-gradient-to-br from-red-600/10 via-transparent to-transparent">
+      <main className="z-10 flex-1 overflow-y-auto p-4 pb-24 sm:p-6 md:p-10 md:pb-10">
+        <section className="relative overflow-hidden rounded-[2rem] border border-red-600/20 bg-gradient-to-br from-red-600/10 via-transparent to-transparent p-5 sm:p-6 md:rounded-[2.5rem] md:p-10">
           <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full bg-red-600/20 blur-3xl" />
           <div className="absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
           <div className="relative z-10 flex flex-col gap-8">
             <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
               <div className="max-w-3xl">
                 <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">Bem-vindo ao Centro Lenovo</p>
-                <h2 className="mt-3 text-4xl font-black uppercase italic tracking-tighter leading-none md:text-6xl">
+                <h2 className="mt-3 text-3xl font-black uppercase italic tracking-tighter leading-none sm:text-4xl md:text-6xl">
                   Ambiente principal de <span className="text-red-600">operacao</span>
                 </h2>
                 <p className={`mt-4 max-w-2xl text-sm md:text-base ${vm.styles.subtext}`}>
                   Acompanhe as ultimas entregas do sistema e acesse rapido os fluxos operacionais mais importantes logo apos o login.
                 </p>
               </div>
-              <div className={`rounded-[2rem] border px-5 py-4 ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white/80'}`}>
+              <div className={`w-full rounded-[1.5rem] border px-4 py-4 sm:w-auto sm:rounded-[2rem] sm:px-5 ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white/80'}`}>
                 <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${vm.styles.subtext}`}>Usuario</p>
                 <p className="mt-2 text-xl font-black italic">{vm.user.username}</p>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button type="button" onClick={() => vm.navigate('/abrir-chamado')} className="px-6 py-3 rounded-2xl bg-red-600 text-white font-black uppercase text-xs tracking-widest hover:bg-red-700">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <button type="button" onClick={() => vm.navigate('/abrir-chamado')} className="min-h-11 w-full rounded-2xl bg-red-600 px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-red-700 sm:w-auto">
                 Abrir chamado
               </button>
-              <button type="button" onClick={() => vm.navigate('/visualizar')} className={`px-6 py-3 rounded-2xl border font-black uppercase text-xs tracking-widest ${vm.theme === 'dark' ? 'border-white/15 hover:bg-white/5' : 'border-slate-300 hover:bg-slate-100'}`}>
+              <button type="button" onClick={() => vm.navigate('/visualizar')} className={`min-h-11 w-full rounded-2xl border px-6 py-3 text-xs font-black uppercase tracking-widest sm:w-auto ${vm.theme === 'dark' ? 'border-white/15 hover:bg-white/5' : 'border-slate-300 hover:bg-slate-100'}`}>
                 Visualizar falhas
               </button>
             </div>
 
-            <section id="lenovo-news-section" className={`rounded-[2.2rem] border p-6 md:p-8 ${vm.theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white/85'}`}>
+            <section id="lenovo-news-section" className={`rounded-[1.75rem] border p-4 sm:p-5 md:rounded-[2.2rem] md:p-8 ${vm.theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white/85'}`}>
               <div className="mb-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-red-600/25 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-500">
                   <Sparkles size={12} /> Lenovo News
                 </div>
-                <h3 className="mt-4 text-3xl font-black uppercase italic tracking-tighter md:text-5xl">Acompanhe as ultimas atualizacoes do sistema</h3>
+                <h3 className="mt-4 max-w-4xl text-2xl font-black uppercase italic tracking-tighter sm:text-3xl md:text-5xl">Acompanhe as ultimas atualizacoes do sistema</h3>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+              <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
                 {newsItems.map((item, index) => {
                   const meta = TYPE_META[item.type] || TYPE_META.feature;
                   return (
-                    <article key={item.version} className={`overflow-hidden rounded-[2rem] border ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white shadow-xl shadow-slate-200/20'}`}>
+                    <article key={item.version} className={`mx-auto flex h-full w-full max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white shadow-xl shadow-slate-200/20'}`}>
                       <div className={`h-1.5 w-full ${meta.line}`} />
-                      <div className="p-6">
+                      <div className="flex h-full flex-col p-4 sm:p-5 md:p-6">
                         <div className="flex flex-wrap items-center gap-2">
                           {index === 0 && (
                             <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
@@ -194,7 +194,7 @@ export default function DashboardPage() {
                           </span>
                         </div>
                         <p className={`mt-4 text-sm font-black ${vm.styles.subtext}`}>v{item.version} · {formatDate(item.date)}</p>
-                        <h4 className="mt-2 text-2xl font-black tracking-tight">{item.title}</h4>
+                        <h4 className="mt-2 text-xl font-black tracking-tight sm:text-2xl">{item.title}</h4>
                         <p className={`mt-3 text-sm leading-6 ${vm.styles.subtext}`}>{item.summary}</p>
                         <div className="mt-5 space-y-2.5">
                           {item.items.slice(0, 3).map((entry) => (
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                             if (index === 0) markAsRead();
                             setSelectedNews(item);
                           }}
-                          className="mt-6 text-xs font-black uppercase tracking-widest text-red-500 hover:text-red-400"
+                          className="mt-6 min-h-11 self-start text-left text-xs font-black uppercase tracking-widest text-red-500 hover:text-red-400"
                         >
                           Ler mais -&gt;
                         </button>
@@ -236,11 +236,11 @@ export default function DashboardPage() {
             onClick={() => setSelectedNews(null)}
             aria-label="Fechar detalhes da novidade"
           />
-          <div className={`relative w-full max-w-4xl rounded-[2rem] border p-6 md:p-8 shadow-[0_30px_90px_rgba(15,23,42,0.35)] ${vm.theme === 'dark' ? 'border-white/10 bg-[#080808] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
+          <div className={`relative h-auto max-h-[85vh] w-[calc(100vw-32px)] max-w-4xl overflow-y-auto rounded-[2rem] border p-5 shadow-[0_30px_90px_rgba(15,23,42,0.35)] sm:p-6 md:p-8 ${vm.theme === 'dark' ? 'border-white/10 bg-[#080808] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
             <button
               type="button"
               onClick={() => setSelectedNews(null)}
-              className={`absolute right-4 top-4 rounded-xl p-2 ${vm.theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+              className={`absolute right-4 top-4 min-h-11 min-w-11 rounded-xl p-2 ${vm.theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
             >
               <X size={16} />
             </button>
@@ -250,7 +250,7 @@ export default function DashboardPage() {
                 {(TYPE_META[selectedNews.type] || TYPE_META.feature).label}
               </span>
             </div>
-            <h3 className="mt-5 text-3xl font-black tracking-tight md:text-4xl">{selectedNews.title}</h3>
+            <h3 className="mt-5 pr-12 text-2xl font-black tracking-tight sm:text-3xl md:text-4xl">{selectedNews.title}</h3>
             <div className={`mt-5 rounded-2xl border p-4 ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-slate-50'}`}>
               <p className="text-sm leading-6">{selectedNews.summary}</p>
             </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Loader2, Upload } from 'lucide-react';
-import DateRangePicker from '../../../shared/components/filters/DateRangePicker';
-import { SETOR_TODOS } from '../../../shared/constants/setores';
+import DateRangePicker from '@/shared/components/filters/DateRangePicker';
+import { SETOR_TODOS } from '@/shared/constants/setores';
 import { formatDateBr } from '../services/adminService';
 
 function EmptyState({ s, title, description }) {
@@ -258,15 +258,15 @@ export default function AdminHistoryTab({
 
   return (
     <section className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
-      <header className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <header className="mb-6 flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <h2 className="text-4xl font-black uppercase italic tracking-tighter">
             Historico <span className="text-red-600">Geral</span>
           </h2>
           <p className={s.sub}>Visualize ocorrencias concluidas ou em aberto.</p>
         </div>
-        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-          <div className="min-w-[250px]">
+        <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center">
+          <div className="w-full md:min-w-[250px]">
             <DateRangePicker
               dataInicio={dataInicio}
               dataFim={dataFim}
@@ -279,7 +279,7 @@ export default function AdminHistoryTab({
           <select
             value={historicoSetorFiltro}
             onChange={(e) => setHistoricoSetorFiltro(e.target.value)}
-            className={`${s.input} min-w-[220px] font-black text-[10px] p-4 rounded-2xl outline-none border-2 border-red-600/20 uppercase tracking-widest`}
+            className={`${s.input} w-full font-black text-[10px] p-4 rounded-2xl outline-none border-2 border-red-600/20 uppercase tracking-widest md:min-w-[220px]`}
           >
             {historicoSetores.map((setorNome) => (
               <option key={setorNome} value={setorNome}>

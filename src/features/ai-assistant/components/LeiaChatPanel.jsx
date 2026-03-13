@@ -35,7 +35,7 @@ export default function LeiaChatPanel({
   }, [messages, loading]);
 
   return (
-    <section className={`fixed bottom-[6.25rem] right-4 z-[9998] flex h-[70vh] w-[calc(100vw-32px)] max-w-[360px] flex-col overflow-hidden rounded-2xl border shadow-[0_24px_80px_rgba(15,23,42,0.28)] backdrop-blur-xl sm:right-6 sm:h-[520px] ${
+    <section className={`fixed bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] left-4 right-4 z-[9998] flex h-[70vh] w-auto max-w-none flex-col overflow-hidden rounded-2xl border shadow-[0_24px_80px_rgba(15,23,42,0.28)] backdrop-blur-xl sm:bottom-[6.25rem] sm:left-auto sm:right-6 sm:h-[520px] sm:w-[calc(100vw-32px)] sm:max-w-[360px] ${
       isDark ? 'border-white/10 bg-[#060606]/92 text-white' : 'border-slate-200 bg-white/95 text-slate-900'
     }`}>
       <header className={`flex items-center justify-between border-b px-4 py-3 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
@@ -66,7 +66,7 @@ export default function LeiaChatPanel({
         </button>
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
         {messages.map((message) => (
           <LeiaMessage key={message.id} role={message.role} content={message.content} theme={theme} />
         ))}
@@ -88,7 +88,7 @@ export default function LeiaChatPanel({
             rows={1}
             disabled={loading}
             placeholder="Pergunte algo..."
-            className="max-h-28 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none"
+            className="max-h-28 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none sm:px-3"
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PartyPopper, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
+import { usePersistentTheme } from '@/shared/hooks/usePersistentTheme';
 import { compareVersions, useNews } from '../hooks/useNews';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -53,7 +53,7 @@ export default function NewsPopup({ userId }) {
         className="absolute inset-0 bg-black/65 backdrop-blur-sm"
         onClick={() => setVisible(false)}
       />
-      <div className={`relative w-full max-w-md rounded-[2rem] border p-6 shadow-[0_30px_90px_rgba(15,23,42,0.35)] ${
+      <div className={`relative w-[calc(100vw-32px)] max-w-md rounded-[2rem] border p-5 shadow-[0_30px_90px_rgba(15,23,42,0.35)] sm:p-6 ${
         isDark ? 'border-white/10 bg-[#070707] text-white' : 'border-slate-200 bg-white text-slate-900'
       }`}>
         <button
@@ -75,7 +75,7 @@ export default function NewsPopup({ userId }) {
           {latestNews.summary}
         </p>
 
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={() => {
@@ -87,14 +87,14 @@ export default function NewsPopup({ userId }) {
               }
               navigate('/dashboard');
             }}
-            className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-red-700"
+            className="min-h-11 rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-red-700"
           >
             Ver novidades
           </button>
           <button
             type="button"
             onClick={() => setVisible(false)}
-            className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest ${isDark ? 'bg-white/5 text-slate-200 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`min-h-11 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest ${isDark ? 'bg-white/5 text-slate-200 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >
             Agora nao
           </button>

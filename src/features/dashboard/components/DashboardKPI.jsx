@@ -2,7 +2,7 @@ import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import Download from 'lucide-react/dist/esm/icons/download';
 import LoaderCircle from 'lucide-react/dist/esm/icons/loader-circle';
 import X from 'lucide-react/dist/esm/icons/x';
-import DateRangePicker from '../../../shared/components/filters/DateRangePicker';
+import DateRangePicker from '@/shared/components/filters/DateRangePicker';
 import DashboardHistoricalPoints from './DashboardHistoricalPoints';
 import DashboardAgingTable from './DashboardAgingTable';
 import { useDashboardKpi } from '../hooks/useDashboardKpi';
@@ -599,7 +599,7 @@ function DashboardKPI({ dataInicio, dataFim, setDataInicio, setDataFim, theme, s
             className="absolute inset-0 bg-black/65 backdrop-blur-md"
             aria-label="Fechar configuracao de exportacao"
           />
-          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-full max-w-xl">
+          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-[calc(100vw-32px)] max-w-xl">
             <div className={`rounded-3xl border shadow-2xl ${theme === 'dark' ? 'bg-[#090909] border-white/10' : 'bg-white border-slate-200'}`}>
               <div className="p-5 border-b border-red-600/15 flex items-start justify-between gap-4">
                 <div>

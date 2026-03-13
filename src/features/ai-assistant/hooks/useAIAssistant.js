@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../core/api/supabaseClient';
 import { getSessionUser, isAdminUser } from '../../../core/auth/session';
@@ -23,6 +23,7 @@ const QUICK_PROMPTS = [
   'Resuma os KPIs do periodo entre 2026-03-01 e 2026-03-07.',
   'Quais avisos ativos merecem atencao agora?',
 ];
+const MIN_INTERVAL_MS = 2000;
 
 function createUiMessage(role, content) {
   return {
@@ -37,6 +38,14 @@ function clampLimit(value, fallback = 50, max = 100) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return fallback;
   return Math.min(Math.floor(n), max);
+}
+
+function sanitizeField(value, maxLength = 500) {
+  if (!value) return '';
+  return String(value)
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .trim()
+    .slice(0, maxLength);
 }
 
 function matchesSetor(value, expected) {
@@ -109,6 +118,7 @@ export function useAIAssistant() {
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const lastMessageTime = useRef(0);
 
   useBodyScrollLock(mobileMenuOpen);
 
@@ -286,8 +296,18 @@ export function useAIAssistant() {
   }, []);
 
   const sendMessage = useCallback(async (rawText) => {
-    const text = String(rawText || '').trim();
+    const text = sanitizeField(rawText, 2000);
     if (!text || loading) return;
+
+    const now = Date.now();
+    if (now - lastMessageTime.current < MIN_INTERVAL_MS) {
+      setMessages((prev) => [
+        ...prev,
+        createUiMessage('assistant', 'Aguarde 2 segundos antes de enviar outra mensagem.'),
+      ]);
+      return;
+    }
+    lastMessageTime.current = now;
 
     const nextUiUserMessage = createUiMessage('user', text);
     const nextHistory = [...history, createGeminiTextEntry('user', text)];

@@ -1,4 +1,5 @@
 import buildSystemPrompt from '../constants/aiSystemPrompt';
+import { supabase } from '../../../core/api/supabaseClient';
 import { AI_TOOL_DECLARATIONS } from './aiTools';
 
 function extractTextFromParts(parts = []) {
@@ -37,20 +38,30 @@ function buildRequestBody(history) {
 }
 
 export async function generateAssistantTurn(history) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) throw new Error('VITE_GEMINI_API_KEY nao configurada.');
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase nao configurado.');
+  }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`;
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!session?.access_token) throw new Error('Usuario nao autenticado.');
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(`${supabaseUrl}/functions/v1/gemini-proxy`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: supabaseAnonKey,
+    },
     body: JSON.stringify(buildRequestBody(history)),
   });
 
   const payload = await response.json().catch(() => ({}));
+
   if (!response.ok) {
-    const message = payload?.error?.message || 'Falha ao consultar o Gemini.';
+    const message = payload?.error?.message || payload?.error || 'Falha ao consultar a Lei.A.';
     throw new Error(message);
   }
 

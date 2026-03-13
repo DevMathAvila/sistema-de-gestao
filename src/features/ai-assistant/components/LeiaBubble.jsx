@@ -9,7 +9,7 @@ export default function LeiaBubble({ open, onClick, theme }) {
       type="button"
       onClick={onClick}
       aria-label={open ? 'Fechar chat da Lei.A' : 'Abrir chat da Lei.A'}
-      className="fixed bottom-6 right-6 z-[9999] h-16 w-16 rounded-full transition-transform duration-200 hover:scale-[1.08] focus:outline-none focus:ring-2 focus:ring-red-500/60"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)] right-4 z-[80] h-14 w-14 rounded-full transition-transform duration-200 hover:scale-[1.08] focus:outline-none focus:ring-2 focus:ring-red-500/60 sm:bottom-6 sm:right-6 sm:z-[9999] sm:h-16 sm:w-16"
     >
       <span className="absolute inset-0 rounded-full bg-red-500/30 animate-ping" />
       <span className={`absolute inset-[6px] rounded-full blur-xl ${isDark ? 'bg-red-500/40' : 'bg-red-400/40'}`} />

@@ -139,7 +139,7 @@ export default function InoperantPointsBoard({
 
       {finalizarItem && (
         <div className="fixed inset-0 z-[260] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 w-full max-w-lg rounded-[1.5rem] shadow-2xl`}>
+          <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 w-[calc(100vw-32px)] max-w-lg rounded-[1.5rem] shadow-2xl`}>
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
               <p className="text-sm font-black uppercase text-blue-500">Finalizar Inoperante</p>
               <button onClick={() => setFinalizarItem(null)}><X size={16} /></button>
@@ -172,10 +172,10 @@ export default function InoperantPointsBoard({
                 value={finalizarTexto}
                 onChange={(e) => setFinalizarTexto(e.target.value)}
               />
-              <div className="flex justify-end gap-2">
-                <button className="px-4 h-10 rounded-xl border" onClick={() => setFinalizarItem(null)}>Cancelar</button>
+              <div className="flex flex-col justify-end gap-2 sm:flex-row">
+                <button className="px-4 h-11 rounded-xl border" onClick={() => setFinalizarItem(null)}>Cancelar</button>
                 <button
-                  className="px-4 h-10 rounded-xl bg-blue-600 text-white font-black uppercase text-[10px] disabled:opacity-40"
+                  className="px-4 h-11 rounded-xl bg-blue-600 text-white font-black uppercase text-[10px] disabled:opacity-40"
                   disabled={!finalizarTexto.trim() || enviando}
                   onClick={async () => {
                     await onFinalizar({ id: finalizarItem.id, solucao: finalizarTexto });
@@ -193,7 +193,7 @@ export default function InoperantPointsBoard({
 
       {editarItem && (
         <div className="fixed inset-0 z-[260] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 w-full max-w-lg rounded-[1.5rem] shadow-2xl`}>
+          <div className={`${theme === 'dark' ? 'bg-[#0A0A0A]' : 'bg-white'} border border-white/10 w-[calc(100vw-32px)] max-w-lg rounded-[1.5rem] shadow-2xl`}>
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
               <p className="text-sm font-black uppercase text-amber-500">Editar Inoperante</p>
               <button onClick={() => setEditarItem(null)}><X size={16} /></button>
@@ -218,10 +218,10 @@ export default function InoperantPointsBoard({
                 onChange={(e) => setEditarMotivo(e.target.value)}
                 className={`w-full ${styles.input} p-3 rounded-xl min-h-[70px] text-[11px]`}
               />
-              <div className="flex justify-end gap-2">
-                <button className="px-4 h-10 rounded-xl border" onClick={() => setEditarItem(null)}>Cancelar</button>
+              <div className="flex flex-col justify-end gap-2 sm:flex-row">
+                <button className="px-4 h-11 rounded-xl border" onClick={() => setEditarItem(null)}>Cancelar</button>
                 <button
-                  className="px-4 h-10 rounded-xl bg-amber-500 text-white font-black uppercase text-[10px] disabled:opacity-40"
+                  className="px-4 h-11 rounded-xl bg-amber-500 text-white font-black uppercase text-[10px] disabled:opacity-40"
                   disabled={enviando}
                   onClick={async () => {
                     await onEditar({
