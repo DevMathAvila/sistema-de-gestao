@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { getSessionUser, isAdminUser, isRuninKioskUser } from '../../core/auth/session';
 import LeiaWidget from '../../features/ai-assistant/components/LeiaWidget';
+import NewsPopup from '../../features/news/components/NewsPopup';
 
 const LoginPage = React.lazy(() => import('../../features/auth/pages/LoginPage'));
 const DashboardPage = React.lazy(() => import('../../features/dashboard/pages/DashboardPage'));
@@ -25,6 +26,7 @@ const NonKioskLayout = () => {
     <>
       <Outlet />
       <LeiaWidget />
+      <NewsPopup userId={user?.id} />
     </>
   );
 };
@@ -38,6 +40,7 @@ const AdminLayout = () => {
     <>
       <Outlet />
       <LeiaWidget />
+      <NewsPopup userId={user?.id} />
     </>
   );
 };
@@ -49,6 +52,7 @@ const AuthenticatedLayout = () => {
     <>
       <Outlet />
       {!isRuninKioskUser(user) && <LeiaWidget />}
+      {!isRuninKioskUser(user) && <NewsPopup userId={user?.id} />}
     </>
   );
 };

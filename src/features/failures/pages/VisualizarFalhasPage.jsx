@@ -80,7 +80,8 @@ export default function VisualizarFalhasPage() {
                     item.active ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' : `${vm.styles.subtext} hover:text-red-600`
                   }`}
                 >
-                  <item.icon size={18} /> {item.label}
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
                 </button>
               ))}
             </nav>
@@ -112,7 +113,7 @@ export default function VisualizarFalhasPage() {
               }`}
             >
               <item.icon size={18} />
-              {item.label}
+              <span>{item.label}</span>
             </button>
           ))}
         </nav>

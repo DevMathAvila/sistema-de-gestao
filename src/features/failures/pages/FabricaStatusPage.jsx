@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Activity,
   AlertTriangle,
-  Bot,
   Eye,
   HardDrive,
   LayoutDashboard,
@@ -22,7 +21,6 @@ import { useFabricaStatusPage } from '../hooks/useFabricaStatusPage';
 const linkIcon = {
   abrir: HardDrive,
   visualizar: Eye,
-  assistente: Bot,
   admin: ShieldAlert,
   inicio: LayoutDashboard,
 };

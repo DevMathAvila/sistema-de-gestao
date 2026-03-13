@@ -1,6 +1,9 @@
-import React from 'react';
-import { Eye, HardDrive, LogOut, Menu, Moon, Settings, Shield, Sparkles, Sun, User, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Check, Eye, HardDrive, LogOut, Menu, Moon, Settings, Shield, Sparkles, Sun, User, X } from 'lucide-react';
 import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
+import { NEWS_DATA } from '../../news/constants/newsData';
+import { useNews } from '../../news/hooks/useNews';
 import { useDashboardPage } from '../hooks/useDashboardPage';
 
 const navItems = [
@@ -10,9 +13,45 @@ const navItems = [
   { id: 'senha', label: 'Seguranca', path: '/alterar-senha', icon: Shield },
 ];
 
+const TYPE_META = {
+  feature: {
+    label: 'Feature',
+    line: 'bg-[#E2231A]',
+    pill: 'bg-red-500/10 text-red-500 border-red-500/20',
+  },
+  improvement: {
+    label: 'Melhoria',
+    line: 'bg-emerald-500',
+    pill: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  },
+  fix: {
+    label: 'Correcao',
+    line: 'bg-amber-500',
+    pill: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  },
+  security: {
+    label: 'Seguranca',
+    line: 'bg-red-600',
+    pill: 'bg-red-600/10 text-red-600 border-red-600/20',
+  },
+};
+
+function formatDate(value) {
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
 export default function DashboardPage() {
   const vm = useDashboardPage();
+  const { hasUnread, markAsRead } = useNews(vm.user.id);
+  const [selectedNews, setSelectedNews] = useState(null);
   const visibleNav = navItems.filter((item) => !item.adminOnly || vm.isAdmin);
+  const newsItems = useMemo(() => NEWS_DATA.slice(0, 2), []);
 
   return (
     <div className={`min-h-screen ${vm.styles.bg} ${vm.styles.text} flex flex-col md:flex-row font-sans relative overflow-hidden transition-colors duration-500`}>
@@ -95,28 +134,142 @@ export default function DashboardPage() {
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 md:p-10 pb-24 md:pb-10 overflow-y-auto z-10">
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-red-600/20 p-8 md:p-12 bg-gradient-to-br from-red-600/10 via-transparent to-transparent">
+        <section className="relative overflow-hidden rounded-[2.5rem] border border-red-600/20 p-8 md:p-10 bg-gradient-to-br from-red-600/10 via-transparent to-transparent">
           <div className="absolute -top-10 -right-10 h-44 w-44 rounded-full bg-red-600/20 blur-3xl" />
           <div className="absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-          <div className="relative z-10 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-red-600/30 text-red-500 mb-6 text-[10px] font-black uppercase tracking-widest">
-              <Sparkles size={12} /> Painel de Boas-vindas
+          <div className="relative z-10 flex flex-col gap-8">
+            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-red-500">Bem-vindo ao Centro Lenovo</p>
+                <h2 className="mt-3 text-4xl font-black uppercase italic tracking-tighter leading-none md:text-6xl">
+                  Ambiente principal de <span className="text-red-600">operacao</span>
+                </h2>
+                <p className={`mt-4 max-w-2xl text-sm md:text-base ${vm.styles.subtext}`}>
+                  Acompanhe as ultimas entregas do sistema e acesse rapido os fluxos operacionais mais importantes logo apos o login.
+                </p>
+              </div>
+              <div className={`rounded-[2rem] border px-5 py-4 ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white/80'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${vm.styles.subtext}`}>Usuario</p>
+                <p className="mt-2 text-xl font-black italic">{vm.user.username}</p>
+              </div>
             </div>
-            <h2 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase italic tracking-tighter leading-none">
-              Bem-vindo ao <span className="text-red-600">Centro Lenovo</span>
-            </h2>
-            <p className={`mt-6 text-sm md:text-base max-w-2xl ${vm.styles.subtext}`}>
-              Ambiente principal de operacao. Use os atalhos diretos para abrir chamados e acompanhar falhas em tempo real.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <button type="button" onClick={() => vm.navigate('/abrir-chamado')} className="px-6 py-3 rounded-2xl bg-red-600 text-white font-black uppercase text-xs tracking-widest hover:bg-red-700">Abrir chamado</button>
-              <button type="button" onClick={() => vm.navigate('/visualizar')} className={`px-6 py-3 rounded-2xl border font-black uppercase text-xs tracking-widest ${vm.theme === 'dark' ? 'border-white/15 hover:bg-white/5' : 'border-slate-300 hover:bg-slate-100'}`}>Visualizar falhas</button>
+
+            <div className="flex flex-wrap gap-3">
+              <button type="button" onClick={() => vm.navigate('/abrir-chamado')} className="px-6 py-3 rounded-2xl bg-red-600 text-white font-black uppercase text-xs tracking-widest hover:bg-red-700">
+                Abrir chamado
+              </button>
+              <button type="button" onClick={() => vm.navigate('/visualizar')} className={`px-6 py-3 rounded-2xl border font-black uppercase text-xs tracking-widest ${vm.theme === 'dark' ? 'border-white/15 hover:bg-white/5' : 'border-slate-300 hover:bg-slate-100'}`}>
+                Visualizar falhas
+              </button>
             </div>
+
+            <section id="lenovo-news-section" className={`rounded-[2.2rem] border p-6 md:p-8 ${vm.theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white/85'}`}>
+              <div className="mb-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-red-600/25 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-500">
+                  <Sparkles size={12} /> Lenovo News
+                </div>
+                <h3 className="mt-4 text-3xl font-black uppercase italic tracking-tighter md:text-5xl">Acompanhe as ultimas atualizacoes do sistema</h3>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                {newsItems.map((item, index) => {
+                  const meta = TYPE_META[item.type] || TYPE_META.feature;
+                  return (
+                    <article key={item.version} className={`overflow-hidden rounded-[2rem] border ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-white shadow-xl shadow-slate-200/20'}`}>
+                      <div className={`h-1.5 w-full ${meta.line}`} />
+                      <div className="p-6">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {index === 0 && (
+                            <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+                              Mais recente
+                            </span>
+                          )}
+                          {index === 0 && hasUnread && (
+                            <span className="rounded-full bg-amber-400 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-900 animate-pulse">
+                              New
+                            </span>
+                          )}
+                          <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${meta.pill}`}>
+                            {meta.label}
+                          </span>
+                        </div>
+                        <p className={`mt-4 text-sm font-black ${vm.styles.subtext}`}>v{item.version} · {formatDate(item.date)}</p>
+                        <h4 className="mt-2 text-2xl font-black tracking-tight">{item.title}</h4>
+                        <p className={`mt-3 text-sm leading-6 ${vm.styles.subtext}`}>{item.summary}</p>
+                        <div className="mt-5 space-y-2.5">
+                          {item.items.slice(0, 3).map((entry) => (
+                            <div key={entry} className="flex items-start gap-3">
+                              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+                                <Check size={14} />
+                              </span>
+                              <p className="text-sm">{entry}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (index === 0) markAsRead();
+                            setSelectedNews(item);
+                          }}
+                          className="mt-6 text-xs font-black uppercase tracking-widest text-red-500 hover:text-red-400"
+                        >
+                          Ler mais -&gt;
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
           </div>
-        </div>
+        </section>
       </main>
 
       <AppBottomNav isAdmin={vm.isAdmin} />
+
+      {selectedNews && (
+        <div className="fixed inset-0 z-[9996] flex items-center justify-center px-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setSelectedNews(null)}
+            aria-label="Fechar detalhes da novidade"
+          />
+          <div className={`relative w-full max-w-4xl rounded-[2rem] border p-6 md:p-8 shadow-[0_30px_90px_rgba(15,23,42,0.35)] ${vm.theme === 'dark' ? 'border-white/10 bg-[#080808] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
+            <button
+              type="button"
+              onClick={() => setSelectedNews(null)}
+              className={`absolute right-4 top-4 rounded-xl p-2 ${vm.theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+            >
+              <X size={16} />
+            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">v{selectedNews.version}</span>
+              <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${(TYPE_META[selectedNews.type] || TYPE_META.feature).pill}`}>
+                {(TYPE_META[selectedNews.type] || TYPE_META.feature).label}
+              </span>
+            </div>
+            <h3 className="mt-5 text-3xl font-black tracking-tight md:text-4xl">{selectedNews.title}</h3>
+            <div className={`mt-5 rounded-2xl border p-4 ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-slate-50'}`}>
+              <p className="text-sm leading-6">{selectedNews.summary}</p>
+            </div>
+            <div className={`prose mt-6 max-w-none ${vm.theme === 'dark' ? 'prose-invert' : ''}`}>
+              <ReactMarkdown>{selectedNews.details}</ReactMarkdown>
+            </div>
+            <div className="mt-6 space-y-3">
+              {selectedNews.items.map((entry) => (
+                <div key={entry} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+                    <Check size={14} />
+                  </span>
+                  <p className="text-sm">{entry}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
