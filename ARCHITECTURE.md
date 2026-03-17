@@ -10,6 +10,7 @@ Este documento serve como base de conhecimento do projeto para outras IAs e para
 - A arquitetura atual esta organizada majoritariamente por dominio em `src/features`, com infraestrutura em `src/core` e compartilhados em `src/shared`.
 - O app usa `Supabase` como backend principal: `Auth`, tabelas em `public`, `RLS` e `Edge Functions`.
 - O frontend faz a maior parte das leituras e escritas diretamente via `src/core/api/supabaseSecure.js`.
+- O sistema de novidades e onboarding de produto vive em `src/features/news`, com popup, cards resumidos no dashboard e arquivo historico dedicado em `/novidades`.
 - Existe uma camada antiga/duplicada em `src/components`, `src/hooks`, `src/services`, `src/utils`, `server/` e `api/`, mas ela nao faz parte do fluxo principal do app renderizado hoje.
 
 ## Higienizacao de Contexto
@@ -116,11 +117,13 @@ Arquivos abaixo nao entram no fluxo principal do bundle frontend atual, ou exist
 Subdominios atuais:
 
 - `admin/`: gestao de usuarios, pareto, historico, importacao/exportacao e cockpit admin
+- `ai-assistant/`: widget flutuante, chat dedicado e integracao com Edge Function Gemini
 - `auth/`: login, troca de senha e logout
 - `dashboard/`: KPI, agregacoes, filtros, PDF executivo/completo e analiticos
 - `failures/`: registro, visualizacao, conclusao, inoperantes, SIGA e kiosk
 - `home/`: avisos, pagina inicial e contato
 - `monitoring/`: painel TV operacional
+- `news/`: popup de novidades, cards resumidos no dashboard e arquivo historico em `/novidades`
 
 ### `src/shared/`
 
@@ -162,6 +165,7 @@ Subdominios atuais:
 
 - `/`: login
 - `/dashboard`: dashboard principal
+- `/novidades`: arquivo completo de novidades do sistema
 - `/home`: pagina inicial de avisos
 - `/fale-conosco`: contato
 - `/registrar`: registro manual de falhas
@@ -252,6 +256,7 @@ Subdominios atuais:
 - Tailwind com muitas classes inline
 - Tema `dark/light` por hook local em features e `ThemeProvider` no root
 - Visual language fortemente customizada, orientada a cards, badges e dashboards
+- A feature `news` usa `src/features/news/constants/newsData.js` como cadastro manual de novidades; o dashboard consome apenas as 2 mais recentes e a rota `/novidades` monta o historico completo com as novidades mais recentes no topo
 
 ## Fonte de Verdade de Dados
 

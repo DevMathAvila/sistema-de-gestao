@@ -85,7 +85,7 @@ export default function NewsPopup({ userId }) {
                 document.getElementById('lenovo-news-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 return;
               }
-              navigate('/dashboard');
+              navigate('/novidades');
             }}
             className="min-h-11 rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-red-700"
           >

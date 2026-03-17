@@ -21,6 +21,7 @@ const HomePage = React.lazy(() => import('../../features/home/pages/HomePage'));
 const FaleConoscoPage = React.lazy(() => import('../../features/home/pages/FaleConoscoPage'));
 const MonitorTvPage = React.lazy(() => import('../../features/monitoring/pages/MonitorTvPage'));
 const AIAssistantPage = React.lazy(() => import('../../features/ai-assistant/pages/AIAssistantPage'));
+const NewsArchivePage = React.lazy(() => import('../../features/news/pages/NewsArchivePage'));
 const RuninKioskPage = React.lazy(() => import('../../features/failures/pages/RuninKioskPage'));
 const AbrirChamadoEntry = React.lazy(() => import('../../features/failures/pages/FabricaStatusPage'));
 
@@ -195,6 +196,7 @@ function AppRouter() {
           <Route path="/visualizar" element={<VisualizarFalhasPage />} />
           <Route path="/monitor-tv" element={<MonitorTvPage />} />
           <Route path="/assistente" element={<AIAssistantPage />} />
+          <Route path="/novidades" element={<NewsArchivePage />} />
         </Route>
 
         <Route element={<AuthenticatedLayout />}>

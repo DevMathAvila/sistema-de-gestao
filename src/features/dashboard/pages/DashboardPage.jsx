@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { Check, Eye, HardDrive, LogOut, Menu, Moon, Settings, Shield, Sparkles, Sun, User, X } from 'lucide-react';
+import { Check, Eye, HardDrive, LogOut, Menu, Moon, Settings, Shield, Sparkles, Sun, User, ArrowRight } from 'lucide-react';
 import AppBottomNav from '@/shared/components/layout/AppBottomNav';
 import { NEWS_DATA } from '@/features/news/constants/newsData';
+import NewsDetailModal from '@/features/news/components/NewsDetailModal';
+import { TYPE_META, formatNewsDate } from '@/features/news/constants/newsMeta';
 import { useNews } from '@/features/news/hooks/useNews';
 import { useDashboardPage } from '@/features/dashboard/hooks/useDashboardPage';
 
@@ -12,39 +13,6 @@ const navItems = [
   { id: 'admin', label: 'Administracao', path: '/admin?tab=indicadores', icon: Settings, helper: 'Dashboard KPI | Gestao de equipe', adminOnly: true },
   { id: 'senha', label: 'Seguranca', path: '/alterar-senha', icon: Shield },
 ];
-
-const TYPE_META = {
-  feature: {
-    label: 'Feature',
-    line: 'bg-[#E2231A]',
-    pill: 'bg-red-500/10 text-red-500 border-red-500/20',
-  },
-  improvement: {
-    label: 'Melhoria',
-    line: 'bg-emerald-500',
-    pill: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  },
-  fix: {
-    label: 'Correcao',
-    line: 'bg-amber-500',
-    pill: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  },
-  security: {
-    label: 'Seguranca',
-    line: 'bg-red-600',
-    pill: 'bg-red-600/10 text-red-600 border-red-600/20',
-  },
-};
-
-function formatDate(value) {
-  const date = new Date(`${value}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
-}
 
 export default function DashboardPage() {
   const vm = useDashboardPage();
@@ -193,7 +161,7 @@ export default function DashboardPage() {
                             {meta.label}
                           </span>
                         </div>
-                        <p className={`mt-4 text-sm font-black ${vm.styles.subtext}`}>v{item.version} · {formatDate(item.date)}</p>
+                        <p className={`mt-4 text-sm font-black ${vm.styles.subtext}`}>v{item.version} · {formatNewsDate(item.date)}</p>
                         <h4 className="mt-2 text-xl font-black tracking-tight sm:text-2xl">{item.title}</h4>
                         <p className={`mt-3 text-sm leading-6 ${vm.styles.subtext}`}>{item.summary}</p>
                         <div className="mt-5 space-y-2.5">
@@ -221,55 +189,27 @@ export default function DashboardPage() {
                   );
                 })}
               </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (hasUnread) markAsRead();
+                    vm.navigate('/novidades');
+                  }}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-widest transition-all ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04] hover:border-red-500/30 hover:bg-white/[0.08]' : 'border-slate-300 bg-white hover:border-red-300 hover:bg-red-50'}`}
+                >
+                  Visualizar todas
+                  <ArrowRight size={15} className="text-red-500" />
+                </button>
+              </div>
             </section>
           </div>
         </section>
       </main>
 
       <AppBottomNav isAdmin={vm.isAdmin} />
-
-      {selectedNews && (
-        <div className="fixed inset-0 z-[9996] flex items-center justify-center px-4">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setSelectedNews(null)}
-            aria-label="Fechar detalhes da novidade"
-          />
-          <div className={`relative h-auto max-h-[85vh] w-[calc(100vw-32px)] max-w-4xl overflow-y-auto rounded-[2rem] border p-5 shadow-[0_30px_90px_rgba(15,23,42,0.35)] sm:p-6 md:p-8 ${vm.theme === 'dark' ? 'border-white/10 bg-[#080808] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
-            <button
-              type="button"
-              onClick={() => setSelectedNews(null)}
-              className={`absolute right-4 top-4 min-h-11 min-w-11 rounded-xl p-2 ${vm.theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-            >
-              <X size={16} />
-            </button>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">v{selectedNews.version}</span>
-              <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${(TYPE_META[selectedNews.type] || TYPE_META.feature).pill}`}>
-                {(TYPE_META[selectedNews.type] || TYPE_META.feature).label}
-              </span>
-            </div>
-            <h3 className="mt-5 pr-12 text-2xl font-black tracking-tight sm:text-3xl md:text-4xl">{selectedNews.title}</h3>
-            <div className={`mt-5 rounded-2xl border p-4 ${vm.theme === 'dark' ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200 bg-slate-50'}`}>
-              <p className="text-sm leading-6">{selectedNews.summary}</p>
-            </div>
-            <div className={`prose mt-6 max-w-none ${vm.theme === 'dark' ? 'prose-invert' : ''}`}>
-              <ReactMarkdown>{selectedNews.details}</ReactMarkdown>
-            </div>
-            <div className="mt-6 space-y-3">
-              {selectedNews.items.map((entry) => (
-                <div key={entry} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
-                    <Check size={14} />
-                  </span>
-                  <p className="text-sm">{entry}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <NewsDetailModal newsItem={selectedNews} theme={vm.theme} onClose={() => setSelectedNews(null)} />
     </div>
   );
 }

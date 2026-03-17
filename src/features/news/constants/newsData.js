@@ -5,9 +5,39 @@
 // 3. Atualize public/version.json com a mesma versao
 // 4. Faca o deploy - o popup aparecera automaticamente para todos os usuarios logados
 
-export const NEWS_VERSION_LATEST = '1.2.0';
+export const NEWS_VERSION_LATEST = '1.3.0';
 
 export const NEWS_DATA = [
+  {
+    version: '1.3.0',
+    date: '2026-03-17',
+    title: 'Arquivo completo de novidades e historico do sistema',
+    type: 'feature',
+    summary: 'O Dashboard agora possui acesso a uma pagina dedicada com todo o historico de atualizacoes do sistema, em estilo de arquivo Lenovo.',
+    items: [
+      'Botao "Visualizar todas" na secao Lenovo News do Dashboard',
+      'Nova pagina /novidades com visual inspirado em forum antigo e mural tecnico',
+      'Historico exibido com as novidades mais recentes no topo',
+      'Leitura centralizada das evolucoes do sistema em um unico lugar',
+    ],
+    details: `
+Foi criada uma pagina dedicada para centralizar o historico de evolucao do Lenovo Assets Systems, sem perder o comportamento atual do Dashboard.
+
+**O que mudou:**
+- O Dashboard continua exibindo apenas as **2 ultimas novidades**.
+- A secao **Lenovo News** agora possui o CTA **Visualizar todas**, levando para uma nova pagina de arquivo.
+- A nova pagina mostra todas as atualizacoes registradas no sistema, com as mais recentes primeiro.
+
+**Como funciona:**
+- O popup de novidade e o Dashboard seguem usando a versao mais recente como referencia.
+- A pagina de arquivo reutiliza essas mesmas entradas para montar o historico completo do produto.
+
+**Por que essa pagina existe:**
+- Facilita onboarding de usuarios e novas IAs no projeto.
+- Cria um historico visivel das entregas implementadas ao longo do tempo.
+- Melhora a transparencia do produto sem poluir o Dashboard principal.
+    `,
+  },
   {
     version: '1.2.0',
     date: '2026-03-17',

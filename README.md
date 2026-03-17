@@ -86,11 +86,16 @@ sistema-de-gestao/
 │   │   ├── monitoring/           # Monitor TV
 │   │   └── news/                 # Sistema de novidades
 │   │       ├── components/
+│   │       │   ├── LenovoNewsLogo.jsx # Identidade visual do arquivo de novidades
+│   │       │   ├── NewsDetailModal.jsx # Modal com detalhes completos da atualização
 │   │       │   └── NewsPopup.jsx # Popup automático de novidades
 │   │       ├── constants/
-│   │       │   └── newsData.js   # Dados das versões/novidades
-│   │       └── hooks/
+│   │       │   ├── newsData.js   # Dados das versões/novidades (cadastro manual)
+│   │       │   └── newsMeta.js   # Meta visual, formatação e ordenação do arquivo
+│   │       ├── hooks/
 │   │           └── useNews.js    # Controle de visto/não visto por usuário
+│   │       └── pages/
+│   │           └── NewsArchivePage.jsx # Página com histórico completo de novidades
 │   │
 │   └── shared/                   # Recursos compartilhados entre features
 │       ├── components/           # Componentes reutilizáveis
@@ -192,6 +197,8 @@ A Lei.A tem identidade própria — nome feminino, tom descontraído, saudaçõe
 Mecanismo de comunicação com os usuários integrado ao dashboard:
 
 - Seção **Lenovo News** na página inicial com cards das versões mais recentes
+- Botão **Visualizar todas** levando para a rota `/novidades`
+- Página de arquivo com todas as atualizações cadastradas, exibindo as mais recentes primeiro
 - Popup automático ao logar quando há versão não vista pelo usuário
 - Polling a cada 5 minutos em `/public/version.json` — novidades chegam ao vivo sem recarregar
 - Histórico de versões consultável
@@ -202,6 +209,11 @@ Mecanismo de comunicação com os usuários integrado ao dashboard:
 3. Adicionar entrada no início do array `NEWS_DATA`
 4. Atualizar `public/version.json` com a mesma versão
 5. Fazer deploy — o popup aparece automaticamente para todos os usuários
+
+**Comportamento atual:**
+- O Dashboard mostra somente as 2 novidades mais recentes
+- A página `/novidades` mostra todas as entradas cadastradas no arquivo histórico
+- A ordenação do arquivo prioriza as novidades mais recentes no topo
 
 ---
 
@@ -315,6 +327,7 @@ A chave da API do Gemini **não fica no bundle do frontend**. Ela é guardada co
 |---|---|---|
 | `/` | Redirect para dashboard ou login | — |
 | `/dashboard` | Dashboard KPI + Novidades | Todos |
+| `/novidades` | Arquivo completo de novidades do sistema | Todos |
 | `/home` | Página inicial | Todos |
 | `/fale-conosco` | Canal de contato | Todos |
 | `/abrir-chamado` | Registro de falhas | Todos |
