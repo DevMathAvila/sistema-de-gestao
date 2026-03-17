@@ -5,9 +5,41 @@
 // 3. Atualize public/version.json com a mesma versao
 // 4. Faca o deploy - o popup aparecera automaticamente para todos os usuarios logados
 
-export const NEWS_VERSION_LATEST = '1.1.0';
+export const NEWS_VERSION_LATEST = '1.2.0';
 
 export const NEWS_DATA = [
+  {
+    version: '1.2.0',
+    date: '2026-03-17',
+    title: 'Alerta visual para pontos inoperantes',
+    type: 'improvement',
+    summary: 'Agora os pontos inoperantes aparecem com aviso laranja pulsante no quadrado do ponto em Registrar e Visualizar Falhas.',
+    items: [
+      'Badge laranja pulsante no proprio quadrado do ponto',
+      'Tooltip com falhas atuais + indicador de inoperante no hover',
+      'Destaque imediato para reduzir abertura de chamado em ponto ja inoperante',
+      'Mesmo comportamento em Registrar Falhas e Visualizar Falhas',
+    ],
+    details: `
+Foi adicionada uma camada de visibilidade para pontos inoperantes, focada em reduzir erros operacionais na abertura e no acompanhamento de chamados.
+
+**O que mudou:**
+- Em **Registrar Falhas**, ao navegar pelos pontos da trave, qualquer ponto marcado como inoperante exibe um aviso laranja pulsante no proprio quadrado.
+- Em **Visualizar Falhas**, o mesmo indicador aparece no mapa de pontos para manter a leitura consistente entre os fluxos.
+
+**Como funciona:**
+- O sistema identifica inoperancia ativa por ponto e adiciona um destaque visual no card daquele ponto.
+- No hover, o tooltip mostra:
+  - falhas ja registradas para o ponto
+  - indicador de inoperante (ex.: \`RJ45 P. Inop\`)
+  - motivo/observacao de inoperancia, quando existir
+
+**Para que serve:**
+- Evita que um ponto inoperante passe despercebido durante novo registro.
+- Melhora a decisao rapida de manutencao no chao de fabrica.
+- Padroniza a leitura operacional entre os modulos de registro e monitoramento.
+    `,
+  },
   {
     version: '1.1.0',
     date: '2026-03-13',

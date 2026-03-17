@@ -12,6 +12,13 @@ function isTraveInteiraRegistro(pontoRaw) {
   return isTraveInteiraLabel(pontoRaw);
 }
 
+function parseFalhasDoTexto(rawFalha) {
+  return String(rawFalha || '')
+    .split(/[,+]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function useRegistrarFalhaPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -67,6 +74,7 @@ export function useRegistrarFalhaPage() {
     if (!formData.trave) return null;
     const chamadosDestePonto = chamadosAbertos.filter((c) => {
       if (String(c.trave) !== String(formData.trave)) return false;
+      if (Boolean(c?.ponto_inoperante)) return false;
       const pStr = String(c.ponto || '');
       if (isTraveInteiraRegistro(pStr)) return true;
       const pontosArray = pStr.split(',').map((p) => p.replace('Ponto ', '').trim());
@@ -75,6 +83,34 @@ export function useRegistrarFalhaPage() {
     if (chamadosDestePonto.length === 0) return null;
     const todasFalhas = chamadosDestePonto.map((c) => c.falha).join(', ');
     return [...new Set(todasFalhas.split(', ').map((f) => f.trim()))].join(', ');
+  };
+
+  const getInoperantePontoInfo = (numPonto) => {
+    if (!formData.trave) return null;
+    const inoperantesNoPonto = chamadosAbertos.filter((c) => {
+      if (String(c.trave) !== String(formData.trave)) return false;
+      if (!Boolean(c?.ponto_inoperante)) return false;
+      const pStr = String(c.ponto || '');
+      if (isTraveInteiraRegistro(pStr)) return true;
+      const pontosArray = pStr.split(',').map((p) => p.replace('Ponto ', '').trim());
+      return pontosArray.includes(String(numPonto));
+    });
+    if (inoperantesNoPonto.length === 0) return null;
+
+    const falhas = [...new Set(
+      inoperantesNoPonto.flatMap((item) => parseFalhasDoTexto(item?.falha)),
+    )];
+    const motivos = [...new Set(
+      inoperantesNoPonto
+        .map((item) => String(item?.inoperante_motivo || item?.inoperante_observacao || '').trim())
+        .filter(Boolean),
+    )];
+
+    const falhaBase = String(falhas[0] || 'Ponto').slice(0, 12);
+    return {
+      label: `${falhaBase.toUpperCase()} P. Inop`,
+      details: motivos[0] || '',
+    };
   };
 
   const togglePonto = (ponto) => {
@@ -136,6 +172,7 @@ export function useRegistrarFalhaPage() {
     toggleTheme,
     traveTemErro,
     getInfoPonto,
+    getInoperantePontoInfo,
     togglePonto,
     toggleFalha,
     selecionarTodosPontos,

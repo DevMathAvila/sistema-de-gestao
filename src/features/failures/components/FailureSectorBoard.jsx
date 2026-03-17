@@ -23,6 +23,7 @@ export default function FailureSectorBoard({
   getTotalInoperantesSetor,
   getStatusTrave,
   getDadosPonto,
+  getInoperantePontoInfo,
   abrirModalPonto,
   abrirModalLote,
   isColaborador,
@@ -237,28 +238,43 @@ export default function FailureSectorBoard({
                           {pontos.map((p) => {
                             const pontoNum = Number(p);
                             const dadosPonto = getDadosPonto(setor, traveAvt, pontoNum);
+                            const inoperanteInfo = getInoperantePontoInfo(setor, traveAvt, pontoNum);
                             let bgClass = theme === 'dark' ? 'bg-white/5 text-gray-700' : 'bg-white border-slate-200 text-slate-300';
                             if (dadosPonto) {
                               if (isTraveInteiraLabel(dadosPonto.falha)) bgClass = 'bg-purple-600 text-white';
                               else if (dadosPonto.isMonitor) bgClass = 'bg-orange-500 text-white';
                               else bgClass = 'bg-red-600 text-white';
+                            } else if (inoperanteInfo) {
+                              bgClass = theme === 'dark' ? 'bg-amber-500/15 border-amber-400 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-700';
                             }
                             return (
                               <div key={`${setor}-${traveAvt}-${p}`} className="relative group">
                                 <button
                                   onClick={() => abrirModalPonto(dadosPonto)}
-                                  className={`w-full aspect-square rounded-lg flex flex-col items-center justify-center text-[9px] font-black transition-all duration-300 ${bgClass}`}
+                                  className={`w-full aspect-square rounded-lg flex flex-col items-center justify-center text-[9px] font-black transition-all duration-300 ${bgClass} ${inoperanteInfo ? 'ring-2 ring-amber-400/70 animate-pulse' : ''}`}
                                 >
                                   <span className="text-[6px] opacity-50 mb-0">PT</span>
                                   {p}
                                 </button>
-                                {dadosPonto && (
+                                {(dadosPonto || inoperanteInfo) && (
                                   <div className={`pointer-events-none absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl border p-2 opacity-0 group-hover:opacity-100 transition-all ${
                                     theme === 'dark' ? 'bg-black/95 border-white/10' : 'bg-white border-slate-200 shadow-xl'
                                   }`}>
-                                    <p className={`text-[10px] font-black uppercase leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                                      {dadosPonto.falha}
-                                    </p>
+                                    {dadosPonto && (
+                                      <p className={`text-[10px] font-black uppercase leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                        {dadosPonto.falha}
+                                      </p>
+                                    )}
+                                    {inoperanteInfo && (
+                                      <p className="mt-1 text-[10px] font-black uppercase leading-tight text-amber-500 animate-pulse">
+                                        {inoperanteInfo.label}
+                                      </p>
+                                    )}
+                                    {inoperanteInfo?.details && (
+                                      <p className={`mt-1 text-[9px] leading-tight ${theme === 'dark' ? 'text-amber-200' : 'text-amber-700'}`}>
+                                        {inoperanteInfo.details}
+                                      </p>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -476,28 +492,43 @@ export default function FailureSectorBoard({
                             {pontos.map((p) => {
                               const pontoNum = Number(p);
                               const dadosPonto = getDadosPonto(setor, traveNum, pontoNum);
+                              const inoperanteInfo = getInoperantePontoInfo(setor, traveNum, pontoNum);
                               let bgClass = theme === 'dark' ? 'bg-white/5 text-gray-700' : 'bg-white border-slate-200 text-slate-300';
                               if (dadosPonto) {
                                 if (isTraveInteiraLabel(dadosPonto.falha)) bgClass = 'bg-purple-600 text-white';
                                 else if (dadosPonto.isMonitor) bgClass = 'bg-orange-500 text-white';
                                 else bgClass = 'bg-red-600 text-white';
+                              } else if (inoperanteInfo) {
+                                bgClass = theme === 'dark' ? 'bg-amber-500/15 border-amber-400 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-700';
                               }
                               return (
                                 <div key={`${setor}-${traveNum}-${p}`} className="relative group">
                                   <button
                                     onClick={() => abrirModalPonto(dadosPonto)}
-                                    className={`w-full aspect-square rounded-lg flex flex-col items-center justify-center text-[9px] font-black transition-all duration-300 ${bgClass}`}
+                                    className={`w-full aspect-square rounded-lg flex flex-col items-center justify-center text-[9px] font-black transition-all duration-300 ${bgClass} ${inoperanteInfo ? 'ring-2 ring-amber-400/70 animate-pulse' : ''}`}
                                   >
                                     <span className="text-[6px] opacity-50 mb-0">PT</span>
                                     {p}
                                   </button>
-                                  {dadosPonto && (
+                                  {(dadosPonto || inoperanteInfo) && (
                                     <div className={`pointer-events-none absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl border p-2 opacity-0 group-hover:opacity-100 transition-all ${
                                       theme === 'dark' ? 'bg-black/95 border-white/10' : 'bg-white border-slate-200 shadow-xl'
                                     }`}>
-                                      <p className={`text-[10px] font-black uppercase leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                                        {dadosPonto.falha}
-                                      </p>
+                                      {dadosPonto && (
+                                        <p className={`text-[10px] font-black uppercase leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                                          {dadosPonto.falha}
+                                        </p>
+                                      )}
+                                      {inoperanteInfo && (
+                                        <p className="mt-1 text-[10px] font-black uppercase leading-tight text-amber-500 animate-pulse">
+                                          {inoperanteInfo.label}
+                                        </p>
+                                      )}
+                                      {inoperanteInfo?.details && (
+                                        <p className={`mt-1 text-[9px] leading-tight ${theme === 'dark' ? 'text-amber-200' : 'text-amber-700'}`}>
+                                          {inoperanteInfo.details}
+                                        </p>
+                                      )}
                                     </div>
                                   )}
                                 </div>

@@ -17,6 +17,7 @@ export default function RegistrarFalhaPage() {
     toggleTheme,
     traveTemErro,
     getInfoPonto,
+    getInoperantePontoInfo,
     togglePonto,
     toggleFalha,
     selecionarTodosPontos,
@@ -128,6 +129,7 @@ export default function RegistrarFalhaPage() {
                 {pontos.map((p) => {
                   const selecionado = formData.pontos.includes(p);
                   const falhasNoPonto = getInfoPonto(p);
+                  const inoperanteInfo = getInoperantePontoInfo(p);
                   return (
                     <div key={p} className="relative group">
                       <button
@@ -136,22 +138,38 @@ export default function RegistrarFalhaPage() {
                         className={`min-h-[44px] h-12 w-full rounded-2xl border-2 transition-all duration-300 flex items-center justify-center font-black sm:h-14 ${
                           selecionado
                             ? 'bg-blue-600 border-blue-500 text-white'
-                            : falhasNoPonto
-                              ? theme === 'dark'
-                                ? 'bg-red-900/20 border-red-600 text-red-500'
-                                : 'bg-red-50 border-red-300 text-red-600'
+                            : inoperanteInfo
+                                ? theme === 'dark'
+                                  ? 'bg-amber-500/10 border-amber-400 text-amber-300'
+                                  : 'bg-amber-50 border-amber-300 text-amber-700'
+                              : falhasNoPonto
+                                ? theme === 'dark'
+                                  ? 'bg-red-900/20 border-red-600 text-red-500'
+                                  : 'bg-red-50 border-red-300 text-red-600'
                               : `${styles.mutedCard} hover:border-slate-300`
-                        }`}
+                        } ${inoperanteInfo && !selecionado ? 'ring-2 ring-amber-400/70 animate-pulse' : ''}`}
                       >
                         {p}
                       </button>
-                      {falhasNoPonto && (
+                      {(falhasNoPonto || inoperanteInfo) && (
                         <div className={`pointer-events-none absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 rounded-xl border p-2 opacity-0 group-hover:opacity-100 transition-all ${
                           theme === 'dark' ? 'bg-black/95 border-white/10' : 'bg-white border-slate-200 shadow-xl'
                         }`}>
-                          <p className={`text-[10px] font-black uppercase leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                            {falhasNoPonto}
-                          </p>
+                          {falhasNoPonto && (
+                            <p className={`text-[10px] font-black uppercase leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                              {falhasNoPonto}
+                            </p>
+                          )}
+                          {inoperanteInfo && (
+                            <p className="mt-1 text-[10px] font-black uppercase leading-tight text-amber-500 animate-pulse">
+                              {inoperanteInfo.label}
+                            </p>
+                          )}
+                          {inoperanteInfo?.details && (
+                            <p className={`mt-1 text-[9px] leading-tight ${theme === 'dark' ? 'text-amber-200' : 'text-amber-700'}`}>
+                              {inoperanteInfo.details}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

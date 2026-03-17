@@ -251,6 +251,7 @@ export default function VisualizarFalhasPage() {
             getTotalInoperantesSetor={vm.getTotalInoperantesSetor}
             getStatusTrave={vm.getStatusTrave}
             getDadosPonto={vm.getDadosPonto}
+            getInoperantePontoInfo={vm.getInoperantePontoInfo}
             abrirModalPonto={vm.abrirModalPonto}
             abrirModalLote={vm.abrirModalLote}
             isColaborador={vm.isColaborador}

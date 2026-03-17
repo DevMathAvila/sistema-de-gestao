@@ -52,6 +52,13 @@ function isPointMatch(recordPoint, pointNum) {
   return pointRegex.test(normalized);
 }
 
+function parseFalhasDoTexto(rawFalha) {
+  return String(rawFalha || '')
+    .split(/[,+]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function useVisualizarFalhasPage() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = usePersistentTheme();
@@ -305,6 +312,31 @@ export function useVisualizarFalhasPage() {
       isMonitor: falhaConcatenada.toLowerCase().includes('monitor'),
     };
   }, [falhasPorSetorTrave]);
+
+  const getInoperantePontoInfo = useCallback((setor, trave, ponto) => {
+    const inoperantesDaTrave = falhasInoperantes.filter((item) => (
+      normalizeText(item?.setor) === normalizeText(setor)
+      && String(item?.trave) === String(trave)
+      && isPointMatch(item?.ponto, ponto)
+    ));
+
+    if (inoperantesDaTrave.length === 0) return null;
+
+    const falhas = [...new Set(
+      inoperantesDaTrave.flatMap((item) => parseFalhasDoTexto(item?.falha)),
+    )];
+    const motivos = [...new Set(
+      inoperantesDaTrave
+        .map((item) => String(item?.inoperante_motivo || item?.inoperante_observacao || '').trim())
+        .filter(Boolean),
+    )];
+
+    const falhaBase = String(falhas[0] || 'Ponto').slice(0, 12);
+    return {
+      label: `${falhaBase.toUpperCase()} P. Inop`,
+      details: motivos[0] || '',
+    };
+  }, [falhasInoperantes]);
 
   const abrirModalPonto = useCallback((dadosPonto) => {
     if (!dadosPonto || isColaborador) return;
@@ -638,6 +670,7 @@ export function useVisualizarFalhasPage() {
     getStatusTrave,
     countFalhasReais,
     getDadosPonto,
+    getInoperantePontoInfo,
     alertasCriticos,
     falhasAtivasHoje,
     showNotifications,
@@ -696,6 +729,5 @@ export function useVisualizarFalhasPage() {
     formatDateTime,
   };
 }
-
 
 

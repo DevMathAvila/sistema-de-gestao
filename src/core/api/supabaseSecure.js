@@ -372,13 +372,25 @@ export async function listarChamadosAbertosPorSetor(setor) {
   const setorAlvo = isRuninKioskRole(sessionUser?.role) ? setorFixo : String(setor || '').trim();
   if (!setorAlvo || !validateSetor(setorAlvo, LISTA_SETORES)) return { data: [], error: null };
 
-  const { data, error } = await supabase
-    .from('registros_falhas')
-    .select('trave, ponto, falha')
-    .eq('setor', setorAlvo)
-    .ilike('status', '%aberto%')
-    .not('trave', 'is', null)
-    .not('ponto', 'is', null);
+  const runQuery = async (selectCols) => (
+    supabase
+      .from('registros_falhas')
+      .select(selectCols)
+      .eq('setor', setorAlvo)
+      .ilike('status', '%aberto%')
+      .not('trave', 'is', null)
+      .not('ponto', 'is', null)
+  );
+
+  const selectWithInoperante = 'trave, ponto, falha, ponto_inoperante, inoperante_motivo, inoperante_observacao';
+  const selectBase = 'trave, ponto, falha';
+
+  let { data, error } = await runQuery(selectWithInoperante);
+  if (error && String(error?.message || '').includes('inoperante_')) {
+    const fallback = await runQuery(selectBase);
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   return { data: data || [], error };
 }
@@ -1082,7 +1094,6 @@ export async function salvarDadosSigaAguardando({ id, diaAbertura, codigoChamado
     return { error: withSigaSchemaHint({ message: err?.message || 'Erro ao salvar dados SIGA.' }) };
   }
 }
-
 
 
 
