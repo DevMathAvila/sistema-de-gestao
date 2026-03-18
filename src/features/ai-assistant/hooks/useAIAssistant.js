@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../core/api/supabaseClient';
 import { getSessionUser, isAdminUser } from '../../../core/auth/session';
@@ -19,9 +19,9 @@ import {
 import { normalizeToolArgs } from '../services/aiTools';
 
 const QUICK_PROMPTS = [
-  'Quais setores estao com mais falhas abertas hoje?',
-  'Resuma os KPIs do periodo entre 2026-03-01 e 2026-03-07.',
-  'Quais avisos ativos merecem atencao agora?',
+  'Quais setores têm mais falhas abertas agora?',
+  'Me dá um resumo da semana',
+  'Tem algum ponto inoperante agora?',
 ];
 const MIN_INTERVAL_MS = 2000;
 
@@ -49,6 +49,11 @@ function sanitizeField(value, maxLength = 500) {
 }
 
 function matchesSetor(value, expected) {
+  if (!expected) return true;
+  return String(value || '').trim().toLowerCase() === String(expected || '').trim().toLowerCase();
+}
+
+function matchesStatus(value, expected) {
   if (!expected) return true;
   return String(value || '').trim().toLowerCase() === String(expected || '').trim().toLowerCase();
 }
@@ -108,12 +113,7 @@ export function useAIAssistant() {
   const user = getSessionUser() || { username: 'Usuario', role: 'colaborador' };
   const isAdmin = isAdminUser(user);
 
-  const [messages, setMessages] = useState(() => [
-    createUiMessage(
-      'assistant',
-      'Ola! Sou o assistente do sistema. Posso consultar falhas, gerar relatorios e responder perguntas sobre o sistema. Como posso ajudar?',
-    ),
-  ]);
+  const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
@@ -129,6 +129,74 @@ export function useAIAssistant() {
     subtext: theme === 'dark' ? 'text-gray-500' : 'text-slate-500',
     card: theme === 'dark' ? 'bg-white/[0.04] border-white/10' : 'bg-white border-slate-200',
   }), [theme]);
+
+  useEffect(() => {
+    const sessionKey = 'leia_briefing_done';
+
+    if (sessionStorage.getItem(sessionKey)) {
+      const hora = new Date().getHours();
+      const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+      setMessages([
+        createUiMessage('assistant', `${saudacao}, ${user.username}! Como posso te ajudar?`),
+      ]);
+      return;
+    }
+
+    const hoje = new Date();
+    const dataInicio = hoje.toISOString().split('T')[0];
+    const dataFim = dataInicio;
+
+    setLoading(true);
+    setMessages([createUiMessage('assistant', '...')]);
+
+    fetchDashboardDataset(dataInicio, dataFim)
+      .then((dataset) => {
+        const metrics = computeDashboardMetrics(
+          dataset.kpiRows || [],
+          dataset.concluidasRows || [],
+          dataset.abertasRows || [],
+          dataset.inseridosRows || [],
+          hoje,
+          dataset.abertasAtuaisRows || [],
+        );
+
+        const hora = hoje.getHours();
+        const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+        const pendentes = metrics.totalPendentes ?? 0;
+        const concluidas = metrics.totalConcluidas ?? 0;
+        const inoperantes = metrics.inoperantesAbertosResumo?.length ?? 0;
+
+        let briefing = `${saudacao}, ${user.username}! Aqui esta o resumo de hoje:\n`;
+
+        if (pendentes === 0 && concluidas === 0 && inoperantes === 0) {
+          briefing += 'Nenhuma falha registrada hoje. Linha limpa.';
+        } else {
+          if (pendentes > 0) briefing += `→ ${pendentes} falha${pendentes > 1 ? 's' : ''} aberta${pendentes > 1 ? 's' : ''} no momento\n`;
+          if (concluidas > 0) briefing += `→ ${concluidas} falha${concluidas > 1 ? 's' : ''} resolvida${concluidas > 1 ? 's' : ''} hoje\n`;
+          if (inoperantes > 0) briefing += `→ ${inoperantes} ponto${inoperantes > 1 ? 's' : ''} inoperante${inoperantes > 1 ? 's' : ''} em aberto\n`;
+
+          const topSetor = (metrics.porSetor || [])[0];
+          if (topSetor?.setor && topSetor?.total > 0) {
+            briefing += `→ Setor mais ativo: ${topSetor.setor} (${topSetor.total} ocorrencia${topSetor.total > 1 ? 's' : ''})\n`;
+          }
+        }
+
+        briefing += '\nNo que posso te ajudar?';
+
+        sessionStorage.setItem(sessionKey, '1');
+        setMessages([createUiMessage('assistant', briefing.trim())]);
+      })
+      .catch(() => {
+        const hora = new Date().getHours();
+        const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+        setMessages([
+          createUiMessage('assistant', `${saudacao}, ${user.username}! Como posso te ajudar hoje?`),
+        ]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogout = useCallback(async () => {
     await logoutUser();
@@ -146,12 +214,14 @@ export function useAIAssistant() {
 
     switch (toolName) {
       case 'query_registros_falhas': {
-        const limit = clampLimit(args.limit, 50, 100);
+        const limit = clampLimit(args.limit, 500, 1000);
         const status = String(args.status || '').trim().toLowerCase();
         const setor = args.setor ? String(args.setor).trim() : null;
 
+        // Falhas ABERTAS = estado atual, nao filtrar por data
+        // Falhas CONCLUIDAS = evento no tempo, filtrar por data faz sentido
         if (status === 'aberto') {
-          const { data, error } = await listarRegistrosAbertos(args.data_inicio || null, args.data_fim || null);
+          const { data, error } = await listarRegistrosAbertos(null, null);
           if (error) throw error;
           const rows = (data || [])
             .filter((item) => matchesSetor(item?.setor, setor))
@@ -162,7 +232,7 @@ export function useAIAssistant() {
               trave: item.trave,
               ponto: item.ponto,
               falha: item.falha,
-              status: item.status,
+              status: String(item.status || '').trim().toLowerCase(),
               data: item.data,
               ponto_inoperante: Boolean(item?.ponto_inoperante),
             }));
@@ -170,7 +240,12 @@ export function useAIAssistant() {
         }
 
         if (status === 'concluido') {
-          const { data, error } = await listarOcorrenciasConcluidas(args.data_inicio || null, args.data_fim || null);
+          // Concluidas filtram por data — se nao informada, assume hoje
+          const hoje = new Date().toISOString().split('T')[0];
+          const dataInicio = args.data_inicio !== undefined ? (args.data_inicio || null) : hoje;
+          const dataFim = args.data_fim !== undefined ? (args.data_fim || null) : hoje;
+
+          const { data, error } = await listarOcorrenciasConcluidas(dataInicio, dataFim);
           if (error) throw error;
           const rows = (data || [])
             .filter((item) => matchesSetor(item?.setor, setor))
@@ -181,16 +256,21 @@ export function useAIAssistant() {
               trave: item.trave,
               ponto: item.ponto,
               falha: item.falha,
-              status: item.status,
+              status: String(item.status || '').trim().toLowerCase(),
               resolvido_em: item.resolvido_em,
               resolvido_por: item.resolvido_por,
             }));
           return { total: rows.length, filtros: { setor, status, limit }, rows };
         }
 
+        // Sem status: traz abertas (sem filtro data) + concluidas (com filtro data)
+        const hoje = new Date().toISOString().split('T')[0];
+        const dataInicio = args.data_inicio !== undefined ? (args.data_inicio || null) : hoje;
+        const dataFim = args.data_fim !== undefined ? (args.data_fim || null) : hoje;
+
         const [abertasRes, concluidasRes] = await Promise.all([
-          listarRegistrosAbertos(args.data_inicio || null, args.data_fim || null),
-          listarOcorrenciasConcluidas(args.data_inicio || null, args.data_fim || null),
+          listarRegistrosAbertos(null, null),
+          listarOcorrenciasConcluidas(dataInicio, dataFim),
         ]);
         if (abertasRes.error) throw abertasRes.error;
         if (concluidasRes.error) throw concluidasRes.error;
@@ -207,11 +287,51 @@ export function useAIAssistant() {
             trave: item.trave,
             ponto: item.ponto,
             falha: item.falha,
-            status: item.status,
+            status: String(item.status || '').trim().toLowerCase(),
             data: item.data,
             resolvido_em: item.resolvido_em || null,
           }));
         return { total: rows.length, filtros: { setor, status: status || 'todos', limit }, rows };
+      }
+
+      case 'query_pontos_inoperantes': {
+        // CRITICO: inoperantes sao estado persistente — NUNCA filtrar por data
+        const limit = clampLimit(args.limit, 500, 1000);
+        const setor = args.setor ? String(args.setor).trim() : null;
+
+        const { data, error } = await listarRegistrosAbertos(null, null);
+        if (error) throw error;
+
+        const rows = (data || [])
+          .filter((item) => item.ponto_inoperante === true)
+          .filter((item) => matchesSetor(item?.setor, setor))
+          .slice(0, limit)
+          .map((item) => ({
+            id: item.id,
+            setor: item.setor,
+            trave: item.trave,
+            ponto: item.ponto,
+            falha: item.falha,
+            status: String(item.status || '').trim().toLowerCase(),
+            ponto_inoperante: true,
+            inoperante_motivo: item.inoperante_motivo || null,
+            inoperante_por: item.inoperante_por || null,
+            inoperante_em: item.inoperante_em || null,
+          }));
+
+        const porSetor = rows.reduce((acc, item) => {
+          const key = item.setor || 'Desconhecido';
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(`${item.trave || ''} - ${item.ponto || ''}`);
+          return acc;
+        }, {});
+
+        return {
+          total: rows.length,
+          filtros: { setor, sem_filtro_de_data: true },
+          porSetor,
+          rows,
+        };
       }
 
       case 'query_avisos': {
@@ -229,10 +349,11 @@ export function useAIAssistant() {
       }
 
       case 'query_dashboard_kpis': {
-        if (!args.data_inicio || !args.data_fim) {
-          throw new Error('data_inicio e data_fim sao obrigatorios para query_dashboard_kpis.');
-        }
-        const dataset = await fetchDashboardDataset(args.data_inicio, args.data_fim);
+        const hoje = new Date().toISOString().split('T')[0];
+        const dataInicio = args.data_inicio || hoje;
+        const dataFim = args.data_fim || hoje;
+
+        const dataset = await fetchDashboardDataset(dataInicio, dataFim);
         const setor = args.setor ? String(args.setor).trim() : null;
         const filterBySetor = (rows) => (
           setor ? rows.filter((item) => matchesSetor(item?.setor, setor)) : rows
@@ -249,8 +370,8 @@ export function useAIAssistant() {
 
         return {
           periodo: {
-            data_inicio: args.data_inicio,
-            data_fim: args.data_fim,
+            data_inicio: dataInicio,
+            data_fim: dataFim,
             setor,
           },
           resumo: {
@@ -321,7 +442,7 @@ export function useAIAssistant() {
       let currentHistory = nextHistory;
       let finalText = '';
 
-      for (let step = 0; step < 3; step += 1) {
+      for (let step = 0; step < 6; step += 1) {
         const turn = await generateAssistantTurn(currentHistory);
         currentHistory = [...currentHistory, turn.modelMessage];
 

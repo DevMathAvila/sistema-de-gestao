@@ -5,9 +5,45 @@
 // 3. Atualize public/version.json com a mesma versao
 // 4. Faca o deploy - o popup aparecera automaticamente para todos os usuarios logados
 
-export const NEWS_VERSION_LATEST = '1.3.0';
+export const NEWS_VERSION_LATEST = '1.4.1';
 
 export const NEWS_DATA = [
+  {
+    version: '1.4.1',
+    date: '2026-03-18',
+    title: 'Lei.A mais autonoma, mais rapida e mais alinhada ao sistema',
+    type: 'improvement',
+    summary: 'A Lei.A recebeu uma grande evolucao: agora entende melhor os pedidos, faz menos perguntas desnecessarias e esta aprendendo a responder de forma mais natural dentro da rotina operacional.',
+    items: [
+      'Menos voltas na conversa para consultas simples do dia a dia',
+      'Leitura mais inteligente de periodo, setores e situacoes operacionais',
+      'Melhor entendimento sobre falhas abertas, concluidas e pontos inoperantes',
+      'Uso mais eficiente das requisicoes para aumentar a disponibilidade do assistente',
+    ],
+    details: `
+A Lei.A recebeu uma atualizacao importante para ficar mais proxima da rotina real da operacao e responder com mais autonomia.
+
+**O que mudou:**
+- Agora ela esta mais preparada para entender pedidos diretos sem ficar travando a conversa com perguntas repetidas.
+- A leitura de contexto ficou mais inteligente, especialmente para consultas sobre falhas, historicos, setores e pontos inoperantes.
+- O comportamento geral foi ajustado para que a interacao fique mais fluida, natural e objetiva.
+
+**Como isso aparece no uso diario:**
+- Em perguntas simples, a resposta tende a vir com menos etapas e menos interrupcoes.
+- A Lei.A esta se ajustando melhor ao jeito como os colaboradores realmente perguntam no dia a dia.
+- O assistente ficou mais alinhado ao funcionamento do sistema e ao vocabulario operacional da fabrica.
+
+**O que tambem foi melhorado:**
+- Reducao no volume de requisicoes desnecessarias para ajudar a preservar disponibilidade de uso.
+- Melhor equilibrio entre velocidade de resposta e qualidade da consulta.
+- Evolucao continua no entendimento do sistema, com foco em falhas, inoperancias, indicadores e contexto operacional.
+
+**Por que isso importa:**
+- Diminui atrito na conversa.
+- Aumenta a chance de respostas uteis logo na primeira tentativa.
+- Faz com que a Lei.A acompanhe melhor a realidade do sistema enquanto continua aprendendo a responder e interagir com os usuarios.
+    `,
+  },
   {
     version: '1.3.0',
     date: '2026-03-17',

@@ -1,51 +1,106 @@
 export const AI_TOOL_DECLARATIONS = [
   {
     name: 'query_registros_falhas',
-    description: 'Consulta registros de falhas com filtros opcionais por setor, status e periodo.',
+    description: 'Consulta registros de falhas abertas ou concluidas com filtros opcionais. Use para responder perguntas sobre quantas falhas existem, quais sao, em quais setores, em qual periodo. Se o usuario nao informar periodo, use hoje como padrao. Se nao informar status, busque todos.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        setor: { type: 'STRING', description: 'Nome do setor, ex: Runin 01 ou AVT 01.' },
-        status: { type: 'STRING', description: 'aberto ou concluido.' },
-        data_inicio: { type: 'STRING', description: 'Data inicial no formato YYYY-MM-DD.' },
-        data_fim: { type: 'STRING', description: 'Data final no formato YYYY-MM-DD.' },
-        limit: { type: 'NUMBER', description: 'Quantidade maxima de registros a retornar. Padrao 50.' },
+        setor: {
+          type: 'STRING',
+          description: 'Nome exato do setor conforme banco: "Runin 01" a "Runin 10" ou "AVT 01" a "AVT 10". Normalize qualquer variacao do usuario para esse formato antes de passar.',
+        },
+        status: {
+          type: 'STRING',
+          description: 'aberto (falhas em aberto) ou concluido (falhas resolvidas). Se nao informado, retorna todos.',
+        },
+        data_inicio: {
+          type: 'STRING',
+          description: 'Data inicial no formato YYYY-MM-DD. Se nao informada, usa hoje.',
+        },
+        data_fim: {
+          type: 'STRING',
+          description: 'Data final no formato YYYY-MM-DD. Se nao informada, usa hoje.',
+        },
+        limit: {
+          type: 'NUMBER',
+          description: 'Quantidade maxima de registros a retornar. Padrao 50.',
+        },
+      },
+    },
+  },
+  {
+    name: 'query_pontos_inoperantes',
+    description: 'Consulta pontos inoperantes em aberto. Inoperantes sao um estado persistente — NUNCA use filtro de data nesta tool. Nao passe data_inicio nem data_fim. Use para perguntas como: quantos pontos inoperantes temos, quais setores tem inoperantes, tem algum inoperante agora.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        setor: {
+          type: 'STRING',
+          description: 'Filtro opcional por setor. Formato exato: "Runin 01" a "Runin 10" ou "AVT 01" a "AVT 10". Se nao informado, retorna todos os setores.',
+        },
+        limit: {
+          type: 'NUMBER',
+          description: 'Quantidade maxima de registros. Padrao 100.',
+        },
       },
     },
   },
   {
     name: 'query_avisos',
-    description: 'Consulta avisos recentes do sistema.',
+    description: 'Consulta avisos e comunicados recentes do sistema.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        limit: { type: 'NUMBER', description: 'Quantidade maxima de avisos a retornar. Padrao 10.' },
+        limit: {
+          type: 'NUMBER',
+          description: 'Quantidade maxima de avisos a retornar. Padrao 10.',
+        },
       },
     },
   },
   {
     name: 'query_dashboard_kpis',
-    description: 'Retorna metricas agregadas de falhas para um periodo.',
+    description: 'Retorna metricas e KPIs agregados de falhas para um periodo. Use para resumos gerais, totais, top falhas, ranking de setores e taxa de resolucao. Se o usuario nao informar periodo, use hoje como padrao.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        data_inicio: { type: 'STRING', description: 'Data inicial no formato YYYY-MM-DD.' },
-        data_fim: { type: 'STRING', description: 'Data final no formato YYYY-MM-DD.' },
-        setor: { type: 'STRING', description: 'Filtro opcional por setor.' },
+        data_inicio: {
+          type: 'STRING',
+          description: 'Data inicial no formato YYYY-MM-DD. Se nao informada, usa hoje.',
+        },
+        data_fim: {
+          type: 'STRING',
+          description: 'Data final no formato YYYY-MM-DD. Se nao informada, usa hoje.',
+        },
+        setor: {
+          type: 'STRING',
+          description: 'Filtro opcional por setor. Se nao informado, agrega todos os setores.',
+        },
       },
-      required: ['data_inicio', 'data_fim'],
     },
   },
   {
     name: 'query_historico_concluidas',
-    description: 'Consulta o historico de falhas concluidas.',
+    description: 'Consulta o historico completo de falhas concluidas, incluindo registros antigos. Use quando o usuario quiser ver historico amplo ou dados de periodos anteriores.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        setor: { type: 'STRING', description: 'Setor opcional.' },
-        data_inicio: { type: 'STRING', description: 'Data inicial no formato YYYY-MM-DD.' },
-        data_fim: { type: 'STRING', description: 'Data final no formato YYYY-MM-DD.' },
-        limit: { type: 'NUMBER', description: 'Quantidade maxima de registros. Padrao 50.' },
+        setor: {
+          type: 'STRING',
+          description: 'Filtro opcional por setor.',
+        },
+        data_inicio: {
+          type: 'STRING',
+          description: 'Data inicial no formato YYYY-MM-DD.',
+        },
+        data_fim: {
+          type: 'STRING',
+          description: 'Data final no formato YYYY-MM-DD.',
+        },
+        limit: {
+          type: 'NUMBER',
+          description: 'Quantidade maxima de registros. Padrao 50.',
+        },
       },
     },
   },
