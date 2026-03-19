@@ -48,6 +48,33 @@ function sanitizeField(value, maxLength = 500) {
     .slice(0, maxLength);
 }
 
+function splitFalhas(value) {
+  return String(value || '')
+    .split(/[,+]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function buildFalhaAggregation(rows) {
+  const counts = {};
+
+  (rows || []).forEach((item) => {
+    splitFalhas(item?.falha).forEach((falha) => {
+      counts[falha] = (counts[falha] || 0) + 1;
+    });
+  });
+
+  const porFalha = Object.entries(counts)
+    .map(([falha, total]) => ({ falha, total }))
+    .sort((a, b) => b.total - a.total || a.falha.localeCompare(b.falha));
+
+  return {
+    totalRegistros: Array.isArray(rows) ? rows.length : 0,
+    totalFalhas: porFalha.reduce((sum, item) => sum + item.total, 0),
+    porFalha,
+  };
+}
+
 function matchesSetor(value, expected) {
   if (!expected) return true;
   return String(value || '').trim().toLowerCase() === String(expected || '').trim().toLowerCase();
@@ -236,7 +263,8 @@ export function useAIAssistant() {
               data: item.data,
               ponto_inoperante: Boolean(item?.ponto_inoperante),
             }));
-          return { total: rows.length, filtros: { setor, status, limit }, rows };
+          const agregados = buildFalhaAggregation(rows);
+          return { total: agregados.totalFalhas, ...agregados, filtros: { setor, status, limit }, rows };
         }
 
         if (status === 'concluido') {
@@ -260,7 +288,8 @@ export function useAIAssistant() {
               resolvido_em: item.resolvido_em,
               resolvido_por: item.resolvido_por,
             }));
-          return { total: rows.length, filtros: { setor, status, limit }, rows };
+          const agregados = buildFalhaAggregation(rows);
+          return { total: agregados.totalFalhas, ...agregados, filtros: { setor, status, limit }, rows };
         }
 
         // Sem status: traz abertas (sem filtro data) + concluidas (com filtro data)
@@ -291,7 +320,8 @@ export function useAIAssistant() {
             data: item.data,
             resolvido_em: item.resolvido_em || null,
           }));
-        return { total: rows.length, filtros: { setor, status: status || 'todos', limit }, rows };
+        const agregados = buildFalhaAggregation(rows);
+        return { total: agregados.totalFalhas, ...agregados, filtros: { setor, status: status || 'todos', limit }, rows };
       }
 
       case 'query_pontos_inoperantes': {

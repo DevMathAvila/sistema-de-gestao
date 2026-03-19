@@ -1,7 +1,7 @@
 export const AI_TOOL_DECLARATIONS = [
   {
     name: 'query_registros_falhas',
-    description: 'Consulta registros de falhas abertas ou concluidas com filtros opcionais. Use para responder perguntas sobre quantas falhas existem, quais sao, em quais setores, em qual periodo. Se o usuario nao informar periodo, use hoje como padrao. Se nao informar status, busque todos.',
+    description: 'Consulta registros de falhas abertas ou concluidas com filtros opcionais. Retorna `total` como quantidade total de falhas, nao de registros. Tambem retorna `totalRegistros`, `totalFalhas` e `porFalha`, contando falhas combinadas dentro do mesmo registro. Use isso para responder quantidades por tipo de falha com precisao. Se o usuario nao informar periodo, use hoje como padrao. Se nao informar status, busque todos.',
     parameters: {
       type: 'OBJECT',
       properties: {

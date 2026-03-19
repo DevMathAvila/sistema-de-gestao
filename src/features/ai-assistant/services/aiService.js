@@ -24,15 +24,17 @@ function extractFunctionCall(parts = []) {
 }
 
 function buildRequestBody(history) {
+  const trimmedHistory = Array.isArray(history) ? history.slice(-12) : [];
+
   return {
     system_instruction: {
       parts: [{ text: buildSystemPrompt() }],
     },
-    contents: history,
+    contents: trimmedHistory,
     tools: [{ function_declarations: AI_TOOL_DECLARATIONS }],
     generationConfig: {
-      temperature: 0.2,
-      maxOutputTokens: 1024,
+      temperature: 0.1,
+      maxOutputTokens: 1400,
     },
   };
 }
