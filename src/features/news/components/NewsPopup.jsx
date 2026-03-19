@@ -10,17 +10,30 @@ export default function NewsPopup({ userId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme } = usePersistentTheme();
-  const { hasUnread, latestNews, markAsRead, seenVersion } = useNews(userId);
+  const { hasUnread, latestNews, markAsRead, seenVersion, loading } = useNews(userId);
   const [visible, setVisible] = useState(false);
+  const [trackedOpen, setTrackedOpen] = useState(false);
 
   const hasContent = useMemo(() => Boolean(latestNews?.title && latestNews?.summary), [latestNews]);
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    if (!hasUnread || !hasContent) return undefined;
+    if (loading || !hasUnread || !hasContent) return undefined;
     const timer = window.setTimeout(() => setVisible(true), 1400);
     return () => window.clearTimeout(timer);
-  }, [hasContent, hasUnread]);
+  }, [hasContent, hasUnread, loading]);
+
+  useEffect(() => {
+    if (!visible || trackedOpen) return;
+    setTrackedOpen(true);
+    markAsRead();
+  }, [markAsRead, trackedOpen, visible]);
+
+  useEffect(() => {
+    if (!visible) {
+      setTrackedOpen(false);
+    }
+  }, [visible]);
 
   useEffect(() => {
     const checkRemoteVersion = async () => {

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Eye, HardDrive, LogOut, Menu, Moon, Settings, Shield, Sparkles, Sun, User, ArrowRight } from 'lucide-react';
+import { Check, Eye, HardDrive, LogOut, Menu, Moon, Settings, Shield, Sparkles, Sun, User, ArrowRight, X } from 'lucide-react';
 import AppBottomNav from '@/shared/components/layout/AppBottomNav';
+import SupportMenuItem from '@/components/SupportMenuItem';
 import { NEWS_DATA } from '@/features/news/constants/newsData';
 import NewsDetailModal from '@/features/news/components/NewsDetailModal';
 import { TYPE_META, formatNewsDate } from '@/features/news/constants/newsMeta';
@@ -41,7 +42,7 @@ export default function DashboardPage() {
       {vm.mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50">
           <button type="button" onClick={() => vm.setMobileMenuOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <aside className={`absolute right-0 top-0 h-full w-[88%] max-w-sm border-l p-6 flex flex-col shadow-2xl ${vm.theme === 'dark' ? 'bg-[#060606]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
+          <aside className={`absolute right-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto border-l p-6 flex flex-col shadow-2xl ${vm.theme === 'dark' ? 'bg-[#060606]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
             <div className="flex items-center justify-between mb-8">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Navegacao</p>
               <button type="button" onClick={() => vm.setMobileMenuOpen(false)} className={`p-2 rounded-lg ${vm.theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}><X size={16} /></button>
@@ -56,6 +57,15 @@ export default function DashboardPage() {
                   </span>
                 </button>
               ))}
+              <SupportMenuItem
+                currentUser={vm.user}
+                theme={vm.theme}
+                iconSize={18}
+                itemClassName={`w-full min-h-12 flex items-start gap-3 p-4 ${vm.styles.subtext} hover:text-red-600 rounded-2xl font-black text-[11px] tracking-widest uppercase text-left`}
+                panelClassName={vm.theme === 'dark'
+                  ? 'ml-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]'
+                  : 'ml-3 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white/80'}
+              />
             </nav>
             <div className="mt-auto space-y-3 pt-6 border-t border-white/10">
               <button onClick={vm.toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${vm.theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
@@ -85,6 +95,15 @@ export default function DashboardPage() {
               </span>
             </button>
           ))}
+          <SupportMenuItem
+            currentUser={vm.user}
+            theme={vm.theme}
+            iconSize={18}
+            itemClassName={`w-full flex items-center gap-3 p-4 ${vm.styles.subtext} hover:text-red-600 rounded-2xl font-black text-[10px] tracking-widest uppercase text-left`}
+            panelClassName={vm.theme === 'dark'
+              ? 'ml-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]'
+              : 'ml-3 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white/80'}
+          />
         </nav>
         <div className="mt-auto pt-6 border-t border-white/5 space-y-3">
           <button onClick={vm.toggleTheme} className={`w-full p-3 rounded-xl border flex items-center justify-between ${vm.theme === 'dark' ? 'border-white/10 hover:bg-white/5' : 'border-slate-200 hover:bg-slate-50'}`}>

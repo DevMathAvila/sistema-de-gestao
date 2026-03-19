@@ -14,6 +14,7 @@ O Lenovo Assets Systems centraliza todo esse fluxo:
 - Gestores acompanham KPIs em tempo real no dashboard
 - Histórico completo por ponto, trave, setor e período
 - Integração com o sistema SIGA rastreada internamente
+- Presença em tempo real da equipe pela seção **Suporte**
 - Exportação de relatórios em PDF e Excel
 - Assistente de IA integrada (**Lei.A**) para consultas e registros via chat
 
@@ -57,6 +58,9 @@ sistema-de-gestao/
 │   │   │   └── theme.jsx         # Provider de tema claro/escuro
 │   │   └── validation/
 │   │       └── validation.js     # Sanitização e validação de inputs
+│   │
+│   ├── components/
+│   │   └── SupportMenuItem.jsx   # Item expansível "Suporte" com online/offline
 │   │
 │   ├── features/                 # Domínios da aplicação
 │   │   ├── admin/                # Painel administrativo
@@ -105,6 +109,9 @@ sistema-de-gestao/
 │       ├── hooks/                # Hooks globais reutilizáveis
 │       └── styles/               # Estilos globais
 │
+│   └── hooks/
+│       └── useOnlineUsers.js     # Presence compartilhado da equipe online
+│
 ├── supabase/
 │   ├── DB_CANONICAL_SETUP.sql    # Script único de setup do banco
 │   ├── MIGRATION_AUTH.sql        # Migração para Supabase Auth
@@ -116,7 +123,8 @@ sistema-de-gestao/
 │       ├── admin-users-delete/   # Exclusão de usuários (service_role)
 │       ├── admin-users-list/     # Listagem de usuários (service_role)
 │       ├── gemini-proxy/         # Proxy seguro para a API do Gemini
-│       └── user-clear-password-flag/ # Limpeza de flag de troca de senha
+│       ├── user-clear-password-flag/ # Limpeza de flag de troca de senha
+│       └── user-mark-news-seen/  # Persistência de leitura do popup de novidades
 │
 ├── scripts/                      # Scripts auxiliares de desenvolvimento
 ├── .env.example                  # Modelo de variáveis de ambiente
@@ -193,6 +201,19 @@ Agente de IA integrado ao sistema como widget flutuante persistente.
 **Personalidade:**
 A Lei.A tem identidade própria — nome feminino, tom descontraído, saudações adaptadas ao horário do usuário, usa o nome de quem está logado e conhece o sistema por dentro.
 
+**Contexto em tempo real:**
+- Ao iniciar uma nova conversa, a Lei.A pode receber o contexto atual de usuários online
+- Isso ajuda em perguntas sobre disponibilidade da equipe sem alterar o fluxo principal do chat
+
+### Suporte em Tempo Real
+Seção integrada à navegação desktop e mobile para leitura rápida de disponibilidade da equipe.
+
+- Item **Suporte** expansível dentro do próprio menu
+- Lista de usuários online via Supabase Realtime Presence
+- Separação entre **Online** e **Offline**
+- Destaque do próprio usuário com a label **Você**
+- Mesmo comportamento visual e funcional no desktop e no menu hambúrguer mobile
+
 ### Sistema de Novidades
 Mecanismo de comunicação com os usuários integrado ao dashboard:
 
@@ -202,18 +223,22 @@ Mecanismo de comunicação com os usuários integrado ao dashboard:
 - Popup automático ao logar quando há versão não vista pelo usuário
 - Polling a cada 5 minutos em `/public/version.json` — novidades chegam ao vivo sem recarregar
 - Histórico de versões consultável
+- Controle persistido por usuário em `public.usuarios.news_seen_version`
 
 **Para publicar uma novidade:**
 1. Editar `src/features/news/constants/newsData.js`
 2. Atualizar `NEWS_VERSION_LATEST`
 3. Adicionar entrada no início do array `NEWS_DATA`
 4. Atualizar `public/version.json` com a mesma versão
-5. Fazer deploy — o popup aparece automaticamente para todos os usuários
+5. Garantir que a coluna `news_seen_version` exista em `public.usuarios`
+6. Fazer deploy da Edge Function `user-mark-news-seen`
+7. Fazer deploy — o popup aparece automaticamente para os usuários que ainda não viram aquela versão
 
 **Comportamento atual:**
 - O Dashboard mostra somente as 2 novidades mais recentes
 - A página `/novidades` mostra todas as entradas cadastradas no arquivo histórico
 - A ordenação do arquivo prioriza as novidades mais recentes no topo
+- O popup de novidade aparece apenas uma vez por conta e não depende do navegador
 
 ---
 
@@ -233,6 +258,7 @@ O perfil operacional fica em `public.usuarios`:
 | `auth_user_id` | FK para `auth.users` |
 | `force_password_change` | Flag de troca obrigatória no primeiro login |
 | `setor_fixo` | Setor travado para perfil `runin_kiosk` |
+| `news_seen_version` | Última versão de novidade já visualizada pelo usuário |
 
 ### Perfis de Acesso
 
@@ -317,6 +343,7 @@ A chave da API do Gemini **não fica no bundle do frontend**. Ela é guardada co
 | `admin-users-list` | Lista todos os usuários com perfil completo |
 | `admin-users-delete` | Remove usuário do Auth e da tabela de perfis |
 | `user-clear-password-flag` | Limpa a flag `force_password_change` após troca |
+| `user-mark-news-seen` | Salva a última versão de novidade já vista pelo usuário |
 | `gemini-proxy` | Proxy autenticado para a API do Gemini |
 
 ---
@@ -407,6 +434,10 @@ npm run build
 # Deploy de Edge Function
 npx supabase functions deploy gemini-proxy --no-verify-jwt
 npx supabase functions deploy admin-users-create
+npx supabase functions deploy admin-users-list
+npx supabase functions deploy admin-users-delete
+npx supabase functions deploy user-clear-password-flag
+npx supabase functions deploy user-mark-news-seen
 ```
 
 ---

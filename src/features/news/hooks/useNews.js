@@ -1,9 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '@/core/api/supabaseClient';
 import { NEWS_DATA, NEWS_VERSION_LATEST } from '../constants/newsData';
-
-function getStorageKey(userId) {
-  return `lenovo_news_seen_${userId || 'anon'}`;
-}
 
 export function compareVersions(a, b) {
   const aParts = String(a || '0.0.0').split('.').map((item) => Number(item) || 0);
@@ -21,35 +18,68 @@ export function compareVersions(a, b) {
 }
 
 export function useNews(userId) {
-  const storageKey = useMemo(() => getStorageKey(userId), [userId]);
-  const [seenVersion, setSeenVersion] = useState(() => {
-    try {
-      return localStorage.getItem(storageKey) || null;
-    } catch {
-      return null;
-    }
-  });
+  const [seenVersion, setSeenVersion] = useState(null);
+  const [loading, setLoading] = useState(Boolean(userId));
 
   useEffect(() => {
+    let active = true;
+
+    async function loadSeenVersion() {
+      if (!userId) {
+        setSeenVersion(null);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('news_seen_version')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (!active) return;
+        if (error) throw error;
+
+        setSeenVersion(String(data?.news_seen_version || '').trim() || null);
+      } catch {
+        if (!active) return;
+        setSeenVersion(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadSeenVersion();
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  const markAsRead = useCallback(async (version = NEWS_VERSION_LATEST) => {
+    const normalizedVersion = String(version || NEWS_VERSION_LATEST).trim() || NEWS_VERSION_LATEST;
+    setSeenVersion(normalizedVersion);
+
+    if (!userId) return;
+
     try {
-      setSeenVersion(localStorage.getItem(storageKey) || null);
+      const { error } = await supabase.functions.invoke('user-mark-news-seen', {
+        body: { version: normalizedVersion },
+      });
+
+      if (error) throw error;
     } catch {
       setSeenVersion(null);
     }
-  }, [storageKey]);
-
-  const markAsRead = useCallback((version = NEWS_VERSION_LATEST) => {
-    try {
-      localStorage.setItem(storageKey, version);
-      setSeenVersion(version);
-    } catch {
-      setSeenVersion(version);
-    }
-  }, [storageKey]);
+  }, [userId]);
 
   const hasUnread = compareVersions(NEWS_VERSION_LATEST, seenVersion) > 0;
 
   return {
+    loading,
     hasUnread,
     latestVersion: NEWS_VERSION_LATEST,
     latestNews: NEWS_DATA[0] || null,

@@ -23,12 +23,12 @@ function extractFunctionCall(parts = []) {
   };
 }
 
-function buildRequestBody(history) {
+function buildRequestBody(history, onlineUsers = []) {
   const trimmedHistory = Array.isArray(history) ? history.slice(-12) : [];
 
   return {
     system_instruction: {
-      parts: [{ text: buildSystemPrompt() }],
+      parts: [{ text: buildSystemPrompt(onlineUsers) }],
     },
     contents: trimmedHistory,
     tools: [{ function_declarations: AI_TOOL_DECLARATIONS }],
@@ -39,7 +39,7 @@ function buildRequestBody(history) {
   };
 }
 
-export async function generateAssistantTurn(history) {
+export async function generateAssistantTurn(history, onlineUsers = []) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -57,7 +57,7 @@ export async function generateAssistantTurn(history) {
       Authorization: `Bearer ${session.access_token}`,
       apikey: supabaseAnonKey,
     },
-    body: JSON.stringify(buildRequestBody(history)),
+    body: JSON.stringify(buildRequestBody(history, onlineUsers)),
   });
 
   const payload = await response.json().catch(() => ({}));

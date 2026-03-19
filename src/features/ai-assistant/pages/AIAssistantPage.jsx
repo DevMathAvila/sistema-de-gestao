@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
+import SupportMenuItem from '../../../components/SupportMenuItem';
 import { useAIAssistant } from '../hooks/useAIAssistant';
 
 const navItems = [
@@ -57,24 +58,36 @@ export default function AIAssistantPage() {
       {vm.mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50">
           <button type="button" onClick={() => vm.setMobileMenuOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <aside className={`absolute right-0 top-0 h-full w-[88%] max-w-sm border-l p-6 flex flex-col shadow-2xl ${vm.theme === 'dark' ? 'bg-[#060606]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
+          <aside className={`absolute right-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto border-l p-6 flex flex-col shadow-2xl ${vm.theme === 'dark' ? 'bg-[#060606]/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
             <div className="flex items-center justify-between mb-8">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Navegacao</p>
               <button type="button" onClick={() => vm.setMobileMenuOpen(false)} className={`p-2 rounded-lg ${vm.theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}><X size={16} /></button>
             </div>
             <nav className="space-y-3">
               {visibleNav.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => vm.navigateAndCloseMobile(item.path)}
-                  className={`w-full min-h-12 flex items-center gap-3 p-4 rounded-2xl font-black text-[11px] tracking-widest uppercase text-left ${
-                    item.active ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' : `${vm.styles.subtext} hover:text-red-600`
-                  }`}
-                >
-                  <item.icon size={18} />
-                  {item.label}
-                </button>
+                <React.Fragment key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => vm.navigateAndCloseMobile(item.path)}
+                    className={`w-full min-h-12 flex items-center gap-3 p-4 rounded-2xl font-black text-[11px] tracking-widest uppercase text-left ${
+                      item.active ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' : `${vm.styles.subtext} hover:text-red-600`
+                    }`}
+                  >
+                    <item.icon size={18} />
+                    {item.label}
+                  </button>
+                  {item.id === 'dashboard' && (
+                    <SupportMenuItem
+                      currentUser={vm.user}
+                      theme={vm.theme}
+                      iconSize={18}
+                      itemClassName={`w-full min-h-12 flex items-center gap-3 p-4 rounded-2xl font-black text-[11px] tracking-widest uppercase text-left ${vm.styles.subtext} hover:text-red-600`}
+                      panelClassName={vm.theme === 'dark'
+                        ? 'ml-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]'
+                        : 'ml-3 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white/80'}
+                    />
+                  )}
+                </React.Fragment>
               ))}
             </nav>
             <div className="mt-auto pt-6 border-t border-white/10 space-y-3">
@@ -104,17 +117,29 @@ export default function AIAssistantPage() {
         </div>
         <nav className="flex-1 space-y-2">
           {visibleNav.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => vm.navigate(item.path)}
-              className={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-[10px] tracking-widest uppercase text-left ${
-                item.active ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' : `${vm.styles.subtext} hover:text-red-600`
-              }`}
-            >
-              <item.icon size={18} />
-              {item.label}
-            </button>
+            <React.Fragment key={item.id}>
+              <button
+                type="button"
+                onClick={() => vm.navigate(item.path)}
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-[10px] tracking-widest uppercase text-left ${
+                  item.active ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white' : `${vm.styles.subtext} hover:text-red-600`
+                }`}
+              >
+                <item.icon size={18} />
+                {item.label}
+              </button>
+              {item.id === 'dashboard' && (
+                <SupportMenuItem
+                  currentUser={vm.user}
+                  theme={vm.theme}
+                  iconSize={18}
+                  itemClassName={`w-full flex items-center gap-3 p-4 rounded-2xl font-black text-[10px] tracking-widest uppercase text-left ${vm.styles.subtext} hover:text-red-600`}
+                  panelClassName={vm.theme === 'dark'
+                    ? 'ml-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]'
+                    : 'ml-3 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white/80'}
+                />
+              )}
+            </React.Fragment>
           ))}
         </nav>
         <div className="mt-auto pt-6 border-t border-white/5 space-y-3">

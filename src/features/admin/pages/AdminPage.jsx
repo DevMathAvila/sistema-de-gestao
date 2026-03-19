@@ -12,6 +12,7 @@ import Users from 'lucide-react/dist/esm/icons/users';
 import X from 'lucide-react/dist/esm/icons/x';
 import { useNavigate } from 'react-router-dom';
 import AppBottomNav from '../../../shared/components/layout/AppBottomNav';
+import SupportMenuItem from '../../../components/SupportMenuItem';
 import { getAdminScrollbarCss } from '../styles/adminTheme';
 import { useAdminPage } from '../hooks/useAdminPage';
 
@@ -30,6 +31,7 @@ const iconByTab = {
 export default function AdminPage() {
   const navigate = useNavigate();
   const {
+    currentUser,
     s,
     theme,
     loading,
@@ -117,7 +119,7 @@ export default function AdminPage() {
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50">
           <button type="button" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Fechar menu" />
-          <aside className={`absolute left-0 top-0 h-full w-[88%] max-w-sm border-r p-6 flex flex-col shadow-2xl ${theme === 'dark' ? 'bg-[#080808]/95 border-white/10 backdrop-blur-2xl' : 'bg-white/95 border-slate-200 backdrop-blur-2xl'}`}>
+          <aside className={`absolute left-0 top-0 h-full w-[88%] max-w-sm overflow-y-auto border-r p-6 flex flex-col shadow-2xl ${theme === 'dark' ? 'bg-[#080808]/95 border-white/10 backdrop-blur-2xl' : 'bg-white/95 border-slate-200 backdrop-blur-2xl'}`}>
             <div className="flex items-center justify-between mb-8">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-red-600">Menu Admin</p>
               <button type="button" onClick={() => setMobileMenuOpen(false)} className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-100'}`}>
@@ -163,6 +165,19 @@ export default function AdminPage() {
                 <LayoutDashboard size={16} className="text-red-600" />
                 Voltar ao inicio
               </button>
+              <SupportMenuItem
+                currentUser={currentUser}
+                theme={theme}
+                iconSize={16}
+                itemClassName={`w-full min-h-12 p-3 rounded-xl border font-black text-[10px] uppercase tracking-wider flex items-center gap-3 text-left transition-all ${
+                  theme === 'dark'
+                    ? 'border-white/10 text-white bg-white/5'
+                    : 'border-slate-200 text-slate-900 bg-white'
+                }`}
+                panelClassName={theme === 'dark'
+                  ? 'ml-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]'
+                  : 'ml-3 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white/80'}
+              />
               <button onClick={toggleTheme} className={`w-full min-h-12 p-3 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
                 <span className="text-[11px] font-black uppercase">Tema</span>
                 {theme === 'dark' ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-red-600" />}
@@ -210,6 +225,15 @@ export default function AdminPage() {
             <LayoutDashboard size={20} />
             Voltar ao inicio
           </button>
+          <SupportMenuItem
+            currentUser={currentUser}
+            theme={theme}
+            iconSize={20}
+            itemClassName={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all font-black text-[10px] uppercase tracking-wider text-left ${s.sub} hover:bg-red-600/5 hover:text-red-600`}
+            panelClassName={theme === 'dark'
+              ? 'ml-3 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]'
+              : 'ml-3 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white/80'}
+          />
         </nav>
 
         <div className="mt-auto pt-6 border-t border-white/10 space-y-3">

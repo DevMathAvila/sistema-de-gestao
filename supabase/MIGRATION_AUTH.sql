@@ -11,6 +11,9 @@ ALTER TABLE public.usuarios
 ALTER TABLE public.usuarios
   ADD COLUMN IF NOT EXISTS force_password_change boolean DEFAULT true;
 
+ALTER TABLE public.usuarios
+  ADD COLUMN IF NOT EXISTS news_seen_version text;
+
 -- 2) Garantir username unico (case-insensitive)
 CREATE UNIQUE INDEX IF NOT EXISTS usuarios_username_lower_key
   ON public.usuarios (lower(username));

@@ -5,9 +5,45 @@
 // 3. Atualize public/version.json com a mesma versao
 // 4. Faca o deploy - o popup aparecera automaticamente para todos os usuarios logados
 
-export const NEWS_VERSION_LATEST = '1.4.1';
+export const NEWS_VERSION_LATEST = '1.5.0';
 
 export const NEWS_DATA = [
+  {
+    version: '1.5.0',
+    date: '2026-03-19',
+    title: 'Suporte na navegacao com usuarios online em tempo real',
+    type: 'feature',
+    summary: 'A navegacao agora ganhou a secao Suporte, exibindo quem esta online e offline em tempo real, com destaque da atualizacao mais recente e popup de leitura unica por usuario.',
+    items: [
+      'Nova secao Suporte expandivel dentro da navegacao desktop e mobile',
+      'Lista online e offline sincronizada em tempo real via Supabase Presence',
+      'Popup de novidade exibido apenas uma vez por usuario, mesmo trocando de navegador',
+      'Lei.A agora recebe contexto da equipe online ao iniciar uma nova conversa',
+    ],
+    details: `
+Foi adicionada uma nova secao chamada **Suporte** diretamente na navegacao do sistema, sem criar nova rota nem tirar o foco da operacao.
+
+**O que mudou:**
+- A sidebar e o menu mobile agora possuem um item expansivel chamado **Suporte**.
+- Ao abrir, ele mostra quem esta **online** e quem esta **offline** em tempo real.
+- O proprio usuario aparece destacado com a label **Voce**.
+- A atualizacao passou a ser tratada como a novidade mais recente do sistema.
+
+**Popup de novidade com leitura unica por usuario:**
+- O popup dessa versao aparece apenas **uma vez por conta**.
+- Depois que o usuario visualizar o popup pela primeira vez, ele nao volta mais a aparecer.
+- Esse controle agora fica persistido no backend, entao continua valendo mesmo se o usuario trocar de navegador, abrir aba anonima ou usar outro dispositivo.
+
+**Contexto extra para a Lei.A:**
+- Ao iniciar uma conversa nova, a Lei.A agora pode receber a lista atual de usuarios online como contexto operacional.
+- Isso melhora perguntas sobre disponibilidade da equipe sem alterar o fluxo principal do chat.
+
+**Por que isso importa:**
+- Facilita saber rapidamente quem esta ativo no sistema.
+- Reduz ruído operacional ao centralizar informacao de suporte no proprio menu.
+- Deixa a comunicacao de novidades mais confiavel, sem depender de armazenamento local do navegador.
+    `,
+  },
   {
     version: '1.4.1',
     date: '2026-03-18',

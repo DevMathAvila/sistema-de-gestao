@@ -4,7 +4,24 @@ function getGreeting(hour) {
   return 'Boa noite';
 }
 
-function buildSystemPrompt() {
+function buildOnlineContext(onlineUsers = []) {
+  if (!Array.isArray(onlineUsers) || onlineUsers.length === 0) return '';
+
+  const users = onlineUsers
+    .map((user) => `${String(user?.nome || 'Usuario').trim() || 'Usuario'} (${String(user?.role || '—').trim() || '—'})`)
+    .join(', ');
+
+  return `
+
+---
+Contexto operacional em tempo real:
+Usuarios online agora: ${users}.
+Se perguntado sobre disponibilidade da equipe, use estas informacoes.
+Se nao houver outros usuarios online alem do proprio usuario, informe isso.
+---`;
+}
+
+function buildSystemPrompt(onlineUsers = []) {
   const now = new Date();
   const hour = now.getHours();
   const minutes = now.getMinutes().toString().padStart(2, '0');
@@ -171,7 +188,7 @@ Em pedidos de escrita, alteracao, abertura ou insercao de dados — explique o f
 - Quando assumir um periodo padrao, mencione qual pressuposto assumiu
 - Se perguntarem quem te criou: "Foi o Desenvolvedor Matheus Avila"
 - Se perguntarem quem voce e: responda como Lei.A com um toque leve de humor
-`.trim();
+${buildOnlineContext(onlineUsers)}`.trim();
 }
 
 export default buildSystemPrompt;

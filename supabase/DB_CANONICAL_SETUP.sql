@@ -15,7 +15,8 @@ create extension if not exists pgcrypto;
 alter table if exists public.usuarios
   add column if not exists auth_user_id uuid,
   add column if not exists force_password_change boolean default true,
-  add column if not exists setor_fixo text;
+  add column if not exists setor_fixo text,
+  add column if not exists news_seen_version text;
 
 create unique index if not exists usuarios_username_lower_key
   on public.usuarios (lower(username));

@@ -7,6 +7,7 @@ import {
   listarOcorrenciasConcluidas,
   listarRegistrosAbertos,
 } from '../../../core/api/supabaseSecure';
+import { useOnlineUsers } from '../../../hooks/useOnlineUsers';
 import { useBodyScrollLock } from '../../../shared/hooks/useBodyScrollLock';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
 import { fetchDashboardDataset, computeDashboardMetrics } from '../../dashboard/services/dashboardAnalyticsService';
@@ -139,6 +140,7 @@ export function useAIAssistant() {
   const { theme, toggleTheme } = usePersistentTheme();
   const user = getSessionUser() || { username: 'Usuario', role: 'colaborador' };
   const isAdmin = isAdminUser(user);
+  const { onlineUsers } = useOnlineUsers();
 
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
@@ -146,6 +148,7 @@ export function useAIAssistant() {
   const [input, setInput] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const lastMessageTime = useRef(0);
+  const conversationOnlineUsersRef = useRef([]);
 
   useBodyScrollLock(mobileMenuOpen);
 
@@ -472,8 +475,18 @@ export function useAIAssistant() {
       let currentHistory = nextHistory;
       let finalText = '';
 
+      if (conversationOnlineUsersRef.current.length === 0) {
+        conversationOnlineUsersRef.current = Array.isArray(onlineUsers)
+          ? onlineUsers.map((item) => ({
+              id: item?.id ?? null,
+              nome: item?.nome || 'Usuario',
+              role: item?.role || '—',
+            }))
+          : [];
+      }
+
       for (let step = 0; step < 6; step += 1) {
-        const turn = await generateAssistantTurn(currentHistory);
+        const turn = await generateAssistantTurn(currentHistory, conversationOnlineUsersRef.current);
         currentHistory = [...currentHistory, turn.modelMessage];
 
         if (turn.functionCall?.name) {
@@ -503,7 +516,7 @@ export function useAIAssistant() {
     } finally {
       setLoading(false);
     }
-  }, [executeTool, history, loading]);
+  }, [executeTool, history, loading, onlineUsers]);
 
   return {
     user,
