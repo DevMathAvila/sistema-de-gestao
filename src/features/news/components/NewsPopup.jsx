@@ -5,6 +5,7 @@ import { usePersistentTheme } from '@/shared/hooks/usePersistentTheme';
 import { compareVersions, useNews } from '../hooks/useNews';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
+const displayedVersionsByUser = new Map();
 
 export default function NewsPopup({ userId }) {
   const navigate = useNavigate();
@@ -12,28 +13,37 @@ export default function NewsPopup({ userId }) {
   const { theme } = usePersistentTheme();
   const { hasUnread, latestNews, markAsRead, seenVersion, loading } = useNews(userId);
   const [visible, setVisible] = useState(false);
-  const [trackedOpen, setTrackedOpen] = useState(false);
+  const [dismissedVersion, setDismissedVersion] = useState(null);
+  const [autoPersistedVersion, setAutoPersistedVersion] = useState(null);
 
   const hasContent = useMemo(() => Boolean(latestNews?.title && latestNews?.summary), [latestNews]);
+  const latestVersion = String(latestNews?.version || '').trim();
   const isDark = theme === 'dark';
+  const displayedVersion = userId ? displayedVersionsByUser.get(userId) || null : null;
 
   useEffect(() => {
-    if (loading || !hasUnread || !hasContent) return undefined;
+    if (loading || !hasUnread || !hasContent || !latestVersion || dismissedVersion === latestVersion || displayedVersion === latestVersion) return undefined;
     const timer = window.setTimeout(() => setVisible(true), 1400);
     return () => window.clearTimeout(timer);
-  }, [hasContent, hasUnread, loading]);
+  }, [dismissedVersion, displayedVersion, hasContent, hasUnread, latestVersion, loading]);
 
   useEffect(() => {
-    if (!visible || trackedOpen) return;
-    setTrackedOpen(true);
-    markAsRead();
-  }, [markAsRead, trackedOpen, visible]);
-
-  useEffect(() => {
-    if (!visible) {
-      setTrackedOpen(false);
+    if (!latestVersion) return;
+    if (seenVersion === latestVersion) {
+      if (userId) displayedVersionsByUser.set(userId, latestVersion);
+      setDismissedVersion(latestVersion);
+      setVisible(false);
     }
-  }, [visible]);
+  }, [latestVersion, seenVersion, userId]);
+
+  useEffect(() => {
+    if (!visible || !latestVersion || autoPersistedVersion === latestVersion) return;
+
+    if (userId) displayedVersionsByUser.set(userId, latestVersion);
+    setDismissedVersion(latestVersion);
+    setAutoPersistedVersion(latestVersion);
+    markAsRead(latestVersion);
+  }, [autoPersistedVersion, latestVersion, markAsRead, userId, visible]);
 
   useEffect(() => {
     const checkRemoteVersion = async () => {
@@ -44,7 +54,8 @@ export default function NewsPopup({ userId }) {
         const remoteVersion = String(payload?.version || '').trim();
         if (!remoteVersion) return;
         const lastSeen = seenVersion || '0.0.0';
-        if (compareVersions(remoteVersion, lastSeen) > 0) {
+        const alreadyDisplayed = userId ? displayedVersionsByUser.get(userId) === remoteVersion : false;
+        if (compareVersions(remoteVersion, lastSeen) > 0 && !alreadyDisplayed) {
           setVisible(true);
         }
       } catch {
@@ -54,7 +65,7 @@ export default function NewsPopup({ userId }) {
 
     const interval = window.setInterval(checkRemoteVersion, POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [seenVersion]);
+  }, [seenVersion, userId]);
 
   if (!visible || !hasContent) return null;
 
@@ -91,8 +102,9 @@ export default function NewsPopup({ userId }) {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="button"
-            onClick={() => {
-              markAsRead();
+            onClick={async () => {
+              await markAsRead(latestVersion);
+              setDismissedVersion(latestVersion);
               setVisible(false);
               if (location.pathname === '/dashboard') {
                 document.getElementById('lenovo-news-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -106,7 +118,11 @@ export default function NewsPopup({ userId }) {
           </button>
           <button
             type="button"
-            onClick={() => setVisible(false)}
+            onClick={async () => {
+              await markAsRead(latestVersion);
+              setDismissedVersion(latestVersion);
+              setVisible(false);
+            }}
             className={`min-h-11 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest ${isDark ? 'bg-white/5 text-slate-200 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >
             Agora nao

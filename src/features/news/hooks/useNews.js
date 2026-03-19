@@ -61,20 +61,34 @@ export function useNews(userId) {
 
   const markAsRead = useCallback(async (version = NEWS_VERSION_LATEST) => {
     const normalizedVersion = String(version || NEWS_VERSION_LATEST).trim() || NEWS_VERSION_LATEST;
+    const previousVersion = seenVersion;
     setSeenVersion(normalizedVersion);
 
     if (!userId) return;
 
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) throw sessionError;
+
+      const accessToken = String(session?.access_token || '').trim();
+      if (!accessToken) throw new Error('Sessao expirada.');
+
       const { error } = await supabase.functions.invoke('user-mark-news-seen', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: { version: normalizedVersion },
       });
 
       if (error) throw error;
     } catch {
-      setSeenVersion(null);
+      setSeenVersion(previousVersion);
     }
-  }, [userId]);
+  }, [seenVersion, userId]);
 
   const hasUnread = compareVersions(NEWS_VERSION_LATEST, seenVersion) > 0;
 

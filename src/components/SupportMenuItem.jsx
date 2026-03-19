@@ -39,55 +39,24 @@ function getInitials(name) {
   return parts.map((part) => part.charAt(0).toUpperCase()).join('');
 }
 
-function SupportUserRow({ user, currentUserId, isDark, online }) {
+function SupportUserRow({ user, currentUserId, isDark, online, expandable }) {
   const isCurrentUser = currentUserId != null && user?.id === currentUserId;
-  const normalizedRole = normalizeRole(user?.role);
-  const roleClass = online && (normalizedRole === 'master' || normalizedRole === 'admin')
-    ? 'text-emerald-400'
-    : isDark
-      ? 'text-slate-400'
-      : 'text-slate-500';
+  const displayName = normalizeName(user?.nome);
 
   return (
-    <div
-      className={`flex items-center gap-3 rounded-2xl border px-3 py-3 ${
-        isCurrentUser
+    <div className={`flex items-center gap-2 py-1.5 ${online ? '' : 'opacity-55'} ${expandable ? 'cursor-default' : ''}`}>
+      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${online ? 'bg-emerald-400' : 'bg-slate-400'}`} />
+      <p className={`min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[0.01em] transition-colors duration-200 ${
+        online
           ? isDark
-            ? 'border-emerald-400/20 bg-emerald-400/10'
-            : 'border-emerald-200 bg-emerald-50'
+            ? 'text-emerald-300'
+            : 'text-emerald-700'
           : isDark
-            ? 'border-white/10 bg-white/[0.03]'
-            : 'border-slate-200 bg-slate-50/80'
-      } ${online ? '' : 'opacity-50'}`}
-    >
-      <div className="relative shrink-0">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-black ${
-          isDark ? 'bg-white/10 text-white' : 'bg-white text-slate-700'
-        }`}>
-          {getInitials(user?.nome)}
-        </div>
-        <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 ${
-          isDark ? 'border-[#080808]' : 'border-white'
-        } ${online ? 'bg-emerald-400' : 'bg-slate-400'}`} />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className={`truncate text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {normalizeName(user?.nome)}
-          </p>
-          {isCurrentUser && (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${
-              isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
-            }`}>
-              Voce
-            </span>
-          )}
-        </div>
-        <p className={`text-xs font-semibold ${roleClass}`}>
-          {formatRole(user?.role)}
-        </p>
-      </div>
+            ? 'text-slate-300'
+            : 'text-slate-600'
+      }`}>
+        {displayName}{isCurrentUser ? ' (Voce)' : ''}
+      </p>
     </div>
   );
 }
@@ -101,9 +70,26 @@ export default function SupportMenuItem({
 }) {
   const { onlineUsers, offlineUsers, totalOnline } = useOnlineUsers();
   const [open, setOpen] = useState(false);
+  const [supportsHover, setSupportsHover] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const contentRef = useRef(null);
   const isDark = theme === 'dark';
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+
+    const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const syncHoverSupport = () => setSupportsHover(mediaQuery.matches);
+    syncHoverSupport();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncHoverSupport);
+      return () => mediaQuery.removeEventListener('change', syncHoverSupport);
+    }
+
+    mediaQuery.addListener(syncHoverSupport);
+    return () => mediaQuery.removeListener(syncHoverSupport);
+  }, []);
 
   useEffect(() => {
     const node = contentRef.current;
@@ -120,7 +106,7 @@ export default function SupportMenuItem({
     return () => {
       observer.disconnect();
     };
-  }, [onlineUsers, offlineUsers, open]);
+  }, [offlineUsers, onlineUsers, open, supportsHover]);
 
   const resolvedPanelClassName = useMemo(() => (
     panelClassName || (
@@ -142,7 +128,9 @@ export default function SupportMenuItem({
 
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          setOpen((prev) => !prev);
+        }}
         className={`relative z-10 ${itemClassName}`}
         aria-expanded={open}
         aria-label={open ? 'Fechar suporte' : 'Abrir suporte'}
@@ -171,9 +159,10 @@ export default function SupportMenuItem({
           height: open ? `${contentHeight}px` : '0px',
           opacity: open ? 1 : 0,
           transition: 'height 0.25s ease, opacity 0.25s ease',
+          overflow: 'visible',
         }}
       >
-        <div ref={contentRef} className="p-3">
+        <div ref={contentRef} className="overflow-hidden p-3">
           <div className="flex items-center justify-between">
             <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
               Online
@@ -185,7 +174,7 @@ export default function SupportMenuItem({
             </span>
           </div>
 
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-1.5">
             {onlineUsers.length > 0 ? onlineUsers.map((user) => (
               <SupportUserRow
                 key={`online-${user.id ?? user.nome}`}
@@ -193,9 +182,10 @@ export default function SupportMenuItem({
                 currentUserId={currentUser?.id ?? null}
                 isDark={isDark}
                 online
+                expandable={supportsHover}
               />
             )) : (
-              <p className={`rounded-2xl border px-3 py-3 text-sm ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+              <p className={`py-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Nenhum usuario online agora.
               </p>
             )}
@@ -212,7 +202,7 @@ export default function SupportMenuItem({
             </span>
           </div>
 
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-1.5">
             {offlineUsers.length > 0 ? offlineUsers.map((user) => (
               <SupportUserRow
                 key={`offline-${user.id ?? user.nome}`}
@@ -220,9 +210,10 @@ export default function SupportMenuItem({
                 currentUserId={currentUser?.id ?? null}
                 isDark={isDark}
                 online={false}
+                expandable={supportsHover}
               />
             )) : (
-              <p className={`rounded-2xl border px-3 py-3 text-sm opacity-50 ${isDark ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+              <p className={`py-2 text-sm opacity-50 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Ninguem offline no momento.
               </p>
             )}
