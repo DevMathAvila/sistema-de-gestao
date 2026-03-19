@@ -8,6 +8,8 @@ import {
 } from '../../core/auth/session';
 import { supabase } from '../../core/api/supabaseClient';
 import LeiaWidget from '../../features/ai-assistant/components/LeiaWidget';
+import ChatContext from '../../features/chat/ChatContext';
+import ChatManager from '../../features/chat/ChatManager';
 import NewsPopup from '../../features/news/components/NewsPopup';
 
 const LoginPage = React.lazy(() => import('../../features/auth/pages/LoginPage'));
@@ -30,6 +32,18 @@ function RouterFallback() {
     <div className="min-h-screen bg-[#050505] flex items-center justify-center">
       <div className="h-12 w-12 rounded-full border-4 border-red-600 border-t-transparent animate-spin" />
     </div>
+  );
+}
+
+function AuthenticatedChrome({ children }) {
+  const user = getSessionUser();
+  if (!user || isRuninKioskUser(user)) return children;
+
+  return (
+    <ChatContext>
+      {children}
+      <ChatManager />
+    </ChatContext>
   );
 }
 
@@ -85,11 +99,11 @@ const NonKioskLayout = () => {
   if (!user) return <Navigate to="/" replace />;
   if (isRuninKioskUser(user)) return <Navigate to="/abrir-chamado" replace />;
   return (
-    <>
+    <AuthenticatedChrome>
       <Outlet />
       <LeiaWidget />
       <NewsPopup userId={user?.id} />
-    </>
+    </AuthenticatedChrome>
   );
 };
 
@@ -102,11 +116,11 @@ const AdminLayout = () => {
   if (isRuninKioskUser(user)) return <Navigate to="/abrir-chamado" replace />;
   if (!isAdminUser(user)) return <Navigate to="/dashboard" replace />;
   return (
-    <>
+    <AuthenticatedChrome>
       <Outlet />
       <LeiaWidget />
       <NewsPopup userId={user?.id} />
-    </>
+    </AuthenticatedChrome>
   );
 };
 
@@ -117,11 +131,11 @@ const AuthenticatedLayout = () => {
   if (!hasSession) return <Navigate to="/" replace />;
   if (!user) return <Navigate to="/" replace />;
   return (
-    <>
+    <AuthenticatedChrome>
       <Outlet />
       {!isRuninKioskUser(user) && <LeiaWidget />}
       {!isRuninKioskUser(user) && <NewsPopup userId={user?.id} />}
-    </>
+    </AuthenticatedChrome>
   );
 };
 

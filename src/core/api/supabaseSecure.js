@@ -225,8 +225,8 @@ export async function getUsuarioParaLogin(username, senha) {
 
 export async function listarUsuarios() {
   const { data, error } = await supabase
-    .from('usuarios')
-    .select('id, username, role, setor_fixo')
+    .from('usuarios_chat_visiveis')
+    .select('id, username, role, setor_fixo, auth_user_id')
     .order('username');
 
   return { data: data || [], error };
@@ -1094,7 +1094,6 @@ export async function salvarDadosSigaAguardando({ id, diaAbertura, codigoChamado
     return { error: withSigaSchemaHint({ message: err?.message || 'Erro ao salvar dados SIGA.' }) };
   }
 }
-
 
 
 

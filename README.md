@@ -13,6 +13,7 @@ O produto centraliza a rotina operacional que antes ficava dispersa entre papel,
 - indicadores operacionais e exportacao de relatorios
 - administracao de usuarios
 - consulta assistida por IA com a Lei.A
+- chat interno entre usuarios autenticados
 - comunicacao de evolucoes do sistema via Lenovo News
 
 ## Stack atual
@@ -92,6 +93,7 @@ sistema-de-gestao/
 │   │   ├── admin/
 │   │   ├── ai-assistant/
 │   │   ├── auth/
+│   │   ├── chat/
 │   │   ├── dashboard/
 │   │   ├── failures/
 │   │   ├── home/
@@ -171,6 +173,16 @@ Camada principal de dominio, organizada por feature.
 - tool calling via Gemini proxy
 - respostas orientadas ao contexto operacional da planta
 
+#### `chat`
+- conversas internas ponto a ponto entre usuarios autenticados
+- mensagens em tempo real com Supabase Realtime
+- notificacoes de nao lidas por remetente
+- janelas simultaneas no desktop e conversa compacta no mobile
+- integracao direta com a secao `Suporte`
+- criacao automatica de conversa minimizada quando chega mensagem nova
+- leitura tratada quando a janela realmente recebe foco
+- adaptacao visual para `dark` e `light mode`
+
 #### `home`
 - feed de avisos
 - publicacao de aviso por `master`
@@ -199,10 +211,12 @@ Recursos reutilizaveis entre features.
 - `styles/global.css`: estilos globais do projeto
 
 ### `src/components/SupportMenuItem.jsx`
-Componente compartilhado da secao `Suporte`, embutido na navegacao, com usuarios online e offline em tempo real.
+Componente compartilhado da secao `Suporte`, embutido na navegacao, com usuarios online e offline em tempo real, abertura de conversas e badges de mensagens nao lidas.
 
 ### `src/hooks/useOnlineUsers.js`
-Hook compartilhado de presence usando Supabase Realtime.
+Hook compartilhado de presence usando Supabase Realtime, incluindo o mapeamento do `auth_user_id` necessario para abrir conversas entre usuarios.
+
+O hook consome uma camada segura de visibilidade para suporte/chat, permitindo que usuarios autenticados se vejam em `online/offline` sem expor a leitura ampla da tabela principal de perfis nas telas administrativas.
 
 ### `supabase/`
 Fonte de verdade do backend gerenciado.
@@ -211,6 +225,7 @@ Fonte de verdade do backend gerenciado.
 - `MIGRATION_AUTH.sql`: migracao para Supabase Auth
 - `RLS_POLICIES.sql`: politicas de acesso
 - `functions/`: Edge Functions ativas do sistema
+- `migrations/mensagens_chat.sql`: base SQL da feature de chat interno
 
 ## Rotas ativas
 
@@ -229,6 +244,14 @@ Fonte de verdade do backend gerenciado.
 | `/alterar-senha` | Troca de senha |
 | `/admin` | Painel administrativo |
 | `/admin/cockpit` | Cockpit admin resumido |
+
+## Comunicacao interna e novidades
+
+- O item `Suporte` da navegacao concentra usuarios online/offline e o acesso ao chat interno.
+- O chat e aditivo: nao cria rota nova e nao altera o fluxo principal das paginas.
+- Quando chega mensagem nova em conversa ainda nao aberta, o sistema pode criar o chat minimizado como alerta visual.
+- A notificacao de mensagem some quando a janela da conversa realmente recebe foco.
+- O popup de novidades continua aparecendo apenas uma vez por usuario, agora tambem cobrindo a entrega do `LeChat Beta`.
 
 ## Regras de acesso
 
@@ -266,6 +289,11 @@ Outras tabelas usadas no app:
 - `public.usuarios`
 - `public.avisos`
 - `public.historico_concluidas`
+- `public.mensagens_chat`
+
+Camada segura complementar:
+
+- `public.usuarios_chat_visiveis`: view usada por `Suporte` e `LeChat` para listar usuarios visiveis no presence/chat sem abrir a tabela `usuarios` de forma ampla para toda a interface
 
 ## Edge Functions ativas
 
@@ -331,10 +359,11 @@ O sistema de novidades funciona assim:
 - a pagina `/novidades` mostra o historico completo
 - o controle de leitura fica salvo em `usuarios.news_seen_version`
 - a versao publica em uso fica em `public/version.json`
+- a entrega do chat interno foi consolidada no historico como `LeChat Beta`, evitando duplicidade no arquivo de novidades
 
 No estado atual:
 
-- versao mais recente cadastrada: `1.5.0`
+- versao mais recente cadastrada: `1.6.1`
 
 ## Suporte em tempo real
 
@@ -344,6 +373,13 @@ A navegacao possui a secao `Suporte`, que mostra:
 - usuarios offline
 - destaque para o usuario atual
 - sincronizacao por Supabase Presence
+- acesso ao `LeChat` a partir da mesma lista
+
+Regras importantes:
+
+- todos os usuarios autenticados podem se ver no contexto de suporte/chat
+- isso nao significa abrir a tabela principal de usuarios para a gestao de equipe
+- essa separacao e feita pela view `usuarios_chat_visiveis`
 
 Essa secao aparece no desktop e no mobile.
 

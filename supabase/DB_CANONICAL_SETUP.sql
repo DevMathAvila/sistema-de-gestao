@@ -239,6 +239,20 @@ for select
 to authenticated
 using (public.is_admin_or_master());
 
+drop view if exists public.usuarios_chat_visiveis;
+create view public.usuarios_chat_visiveis
+with (security_invoker = true) as
+select
+  id,
+  username,
+  role,
+  setor_fixo,
+  auth_user_id
+from public.usuarios;
+
+revoke all on public.usuarios_chat_visiveis from public;
+grant select on public.usuarios_chat_visiveis to authenticated;
+
 -- usuarios: sem insert/update/delete pelo cliente (edge function com service role)
 
 -- registros_falhas: operacao autenticada

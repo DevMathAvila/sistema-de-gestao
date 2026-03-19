@@ -12,12 +12,42 @@ DROP POLICY IF EXISTS "usuarios_insert_anon" ON public.usuarios;
 DROP POLICY IF EXISTS "usuarios_update_anon" ON public.usuarios;
 DROP POLICY IF EXISTS "usuarios_delete_anon" ON public.usuarios;
 DROP POLICY IF EXISTS "usuarios_select_own" ON public.usuarios;
+DROP POLICY IF EXISTS "usuarios_select_auth" ON public.usuarios;
+DROP POLICY IF EXISTS "usuarios_select_admin_all" ON public.usuarios;
 
--- Apenas o proprio usuario autenticado pode ler seu perfil
+-- Apenas o proprio usuario autenticado pode ler o proprio perfil
 CREATE POLICY "usuarios_select_own"
   ON public.usuarios FOR SELECT
   TO authenticated
   USING (auth.uid() = auth_user_id);
+
+-- Admin e master podem ler todos os perfis para gestao operacional
+CREATE POLICY "usuarios_select_admin_all"
+  ON public.usuarios FOR SELECT
+  TO authenticated
+  USING (
+    exists (
+      select 1
+      from public.usuarios solicitante
+      where solicitante.auth_user_id = auth.uid()
+        and lower(coalesce(solicitante.role, '')) in ('admin', 'master')
+    )
+  );
+
+-- View segura para suporte/chat: expoe somente os campos minimos para online/offline
+drop view if exists public.usuarios_chat_visiveis;
+create view public.usuarios_chat_visiveis
+with (security_invoker = true) as
+select
+  id,
+  username,
+  role,
+  setor_fixo,
+  auth_user_id
+from public.usuarios;
+
+revoke all on public.usuarios_chat_visiveis from public;
+grant select on public.usuarios_chat_visiveis to authenticated;
 
 -- Bloqueia insert/update/delete via cliente
 -- (essas operacoes ficam no Edge Function com service_role)

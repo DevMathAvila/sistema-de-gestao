@@ -1,4 +1,4 @@
-﻿import { LIMITS, sanitizeString } from '../validation/validation';
+import { LIMITS, sanitizeString } from '../validation/validation';
 
 const SESSION_KEY = 'lenovo_user';
 const REMEMBER_USER_KEY = 'lenovo_remember_user';
@@ -17,6 +17,11 @@ function normalizeSetorFixo(value) {
   return setor || null;
 }
 
+function normalizeAuthUserId(value) {
+  const authUserId = sanitizeString(value, 120).trim();
+  return authUserId || null;
+}
+
 export function getSessionUser() {
   try {
     const stored = localStorage.getItem(SESSION_KEY);
@@ -30,6 +35,7 @@ export function getSessionUser() {
       username,
       role: normalizeRole(parsed?.role),
       setor_fixo: normalizeSetorFixo(parsed?.setor_fixo),
+      auth_user_id: normalizeAuthUserId(parsed?.auth_user_id),
     };
   } catch {
     return null;
@@ -45,6 +51,7 @@ export function setSessionUser(user) {
     username,
     role: normalizeRole(user?.role),
     setor_fixo: normalizeSetorFixo(user?.setor_fixo),
+    auth_user_id: normalizeAuthUserId(user?.auth_user_id),
   };
 
   try {

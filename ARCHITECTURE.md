@@ -62,6 +62,7 @@ src/
 │   ├── admin/
 │   ├── ai-assistant/
 │   ├── auth/
+│   ├── chat/
 │   ├── dashboard/
 │   ├── failures/
 │   ├── home/
@@ -92,6 +93,7 @@ Ele concentra:
 - redirecionamentos por role
 - decisao entre fluxo comum e fluxo kiosk
 - injecao do widget da Lei.A e do popup de novidades nos layouts corretos
+- injecao do contexto global de chat nos layouts autenticados fora do kiosk
 
 ### `src/core`
 
@@ -125,10 +127,17 @@ Responsabilidades:
 - `isAdminUser`
 - `isMasterUser`
 - `isRuninKioskUser`
+- preservacao local de `auth_user_id` para recursos em tempo real
 
 #### `src/core/theme`
 
-- `theme.jsx`: provider de tema global com alternancia entre `dark` e `black`
+- `theme.jsx`: provider de shell global
+
+Observacao importante:
+
+- o shell global alterna entre `dark` e `black`
+- varias paginas operacionais usam `usePersistentTheme` para alternancia `dark/light`
+- o `LeChat` acompanha o tema persistido da tela em uso
 
 #### `src/core/validation`
 
@@ -172,7 +181,7 @@ Hoje existe um componente compartilhado fora de `shared`:
 
 - `SupportMenuItem.jsx`
 
-Ele e usado por varias telas para renderizar a secao `Suporte` no menu, conectada ao hook de presence `useOnlineUsers`.
+Ele e usado por varias telas para renderizar a secao `Suporte` no menu, conectada ao hook de presence `useOnlineUsers` e ao contexto global do chat interno.
 
 ## `src/hooks`
 
@@ -184,6 +193,7 @@ Responsabilidade:
 
 - gerenciar o canal de presence `sistema_online`
 - rastrear usuarios online e offline
+- anexar `auth_user_id` ao snapshot compartilhado
 - expor snapshot compartilhado para sidebar e menu mobile
 
 ## Features ativas
@@ -207,6 +217,40 @@ Comportamento real:
 - o perfil operacional vem de `public.usuarios`
 - se `force_password_change` estiver ativo, o usuario precisa trocar a senha antes de seguir
 - a sessao operacional usada pela UI fica persistida localmente
+- a sessao local preserva `auth_user_id` para presence e chat
+
+### `src/features/chat`
+
+Responsavel pela comunicacao interna entre usuarios autenticados sem criar pagina dedicada.
+
+Arquivos principais:
+
+- `ChatContext.jsx`
+- `ChatManager.jsx`
+- `hooks/useChat.js`
+- `hooks/useChatNotificacoes.js`
+- `components/ChatWindow.jsx`
+
+Responsabilidades reais:
+
+- abrir conversas individuais a partir da secao `Suporte`
+- carregar o historico recente entre dois usuarios autenticados
+- receber novas mensagens em tempo real via `postgres_changes`
+- controlar mensagens nao lidas por remetente
+- tocar uma notificacao sonora leve para conversa ainda nao aberta
+- renderizar ate 4 janelas simultaneas no desktop
+- exibir a conversa ativa em formato compacto no mobile
+- criar a conversa minimizada quando uma nova mensagem chega antes da abertura manual
+- tratar leitura apenas quando a janela realmente recebe foco
+- adaptar o visual ao tema ativo da tela
+
+Detalhes estruturais importantes:
+
+- o chat usa `auth_user_id` como identificador canonico entre usuarios
+- o perfil `runin_kiosk` permanece fora do recurso
+- nenhuma rota nova foi criada
+- o contexto do chat nasce em `AppRouter.jsx` apenas nos layouts autenticados
+- o fallback de sincronizacao existe, mas foi mantido mais leve para nao depender de polling agressivo
 
 ### `src/features/failures`
 
@@ -397,10 +441,11 @@ Comportamento real:
 - o dashboard mostra apenas as 2 novidades mais recentes
 - `/novidades` mostra o arquivo completo, mais novas primeiro
 - `public/version.json` permite polling de versao em producao
+- a entrega mais recente do produto agora inclui o `LeChat Beta` no mesmo fluxo de popup por usuario
 
 Versao atual cadastrada:
 
-- `1.5.0`
+- `1.6.1`
 
 ### `src/features/ai-assistant`
 
@@ -443,6 +488,7 @@ Características operacionais atuais:
 - leitura de briefing inicial com dados reais do dashboard
 - widget flutuante e pagina dedicada
 - suporte a respostas com agregacao real de falhas por tipo
+- contexto operacional pode incluir a equipe online no inicio da conversa
 
 ## Rotas e layouts reais
 
@@ -473,6 +519,7 @@ Regras importantes:
 
 - usuarios `runin_kiosk` sao redirecionados para `/abrir-chamado`
 - o widget da Lei.A e o popup de novidades nao aparecem para `runin_kiosk`
+- o chat interno tambem nao e disponibilizado para `runin_kiosk`
 - apenas `admin` e `master` entram nas rotas administrativas
 
 ## Banco de dados e backend
@@ -483,6 +530,7 @@ Regras importantes:
 - `public.registros_falhas`
 - `public.avisos`
 - `public.historico_concluidas`
+- `public.mensagens_chat`
 
 ### Campos importantes de `usuarios`
 
@@ -559,12 +607,29 @@ Regras importantes:
 
 Ele:
 
-- carrega usuarios da tabela `usuarios`
+- carrega usuarios a partir da view `usuarios_chat_visiveis`
 - acompanha presencas online em tempo real
 - separa online e offline
 - prioriza o usuario atual e perfis administrativos na ordenacao visivel
 
-Esse snapshot e consumido por `SupportMenuItem.jsx`.
+Esse snapshot e consumido por `SupportMenuItem.jsx` e tambem alimenta a resolucao de destinatarios do chat interno.
+
+Motivo arquitetural:
+
+- todos os usuarios autenticados precisam se ver em suporte/chat
+- isso nao deve abrir a leitura ampla de `public.usuarios` para telas de gestao
+- por isso o chat usa uma view dedicada e minima para presence e conversa
+
+## Chat interno
+
+- a tabela operacional do recurso e `public.mensagens_chat`
+- a migration da feature fica em `supabase/migrations/mensagens_chat.sql`
+- cada mensagem usa `remetente_id` e `destinatario_id` apontando para `auth.users`
+- o frontend carrega as ultimas 50 mensagens por conversa
+- o unread state e mantido no cliente com base nas linhas `lida = false`
+- mensagens antigas ficam elegiveis a limpeza automatica por `pg_cron`
+- a janela minimizada pode nascer automaticamente como alerta visual de nova mensagem
+- a confirmacao de leitura depende do foco real da janela
 
 ## Ambiente e configuracao
 
@@ -609,5 +674,6 @@ Hoje a suite e pequena e focada em logica utilitaria, nao em fluxo end-to-end.
 - A fonte de verdade da regra de negocio vive majoritariamente em `src/core/api/supabaseSecure.js` e nos services de feature.
 - O app e fortemente orientado a hooks por tela: pagina enxuta, hook com estado e service com integracao.
 - A navegacao mobile e tratada por `AppBottomNav` nas paginas principais.
+- `SupportMenuItem` e `AppBottomNav` agora tambem funcionam como pontos de sinalizacao do chat interno.
 - O endpoint `api/index.js` existe apenas como compatibilidade e responde `410` com mensagem de API legada desativada.
 - Para novas implementacoes, o caminho preferencial continua sendo: `features` para dominio, `shared` para reuso e `core` para infraestrutura.

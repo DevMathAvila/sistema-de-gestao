@@ -3,10 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import LayoutDashboard from 'lucide-react/dist/esm/icons/layout-dashboard';
 import Eye from 'lucide-react/dist/esm/icons/eye';
 import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check';
+import { useChatContext } from '../../../features/chat/ChatContext';
 
 export default function AppBottomNav({ isAdmin = false, theme }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { totalNaoLidas } = useChatContext();
   const resolvedTheme = theme || (typeof window !== 'undefined' ? localStorage.getItem('theme') : null) || 'dark';
   const isDark = resolvedTheme === 'dark';
 
@@ -27,12 +29,13 @@ export default function AppBottomNav({ isAdmin = false, theme }) {
         {items.map((item) => {
           const pathBase = item.path.split('?')[0];
           const active = location.pathname.startsWith(pathBase);
+          const shouldShowChatBadge = totalNaoLidas > 0 && item.key === items[items.length - 1]?.key;
           return (
             <button
               key={item.key}
               type="button"
               onClick={() => navigate(item.path)}
-              className={`h-14 rounded-2xl flex flex-col items-center justify-center border transition-all active:scale-95 ${
+              className={`relative h-14 rounded-2xl flex flex-col items-center justify-center border transition-all active:scale-95 ${
                 active
                   ? 'border-red-300/70 bg-gradient-to-b from-red-500/95 to-red-700/85 text-white shadow-[0_10px_24px_rgba(220,38,38,0.45)]'
                   : isDark
@@ -40,6 +43,11 @@ export default function AppBottomNav({ isAdmin = false, theme }) {
                     : 'border-slate-300 bg-white text-slate-900 hover:text-black hover:border-red-300 hover:bg-red-50'
               }`}
             >
+              {shouldShowChatBadge && (
+                <span className="absolute right-3 top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black text-white shadow-[0_8px_18px_rgba(239,68,68,0.35)]">
+                  {totalNaoLidas > 99 ? '99+' : totalNaoLidas}
+                </span>
+              )}
               <item.icon size={18} />
               <span className="text-[10px] font-black uppercase tracking-wide mt-1">{item.label}</span>
             </button>

@@ -5,9 +5,44 @@
 // 3. Atualize public/version.json com a mesma versao
 // 4. Faca o deploy - o popup aparecera automaticamente para todos os usuarios logados
 
-export const NEWS_VERSION_LATEST = '1.5.0';
+export const NEWS_VERSION_LATEST = '1.6.1';
 
 export const NEWS_DATA = [
+  {
+    version: '1.6.1',
+    date: '2026-03-19',
+    title: 'LeChat Beta liberado para testes internos',
+    type: 'feature',
+    summary: 'O novo chat interno do sistema ja esta liberado para uso em fase beta, com conversas em tempo real, alertas visuais e evolucao continua conforme os testes da operacao.',
+    items: [
+      'LeChat Beta liberado para todos os usuarios autenticados do sistema',
+      'Conversas em tempo real com suporte a alertas de mensagens nao lidas',
+      'Chats podem nascer minimizados como notificacao visual quando chega nova mensagem',
+      'Recurso em fase de testes, sujeito a pequenos ajustes e refinamentos',
+    ],
+    details: `
+O **LeChat Beta** ja esta liberado no Lenovo Assets Systems para uso interno da equipe.
+
+**O que e o LeChat:**
+- Um recurso novo de conversa direta entre usuarios dentro do proprio sistema.
+- Ele foi criado para facilitar contato rapido entre colaboradores, tecnicos, admins e demais perfis autenticados.
+
+**Como funciona hoje:**
+- O chat pode ser aberto pela area de **Suporte**, usando a lista de usuarios online e offline.
+- Mensagens novas podem gerar alerta visual no proprio chat, inclusive em formato minimizado.
+- A leitura da conversa e tratada no momento em que a janela realmente recebe foco.
+
+**Status atual:**
+- O recurso esta em **versao beta**.
+- Ja pode ser utilizado normalmente no dia a dia.
+- Como ainda esta em fase de testes, podem acontecer pequenos erros, ajustes de comportamento ou refinamentos visuais ao longo das proximas atualizacoes.
+
+**Por que estamos liberando agora:**
+- Para validar o uso real com a operacao.
+- Para entender melhor o fluxo de comunicacao entre os usuarios.
+- Para evoluir o recurso com base no uso pratico, sem esperar uma versao totalmente fechada.
+    `,
+  },
   {
     version: '1.5.0',
     date: '2026-03-19',

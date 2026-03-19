@@ -26,6 +26,11 @@ function normalizeRole(value) {
   return role || '—';
 }
 
+function normalizeAuthUserId(value) {
+  const authUserId = String(value || '').trim();
+  return authUserId || null;
+}
+
 function getCurrentSnapshot() {
   const onlineIds = new Set(sharedState.onlineUsers.map((item) => item.id).filter((id) => id != null));
   const offlineUsers = sharedState.presenceUnavailable
@@ -54,6 +59,17 @@ function compareOnlineUsers(a, b, currentUserId) {
   return normalizeName(a.nome).localeCompare(normalizeName(b.nome), 'pt-BR', { sensitivity: 'base' });
 }
 
+function findUserDetails(metaUser) {
+  const metaId = metaUser?.id ?? null;
+  const metaName = normalizeName(metaUser?.nome);
+  const metaRole = normalizeRole(metaUser?.role);
+
+  return sharedState.allUsers.find((item) => (
+    (metaId != null && item?.id === metaId)
+    || (normalizeName(item?.nome) === metaName && normalizeRole(item?.role) === metaRole)
+  )) || null;
+}
+
 function mapPresenceUsers(presenceState, currentUserId) {
   const deduped = new Map();
 
@@ -61,10 +77,12 @@ function mapPresenceUsers(presenceState, currentUserId) {
     const metas = Array.isArray(entry) ? entry : [];
 
     metas.forEach((meta) => {
+      const userDetails = findUserDetails(meta);
       const user = {
-        id: meta?.id ?? null,
-        nome: normalizeName(meta?.nome),
-        role: normalizeRole(meta?.role),
+        id: meta?.id ?? userDetails?.id ?? null,
+        nome: normalizeName(meta?.nome || userDetails?.nome),
+        role: normalizeRole(meta?.role || userDetails?.role),
+        auth_user_id: normalizeAuthUserId(meta?.auth_user_id || userDetails?.auth_user_id),
       };
 
       const dedupeKey = user.id ?? `${user.nome}-${user.role}`;
@@ -86,6 +104,7 @@ async function loadAllUsers() {
       id: item?.id ?? null,
       nome: normalizeName(item?.username),
       role: normalizeRole(item?.role),
+      auth_user_id: normalizeAuthUserId(item?.auth_user_id),
     }));
     notifyListeners();
   } catch {
@@ -172,6 +191,7 @@ function startSharedPresence(currentUser) {
           id: currentUser?.id ?? null,
           nome: normalizeName(currentUser?.username),
           role: normalizeRole(currentUser?.role),
+          auth_user_id: normalizeAuthUserId(currentUser?.auth_user_id),
           joined_at: new Date().toISOString(),
         });
       } catch {

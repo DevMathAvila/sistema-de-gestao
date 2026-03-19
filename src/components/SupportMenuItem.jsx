@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle';
 import Users from 'lucide-react/dist/esm/icons/users';
 import { useOnlineUsers } from '../hooks/useOnlineUsers';
+import { useChatContext } from '../features/chat/ChatContext';
 
 function normalizeName(value) {
   const text = String(value || '').trim();
@@ -39,9 +41,18 @@ function getInitials(name) {
   return parts.map((part) => part.charAt(0).toUpperCase()).join('');
 }
 
-function SupportUserRow({ user, currentUserId, isDark, online, expandable }) {
+function SupportUserRow({
+  user,
+  currentUserId,
+  isDark,
+  online,
+  expandable,
+  abrirChat,
+  unreadCount = 0,
+}) {
   const isCurrentUser = currentUserId != null && user?.id === currentUserId;
   const displayName = normalizeName(user?.nome);
+  const canChat = !isCurrentUser && Boolean(user?.auth_user_id);
 
   return (
     <div className={`flex items-center gap-2 py-1.5 ${online ? '' : 'opacity-55'} ${expandable ? 'cursor-default' : ''}`}>
@@ -57,6 +68,29 @@ function SupportUserRow({ user, currentUserId, isDark, online, expandable }) {
       }`}>
         {displayName}{isCurrentUser ? ' (Voce)' : ''}
       </p>
+      <button
+        type="button"
+        disabled={!canChat}
+        onClick={() => {
+          if (!canChat) return;
+          abrirChat(user);
+        }}
+        className={`relative inline-flex h-8 w-8 items-center justify-center rounded-xl border transition ${
+          canChat
+            ? isDark
+              ? 'border-white/10 bg-white/[0.04] text-slate-200 hover:border-red-400/40 hover:bg-red-500/10 hover:text-white'
+              : 'border-slate-200 bg-white text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700'
+            : 'cursor-not-allowed border-transparent bg-transparent text-slate-500'
+        }`}
+        aria-label={canChat ? `Abrir chat com ${displayName}` : `Chat indisponivel para ${displayName}`}
+      >
+        <MessageCircle size={14} />
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
     </div>
   );
 }
@@ -69,6 +103,7 @@ export default function SupportMenuItem({
   iconSize = 18,
 }) {
   const { onlineUsers, offlineUsers, totalOnline } = useOnlineUsers();
+  const { abrirChat, naoLidasPorUsuario, totalNaoLidas } = useChatContext();
   const [open, setOpen] = useState(false);
   const [supportsHover, setSupportsHover] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
@@ -146,6 +181,11 @@ export default function SupportMenuItem({
         <Users size={iconSize} />
         <span className="flex-1 leading-tight">Suporte</span>
         <span className="ml-auto flex items-center gap-2">
+          {totalNaoLidas > 0 && (
+            <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black text-white transition-all duration-200">
+              {totalNaoLidas > 99 ? '99+' : totalNaoLidas}
+            </span>
+          )}
           <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black text-white">
             {totalOnline}
           </span>
@@ -183,6 +223,8 @@ export default function SupportMenuItem({
                 isDark={isDark}
                 online
                 expandable={supportsHover}
+                abrirChat={abrirChat}
+                unreadCount={naoLidasPorUsuario?.[user?.auth_user_id] || 0}
               />
             )) : (
               <p className={`py-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -211,6 +253,8 @@ export default function SupportMenuItem({
                 isDark={isDark}
                 online={false}
                 expandable={supportsHover}
+                abrirChat={abrirChat}
+                unreadCount={naoLidasPorUsuario?.[user?.auth_user_id] || 0}
               />
             )) : (
               <p className={`py-2 text-sm opacity-50 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>

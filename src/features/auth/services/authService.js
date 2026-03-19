@@ -88,6 +88,7 @@ export async function authenticateUser(username, password) {
     username: profile.username,
     role: profile.role,
     setor_fixo: profile?.setor_fixo || null,
+    auth_user_id: profile?.auth_user_id || data.user.id,
   });
   if (!saved) throw new Error('Nao foi possivel criar a sessao.');
 
