@@ -696,7 +696,7 @@ export function computeDashboardMetrics(
 
   const tempoSemManutencao = computeTempoSemManutencao(concluidasRows || []);
   const atendimentoGeralResumo = computeAtendimentoGeral(concluidasRows || []);
-  const inoperantesAbertosResumo = (abertasRows || [])
+  const inoperantesAbertosResumo = (abertasParaDestaque || [])
     .filter((item) => Boolean(item?.ponto_inoperante) && isOpenRecord(item))
     .map((item) => {
       const inicio = item?.inoperante_em || item?.data;
