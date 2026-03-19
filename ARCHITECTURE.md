@@ -1,344 +1,613 @@
 # ARCHITECTURE
 
-## Objetivo
+## Finalidade deste documento
 
-Este documento serve como base de conhecimento do projeto para outras IAs e para onboarding tecnico. O foco principal e descrever apenas a arquitetura funcional atual, separando explicitamente o que parece legado, duplicado ou fora da arvore principal de execucao.
+Este arquivo descreve a arquitetura atual e ativa do Lenovo Assets Systems com base no codigo real do projeto. O objetivo e permitir onboarding tecnico rapido, manutencao segura e continuidade do produto por outra pessoa ou outra IA sem depender de contexto historico oral.
 
-## Resumo Executivo
+Este documento evita deliberadamente descrever fluxo legado como se ainda fosse a arquitetura principal.
 
-- Projeto frontend em `React 18 + Vite 5`, escrito em `JavaScript/JSX`, sem TypeScript.
-- A arquitetura atual esta organizada majoritariamente por dominio em `src/features`, com infraestrutura em `src/core` e compartilhados em `src/shared`.
-- O app usa `Supabase` como backend principal: `Auth`, tabelas em `public`, `RLS` e `Edge Functions`.
-- O frontend faz a maior parte das leituras e escritas diretamente via `src/core/api/supabaseSecure.js`.
-- O sistema de novidades e onboarding de produto vive em `src/features/news`, com popup, cards resumidos no dashboard e arquivo historico dedicado em `/novidades`.
-- Existe uma camada antiga/duplicada em `src/components`, `src/hooks`, `src/services`, `src/utils`, `server/` e `api/`, mas ela nao faz parte do fluxo principal do app renderizado hoje.
+## Visao geral da arquitetura
 
-## Higienizacao de Contexto
+O sistema e um frontend React com backend gerenciado no Supabase.
 
-### Itens que parecem ativos e devem guiar novas IAs
+A aplicacao esta organizada em quatro blocos principais:
 
-- `src/main.jsx`
-- `src/App.jsx`
-- `src/app/router/`
-- `src/core/`
-- `src/features/`
-- `src/shared/`
-- `supabase/`
-- `docs/SEGURANCA.md` apenas como referencia historica, com ressalvas de desatualizacao
+- `src/app`: bootstrap e roteamento
+- `src/core`: infraestrutura transversal
+- `src/features`: regras e interfaces por dominio
+- `src/shared`: componentes e utilitarios compartilhados
 
-### Candidatos fortes a legado, duplicacao ou uso residual
+O backend operacional esta no Supabase, usando:
 
-Arquivos abaixo nao entram no fluxo principal do bundle frontend atual, ou existem como versoes anteriores de modulos hoje reescritos:
+- PostgreSQL
+- Supabase Auth
+- Realtime Presence
+- Edge Functions
+- politicas RLS
 
-- `src/components/admin/AdminHistorySection.jsx`
-- `src/components/admin/AdminStatsSection.jsx`
-- `src/components/admin/AdminUsersSection.jsx`
-- `src/components/alterar-senha/PasswordStrengthBar.jsx`
-- `src/components/layout/AppMobileHeader.jsx`
-- `src/components/layout/AppMobileMenu.jsx`
-- `src/components/layout/AppSidebar.jsx`
-- `src/components/login/LoginFormCard.jsx`
-- `src/components/registrar/FalhasSelector.jsx`
-- `src/components/registrar/PontosSelector.jsx`
-- `src/components/registrar/TraveSelector.jsx`
-- `src/components/visualizar-falhas/AlertsPanel.jsx`
-- `src/components/visualizar-falhas/FalhaResolutionModal.jsx`
-- `src/components/visualizar-falhas/SetorFalhasList.jsx`
-- `src/hooks/forms/useLoginForm.js`
-- `src/hooks/forms/usePasswordUpdate.js`
-- `src/hooks/forms/useRegistrarForm.js`
-- `src/hooks/services/useAdminApi.js`
-- `src/hooks/services/useFalhasApi.js`
-- `src/hooks/useFabricaStatusData.js`
-- `src/hooks/useThemeMode.jsx`
-- `src/hooks/useUiChrome.js`
-- `src/services/api/failuresService.js`
-- `src/services/http/apiClient.js`
-- `src/utils/session.js`
-- `src/utils/uiClasses.js`
-- `src/utils/validation.js`
-- `src/utils/visualizarFalhasUtils.js`
-- `src/core/theme/theme.js` como reexport residual; o app usa `theme.jsx`
-- `server/api/handler.js`
-- `server/services/supabaseSecureService.js`
-- `server/config/supabaseClient.js`
-- `server/constants/`
-- `api/index.js` como camada de compatibilidade Vercel; nao e consumida pelo frontend atual
+## Fluxo geral de execucao
 
-### Arquivos de teste e referencia que apontam para modulos nao usados pela aplicacao
+### Entrada do app
 
-- `tests/dashboardMetrics.test.mjs` testa `src/features/dashboard/services/dashboardMetrics.js`, mas o app atual usa `dashboardAnalyticsService.js`
-- `tests/failureUtils.test.mjs` testa `src/features/failures/services/failureUtils.js`, mas o app atual usa `failuresService.js`
-- `src/features/dashboard/services/dashboardMetrics.js` parece modulo antigo, hoje substituido por `src/features/dashboard/services/dashboardAnalyticsService.js`
-- `src/features/failures/services/failureUtils.js` parece modulo antigo, hoje substituido por funcoes consolidadas em `src/features/failures/services/failuresService.js`
-- `docs/SEGURANCA.md` menciona caminhos antigos como `src/lib/validation.js` e `src/services/supabaseSecure.js`
-- `scripts/lint.mjs` espera que parte da API legada ja tenha sido removida, mas esses arquivos ainda existem
+1. `src/main.jsx` monta `React.StrictMode`
+2. `ThemeProvider` e carregado
+3. `BrowserRouter` envolve a aplicacao
+4. `src/App.jsx` renderiza `AppRouter`
+5. `src/app/router/AppRouter.jsx` decide layout, guardas de sessao e pagina final
 
-### Observacoes de confiabilidade
+### Fluxo de dados dominante
 
-- Para gerar novos arquivos, usar como fonte de verdade a estrutura `src/app + src/core + src/features + src/shared`.
-- Nao usar `src/components`, `src/hooks`, `src/services`, `src/utils` ou `server/` como padrao para novas implementacoes, a menos que a tarefa seja explicitamente uma migracao legada.
+1. pagina chama hook da feature
+2. hook chama service da feature ou `supabaseSecure`
+3. `src/core/api/supabaseSecure.js` valida, sanitiza e consulta o Supabase
+4. o resultado volta ao hook
+5. a pagina renderiza o estado final
 
-## Mapa da Estrutura Atual
+Esse e o fluxo mais comum do projeto inteiro.
 
-### Raiz
+## Mapa real da arvore principal
 
-- `src/`: frontend principal e arvore funcional do app
-- `supabase/`: SQL canonico, migracoes, politicas RLS e Edge Functions
-- `tests/`: testes unitarios pontuais; atualmente parcialmente desatualizados
-- `scripts/`: scripts de validacao/guardrails e migracao auxiliar
-- `docs/`: documentacao de apoio
-- `api/`: endpoint Vercel legado/compatibilidade
-- `server/`: camada server-side antiga/duplicada, nao usada pelo frontend atual
-- `dist/`: artefatos gerados de build
+```text
+src/
+├── App.jsx
+├── main.jsx
+├── app/router/AppRouter.jsx
+├── components/SupportMenuItem.jsx
+├── core/
+│   ├── api/
+│   ├── auth/
+│   ├── theme/
+│   └── validation/
+├── features/
+│   ├── admin/
+│   ├── ai-assistant/
+│   ├── auth/
+│   ├── dashboard/
+│   ├── failures/
+│   ├── home/
+│   ├── monitoring/
+│   └── news/
+├── hooks/useOnlineUsers.js
+└── shared/
+    ├── components/
+    ├── constants/
+    ├── hooks/
+    └── styles/
+```
 
-## Responsabilidade por Diretorio
+## Responsabilidade por camada
 
-### `src/app/`
+### `src/app`
 
-- Contem a organizacao de alto nivel da aplicacao.
-- Hoje a responsabilidade central esta em `src/app/router/AppRouter.jsx`.
-- Se uma nova pagina precisar de rota, este e o ponto de integracao principal.
+Responsavel pela composicao macro do app.
 
-### `src/core/`
+Hoje o ponto central e:
 
-- Infraestrutura transversal do app.
-- `api/`: cliente Supabase e camada segura de acesso a dados.
-- `auth/`: persistencia de sessao local, helpers de papel/permissao e leitura do usuario logado.
-- `theme/`: provider global de tema e hook de contexto.
-- `validation/`: sanitizacao e validacoes base reutilizadas por servicos.
+- `src/app/router/AppRouter.jsx`
 
-### `src/features/`
+Ele concentra:
 
-- Camada principal de dominio.
-- Cada subdiretorio concentra pagina, hook, servicos, constantes, componentes e estilos da propria feature.
-- Esse e o lugar preferencial para criar novas regras de negocio, hooks de tela e componentes especificos de um dominio.
+- layouts protegidos
+- lazy loading de paginas
+- redirecionamentos por role
+- decisao entre fluxo comum e fluxo kiosk
+- injecao do widget da Lei.A e do popup de novidades nos layouts corretos
 
-Subdominios atuais:
+### `src/core`
 
-- `admin/`: gestao de usuarios, pareto, historico, importacao/exportacao e cockpit admin
-- `ai-assistant/`: widget flutuante, chat dedicado e integracao com Edge Function Gemini
-- `auth/`: login, troca de senha e logout
-- `dashboard/`: KPI, agregacoes, filtros, PDF executivo/completo e analiticos
-- `failures/`: registro, visualizacao, conclusao, inoperantes, SIGA e kiosk
-- `home/`: avisos, pagina inicial e contato
-- `monitoring/`: painel TV operacional
-- `news/`: popup de novidades, cards resumidos no dashboard e arquivo historico em `/novidades`
+Infraestrutura comum a todas as features.
 
-### `src/shared/`
+#### `src/core/api`
 
-- Recursos reutilizaveis entre features.
-- `components/`: componentes cross-feature, como navegacao mobile e filtros de data.
-- `constants/`: listas mestre como setores e falhas comuns.
-- `hooks/`: hooks simples e genericos reutilizados em varias features.
-- `styles/`: CSS global.
+- `supabaseClient.js`: cliente base do Supabase usando `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`
+- `supabaseSecure.js`: camada principal de dados do sistema
 
-### `supabase/`
+Responsabilidades de `supabaseSecure.js`:
 
-- Fonte de verdade do backend gerenciado.
-- `DB_CANONICAL_SETUP.sql`: setup principal esperado do banco.
-- `MIGRATION_AUTH.sql`: migracao relacionada a Auth.
-- `RLS_POLICIES.sql`: politicas de seguranca e regras de acesso.
-- `functions/`: Edge Functions administrativas e de suporte.
+- validacao e sanitizacao de entrada
+- normalizacao de datas em timezone Brasil
+- operacoes de falhas abertas e concluidas
+- operacoes de pontos inoperantes
+- operacoes de SIGA
+- leitura e escrita de avisos
+- listagem de usuarios e funcoes correlatas
+- regras operacionais de restricao por role
 
-### `scripts/`
+#### `src/core/auth`
 
-- Guardrails e utilitarios operacionais.
-- `lint.mjs` hoje funciona mais como auditor de migracao/seguranca do que como lint tradicional.
-- `migrate-users-to-auth.js` apoia migracao de usuarios para Supabase Auth.
+- `session.js`: sessao local em `localStorage`, leitura do usuario logado e helpers de role
 
-### `tests/`
+Responsabilidades:
 
-- Testes unitarios em `node:test`.
-- Hoje a pasta mistura cobertura valida com cobertura sobre modulos antigos.
-- Antes de expandir a suite, vale alinhar os testes aos modulos ativos em `dashboardAnalyticsService.js` e `failuresService.js`.
+- `getSessionUser`
+- `setSessionUser`
+- `clearSessionData`
+- `isAdminUser`
+- `isMasterUser`
+- `isRuninKioskUser`
 
-## Entradas e Fluxos Principais
+#### `src/core/theme`
 
-### Frontend
+- `theme.jsx`: provider de tema global com alternancia entre `dark` e `black`
 
-- Entrada do app: `src/main.jsx`
-- Shell raiz: `src/App.jsx`
-- Roteamento principal: `src/app/router/AppRouter.jsx`
+#### `src/core/validation`
 
-### Rotas ativas
+- `validation.js`: funcoes de validacao e sanitizacao utilizadas pelo app
 
-- `/`: login
-- `/dashboard`: dashboard principal
-- `/novidades`: arquivo completo de novidades do sistema
-- `/home`: pagina inicial de avisos
-- `/fale-conosco`: contato
-- `/registrar`: registro manual de falhas
-- `/visualizar`: monitor e mesa de trabalho de falhas
-- `/monitor-tv`: painel operacional em modo monitor
-- `/abrir-chamado`: entrada autenticada; kiosk cai aqui
-- `/alterar-senha`: troca de senha
-- `/admin`: painel administrativo
-- `/admin/cockpit`: cockpit admin
+## `src/shared`
 
-### Regras de acesso
+Camada de reuso transversal.
 
-- O roteador diferencia:
+### `src/shared/components`
+
+- `filters/DateRangePicker.jsx`
+- `layout/AppBottomNav.jsx`
+
+### `src/shared/constants`
+
+Fontes de verdade compartilhadas:
+
+- `setores.js`
+- `falhasComuns.js`
+
+`setores.js` define a lista oficial de setores operacionais do app:
+
+- `Runin 01` a `Runin 10`
+- `AVT 01` a `AVT 10`
+
+`falhasComuns.js` define a lista padrao de insumos/falhas usadas no registro.
+
+### `src/shared/hooks`
+
+- `useBodyScrollLock.js`
+- `usePersistentTheme.js`
+
+### `src/shared/styles`
+
+- `global.css`
+
+## `src/components`
+
+Hoje existe um componente compartilhado fora de `shared`:
+
+- `SupportMenuItem.jsx`
+
+Ele e usado por varias telas para renderizar a secao `Suporte` no menu, conectada ao hook de presence `useOnlineUsers`.
+
+## `src/hooks`
+
+Hoje existe um hook transversal fora de `shared`:
+
+- `useOnlineUsers.js`
+
+Responsabilidade:
+
+- gerenciar o canal de presence `sistema_online`
+- rastrear usuarios online e offline
+- expor snapshot compartilhado para sidebar e menu mobile
+
+## Features ativas
+
+### `src/features/auth`
+
+Responsavel por autenticacao e troca de senha.
+
+Arquivos principais:
+
+- `services/authService.js`
+- `hooks/useLoginPage.js`
+- `hooks/useChangePasswordPage.js`
+- `pages/LoginPage.jsx`
+- `pages/AlterarSenhaPage.jsx`
+
+Comportamento real:
+
+- login usa Supabase Auth
+- `username` e convertido para email `@lenovo.app`
+- o perfil operacional vem de `public.usuarios`
+- se `force_password_change` estiver ativo, o usuario precisa trocar a senha antes de seguir
+- a sessao operacional usada pela UI fica persistida localmente
+
+### `src/features/failures`
+
+E o dominio mais importante do sistema.
+
+Arquivos principais:
+
+- hooks:
+  - `useRegistrarFalhaPage.js`
+  - `useVisualizarFalhasPage.js`
+  - `useFabricaStatusPage.js`
+  - `useRuninKioskPage.js`
+- services:
+  - `failuresService.js`
+- constants:
+  - `failureConstants.js`
+- pages:
+  - `RegistrarFalhaPage.jsx`
+  - `VisualizarFalhasPage.jsx`
+  - `FabricaStatusPage.jsx`
+  - `RuninKioskPage.jsx`
+
+Responsabilidades reais:
+
+- abertura de chamado por setor, trave e ponto
+- leitura de chamados abertos por setor
+- kiosk travado em setor fixo
+- fechamento total ou parcial de falhas
+- marcacao de ponto inoperante
+- reativacao de inoperante
+- envio de falhas para SIGA
+- finalizacao de atendimento SIGA
+- historico recente por ponto
+- classificacao operacional por trave e por insumo
+
+Detalhes estruturais importantes:
+
+- `Runin` usa ate 23 traves e 15 pontos por trave
+- `AVT` usa uma trave logica unica e 48 pontos
+- o service conta falhas reais separando falhas combinadas por registro
+- o mapa de visualizacao trata parada total de trave por labels como `inteira`, `1-15`, `1-48`
+
+### `src/features/dashboard`
+
+Responsavel pelos indicadores operacionais e exportacao de relatorios.
+
+Arquivos principais:
+
+- `hooks/useDashboardKpi.js`
+- `hooks/useDashboardPage.js`
+- `services/dashboardAnalyticsService.js`
+- `services/dashboardExecutivePdfService.js`
+- `services/dashboardPdfReportService.js`
+- `components/DashboardKPI.jsx`
+- `components/DashboardCharts.jsx`
+- `components/DashboardAgingTable.jsx`
+- `components/DashboardHistoricalPoints.jsx`
+- `components/DashboardExecutivePdfDocument.jsx`
+- `pages/DashboardPage.jsx`
+
+Arquitetura interna:
+
+- `useDashboardKpi` busca datasets e aplica cache em memoria
+- `fetchDashboardDataset` consolida os datasets principais do periodo
+- `computeDashboardMetrics` deriva as metricas consumidas pela UI e pelos PDFs
+- `DashboardKPI.jsx` organiza tabs, filtros e exportacao
+- `DashboardPage.jsx` e a home protegida do sistema, incluindo Lenovo News
+
+Datasets usados no KPI:
+
+- `kpiRows`
+- `concluidasRows`
+- `abertasRows`
+- `abertasAtuaisRows`
+- `inseridosRows`
+
+Metricas geradas pelo analytics:
+
+- total geral, pendentes, concluidas
+- chamados inseridos no sistema
+- taxa de conversao
+- distribuicao por tipo operacional
+- ranking de falhas
+- insights por setor
+- historico por ponto
+- aging de pendencias
+- resumo SIGA
+- pontos inoperantes
+- tempo medio entre manutencoes
+- tempo medio de atendimento
+- executive highlight
+
+Fluxos de PDF existentes:
+
+- executivo: `dashboardExecutivePdfService.js`
+- HTML/impressao: `dashboardPdfReportService.js`
+
+### `src/features/admin`
+
+Responsavel por operacao administrativa.
+
+Arquivos principais:
+
+- `services/adminService.js`
+- `hooks/useAdminPage.js`
+- `hooks/useAdminCockpit.js`
+- `components/AdminUsersTab.jsx`
+- `components/AdminStatsTab.jsx`
+- `components/AdminHistoryTab.jsx`
+- `pages/AdminPage.jsx`
+- `pages/AdminCockpitPage.jsx`
+
+Responsabilidades reais:
+
+- listar usuarios
+- criar usuario por Edge Function
+- remover usuario por Edge Function
+- importar historico concluido via Excel
+- exportar historico concluido e aberto em Excel
+- gerar pareto de falhas
+- consultar historico concluido e aberto por periodo
+- cockpit com leitura diaria resumida
+
+Observacao arquitetural:
+
+- `adminService.js` usa Edge Function como primeira opcao e fallback SQL/RLS quando aplicavel
+- remocao de usuario e restrita a `master`
+
+### `src/features/home`
+
+Responsavel pelo feed de avisos e atalhos operacionais.
+
+Arquivos principais:
+
+- `services/homeService.js`
+- `hooks/useHomePage.js`
+- `pages/HomePage.jsx`
+- `pages/FaleConoscoPage.jsx`
+
+Responsabilidades:
+
+- carregar avisos
+- publicar aviso quando o usuario e `master`
+- classificar urgencia do aviso pela propria mensagem
+- expor atalhos de abertura por setor
+
+### `src/features/monitoring`
+
+Responsavel pela tela de TV operacional.
+
+Arquivos principais:
+
+- `services/monitorService.js`
+- `hooks/useMonitorTvPage.js`
+- `pages/MonitorTvPage.jsx`
+
+Comportamento atual:
+
+- busca falhas abertas diretamente na tabela `registros_falhas`
+- consolida alertas por setor
+- destaca parada critica quando ha parada total de trave
+- faz polling a cada 5 segundos
+
+Observacao importante:
+
+- o painel atual de monitoramento e simples e consolidado por setor
+- ele nao representa um mapa fisico detalhado da planta
+
+### `src/features/news`
+
+Responsavel pelo historico de novidades do produto.
+
+Arquivos principais:
+
+- `constants/newsData.js`
+- `constants/newsMeta.js`
+- `hooks/useNews.js`
+- `components/NewsPopup.jsx`
+- `components/NewsDetailModal.jsx`
+- `components/LenovoNewsLogo.jsx`
+- `pages/NewsArchivePage.jsx`
+
+Comportamento real:
+
+- `NEWS_DATA` e cadastro manual das novidades
+- `NEWS_VERSION_LATEST` define a versao viva do momento
+- o popup consulta `usuarios.news_seen_version`
+- o dashboard mostra apenas as 2 novidades mais recentes
+- `/novidades` mostra o arquivo completo, mais novas primeiro
+- `public/version.json` permite polling de versao em producao
+
+Versao atual cadastrada:
+
+- `1.5.0`
+
+### `src/features/ai-assistant`
+
+Responsavel pela Lei.A.
+
+Arquivos principais:
+
+- `constants/aiSystemPrompt.js`
+- `hooks/useAIAssistant.js`
+- `services/aiService.js`
+- `services/aiTools.js`
+- `components/LeiaWidget.jsx`
+- `components/LeiaBubble.jsx`
+- `components/LeiaChatPanel.jsx`
+- `components/LeiaMessage.jsx`
+- `pages/AIAssistantPage.jsx`
+
+Fluxo real da Lei.A:
+
+1. o usuario envia uma mensagem
+2. `useAIAssistant` adiciona a mensagem ao historico
+3. `aiService.generateAssistantTurn` envia a requisicao para a Edge Function `gemini-proxy`
+4. o Gemini pode devolver texto ou `functionCall`
+5. `useAIAssistant.executeTool` executa a tool local correspondente
+6. o resultado da tool retorna como `functionResponse`
+7. o Gemini gera a resposta final
+
+Tools declaradas hoje:
+
+- `query_registros_falhas`
+- `query_pontos_inoperantes`
+- `query_avisos`
+- `query_dashboard_kpis`
+- `query_historico_concluidas`
+
+Características operacionais atuais:
+
+- uso de `gemini-2.5-flash`
+- prompt orientado a inferencia automatica para consultas de leitura
+- leitura de briefing inicial com dados reais do dashboard
+- widget flutuante e pagina dedicada
+- suporte a respostas com agregacao real de falhas por tipo
+
+## Rotas e layouts reais
+
+`AppRouter.jsx` define quatro layouts:
+
 - `PublicOnlyLayout`
 - `AuthenticatedLayout`
 - `NonKioskLayout`
 - `AdminLayout`
 
-- `runin_kiosk` e redirecionado para `/abrir-chamado`
-- `admin` e `master` recebem acesso administrativo
-- `colaborador` e `runin_kiosk` possuem restricoes de manutencao/escrita em partes do fluxo
+Rotas ativas:
 
-## Stack Principal
+- `/`
+- `/dashboard`
+- `/home`
+- `/fale-conosco`
+- `/registrar`
+- `/visualizar`
+- `/monitor-tv`
+- `/assistente`
+- `/novidades`
+- `/abrir-chamado`
+- `/alterar-senha`
+- `/admin`
+- `/admin/cockpit`
 
-### Runtime e UI
+Regras importantes:
 
-- `React 18`
-- `React Router DOM 6`
-- `Vite 5`
-- `Tailwind CSS 3`
-- `lucide-react`
+- usuarios `runin_kiosk` sao redirecionados para `/abrir-chamado`
+- o widget da Lei.A e o popup de novidades nao aparecem para `runin_kiosk`
+- apenas `admin` e `master` entram nas rotas administrativas
 
-### Dados, backend e seguranca
+## Banco de dados e backend
 
-- `@supabase/supabase-js`
-- `Supabase Auth`
-- `Supabase Database`
-- `Supabase Edge Functions`
-- `RLS` via SQL em `supabase/RLS_POLICIES.sql`
-
-### Relatorios e exportacao
-
-- `recharts`
-- `jspdf`
-- `html-to-image`
-- `xlsx`
-
-## Convencoes e Padroes de Escrita
-
-### Organizacao
-
-- Estrutura por dominio em `src/features/<feature>`
-- Infra compartilhada em `src/core`
-- Reuso cross-feature em `src/shared`
-
-### Componentes e hooks
-
-- Componentes React em `function ComponentName() {}` ou `export default function ComponentName() {}`
-- Hooks customizados com prefixo `use`
-- Hooks de tela concentram estado, side effects, navegacao e integracao com servicos
-- Paginas tendem a ficar mais declarativas e consumir um unico hook-viewmodel
-
-### Exports
-
-- `default export` para paginas e muitos componentes React
-- `named exports` para hooks, helpers e servicos
-
-### Estilo de codigo
-
-- ES Modules com imports relativos
-- Nomes de dominio em portugues
-- Convenções de nomeacao:
-- `Page` para paginas
-- `Service` para integracoes/logica de negocio
-- `Tab`, `Board`, `Modal`, `Section` para componentes de interface
-- `useXPage` ou `useX` para hooks
-
-### Estado e dados
-
-- `useState`, `useEffect`, `useMemo`, `useCallback`
-- `React.lazy` + `Suspense` para code splitting de paginas e blocos pesados
-- Cache manual simples em memoria/localStorage em alguns hooks e servicos
-- Tema persistido em `localStorage`
-- Sessao operacional persistida em `localStorage`
-
-### UI e theming
-
-- Tailwind com muitas classes inline
-- Tema `dark/light` por hook local em features e `ThemeProvider` no root
-- Visual language fortemente customizada, orientada a cards, badges e dashboards
-- A feature `news` usa `src/features/news/constants/newsData.js` como cadastro manual de novidades; o dashboard consome apenas as 2 mais recentes e a rota `/novidades` monta o historico completo com as novidades mais recentes no topo
-
-## Fonte de Verdade de Dados
-
-### Cliente e seguranca
-
-- Cliente base: `src/core/api/supabaseClient.js`
-- Camada de dados principal: `src/core/api/supabaseSecure.js`
-
-### Tabelas e entidades citadas pelo codigo ativo
+### Tabelas usadas diretamente pelo codigo ativo
 
 - `public.usuarios`
 - `public.registros_falhas`
 - `public.avisos`
-- `public.historico_concluidas` como fallback historico
+- `public.historico_concluidas`
 
-### Campos de negocio importantes
+### Campos importantes de `usuarios`
 
-- Em `usuarios`: `username`, `role`, `auth_user_id`, `force_password_change`, `setor_fixo`
-- Em `registros_falhas`: `usuario`, `setor`, `trave`, `ponto`, `falha`, `solucao`, `data`, `status`, `resolvido_em`, `resolvido_por`
-- Campos de ponto inoperante: `ponto_inoperante`, `inoperante_motivo`, `inoperante_observacao`, `inoperante_por`, `inoperante_em`
-- Campos SIGA: `siga_enviado`, `siga_status`, `siga_enviado_em`, `siga_codigo_chamado`, `siga_data_abertura`, `siga_finalizado_em`
+- `id`
+- `username`
+- `role`
+- `auth_user_id`
+- `force_password_change`
+- `setor_fixo`
+- `news_seen_version`
 
-## Edge Functions Ativas
+### Campos importantes de `registros_falhas`
 
-- `admin-users-create`
-- `admin-users-list`
-- `admin-users-delete`
-- `user-clear-password-flag`
+- `id`
+- `usuario`
+- `setor`
+- `trave`
+- `ponto`
+- `falha`
+- `status`
+- `data`
+- `solucao`
+- `resolvido_em`
+- `resolvido_por`
+- `ponto_inoperante`
+- `inoperante_motivo`
+- `inoperante_observacao`
+- `inoperante_por`
+- `inoperante_em`
+- `siga_enviado`
+- `siga_status`
+- `siga_enviado_em`
+- `siga_codigo_chamado`
+- `siga_data_abertura`
+- `siga_finalizado_em`
 
-Uso principal:
+## Supabase Functions ativas
 
-- Criacao e listagem administrativa de usuarios
-- Exclusao de usuarios via fluxo com permissao elevada
-- Limpeza da flag de troca obrigatoria de senha
+### `admin-users-create`
 
-## Onde Criar Novos Arquivos
+- valida o solicitante por JWT
+- permite criacao por `admin` e `master`
+- so `master` pode criar `admin` e `master`
+- cria usuario no Auth
+- insere perfil em `public.usuarios`
 
-### Se a mudanca for de dominio funcional
+### `admin-users-list`
 
-- Criar dentro de `src/features/<feature>/`
-- Exemplos:
-- nova tela de falhas: `src/features/failures/pages/`
-- novo hook da tela admin: `src/features/admin/hooks/`
-- novo servico de dashboard: `src/features/dashboard/services/`
+- lista usuarios para `admin` e `master`
 
-### Se a mudanca for transversal a varias features
+### `admin-users-delete`
 
-- Hook generico: `src/shared/hooks/`
-- Componente reutilizavel: `src/shared/components/`
-- Constante global: `src/shared/constants/`
-- Infra/autenticacao/api/validacao: `src/core/`
+- remove usuario do Auth e do perfil operacional
+- acesso restrito a `master`
 
-### Se a mudanca for banco, RLS ou backend gerenciado
+### `user-clear-password-flag`
 
-- SQL, politicas e funcoes: `supabase/`
+- remove a exigencia de troca de senha apos o primeiro login
 
-### Onde evitar criar codigo novo
+### `user-mark-news-seen`
 
-- Evitar `src/components/`, `src/hooks/`, `src/services/`, `src/utils/`, `server/` e `api/` para novas implementacoes
-- Esses caminhos representam a arquitetura anterior ou camadas de compatibilidade
+- persiste a ultima versao de novidade lida pelo usuario
 
-## Alertas Arquiteturais Importantes
+### `gemini-proxy`
 
-- O repositorio esta em migracao parcial de uma arquitetura antiga para uma arquitetura por features.
-- Existem modulos duplicados com nomes parecidos, mas somente a versao em `src/features`, `src/core` e `src/shared` deve orientar novas alteracoes.
-- `api/index.js` e `server/` ainda existem, porem o frontend atual conversa diretamente com Supabase; essa API nao e a espinha dorsal do produto hoje.
-- `scripts/lint.mjs` e `docs/SEGURANCA.md` mostram intencao de limpeza e endurecimento de seguranca, mas ainda nao refletem totalmente o estado atual do repositorio.
-- A suite de testes atual nao representa integralmente a arvore ativa; parte dela aponta para modulos antigos e hoje falha.
+- valida o usuario autenticado
+- encaminha a requisicao ao Gemini
+- usa `GEMINI_API_KEY` como segredo do backend
+- modelo atual: `gemini-2.5-flash`
 
-## Estado de Verificacao do Scan
+## Presence e suporte
 
-- `npm run build`: passou em 12 de marco de 2026
-- Testes `node:test`: falham atualmente por descompasso entre testes e modulos ativos, alem de uma expectativa divergente em `sanitizeString`
+`useOnlineUsers.js` mantem um canal compartilhado de presence chamado `sistema_online`.
 
-## Variavel Segura para `.env`
+Ele:
 
-Nao publique isto em codigo versionado. Mantenha apenas em `.env` local ou no gerenciador de secrets do ambiente.
+- carrega usuarios da tabela `usuarios`
+- acompanha presencas online em tempo real
+- separa online e offline
+- prioriza o usuario atual e perfis administrativos na ordenacao visivel
 
-```env
-PROJECT_CONTEXT_SUMMARY="App React 18 + Vite 5 para gestao operacional de falhas Lenovo com arquitetura ativa em src/app, src/core, src/features e src/shared; autenticacao e dados via Supabase Auth/Database/Edge Functions; dominios principais auth, dashboard KPI, admin, failures, home e monitoring; camada de dados central em src/core/api/supabaseSecure.js; rotas protegidas por role com suporte a runin_kiosk, admin e master; UI em Tailwind com hooks de pagina por feature; backend de referencia em supabase/ e existencia de camadas legadas/duplicadas em src/components, src/hooks, src/services, src/utils, server e api que nao devem ser usadas como padrao para novas alteracoes."
-```
+Esse snapshot e consumido por `SupportMenuItem.jsx`.
 
-## System Prompt Para Outra IA
+## Ambiente e configuracao
 
-Voce e a IA especialista neste projeto. Considere como fonte de verdade apenas a arquitetura ativa baseada em `src/app`, `src/core`, `src/features`, `src/shared` e `supabase`, em um app `React 18 + Vite + Supabase` para gestao de falhas operacionais, dashboard KPI, admin, monitoramento e fluxo SIGA. Ao propor mudancas, preserve o padrao por feature, use `src/core/api/supabaseSecure.js` como camada principal de dados, respeite as roles (`master`, `admin`, `tecnico`, `colaborador`, `runin_kiosk`) e evite criar novas implementacoes na estrutura legada (`src/components`, `src/hooks`, `src/services`, `src/utils`, `server`, `api`) exceto em tarefas explicitas de migracao ou limpeza tecnica.
+### Variaveis do frontend
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `PROJECT_CONTEXT_SUMMARY`
+
+### Secrets esperados no Supabase
+
+- `SUPABASE_URL`
+- `SERVICE_ROLE_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`
+- `GEMINI_API_KEY`
+
+## Scripts e manutencao operacional
+
+### `scripts/lint.mjs`
+
+Nao e um lint de codigo tradicional. Hoje ele funciona como guardrail para:
+
+- confirmar desativacao da API legada
+- verificar ausencia de alguns arquivos de server antigo
+- verificar trechos esperados de policy em `RLS_POLICIES.sql`
+
+### `scripts/migrate-users-to-auth.js`
+
+Script de migracao para sincronizar `usuarios` antigos com Supabase Auth.
+
+## Testes atuais
+
+Os testes ativos da pasta `tests/` cobrem:
+
+- `computeDashboardMetrics`
+- validacao e sanitizacao
+- utilitarios de falhas como split, contagem e agregacao por trave
+
+Hoje a suite e pequena e focada em logica utilitaria, nao em fluxo end-to-end.
+
+## Observacoes arquiteturais finais
+
+- A fonte de verdade da regra de negocio vive majoritariamente em `src/core/api/supabaseSecure.js` e nos services de feature.
+- O app e fortemente orientado a hooks por tela: pagina enxuta, hook com estado e service com integracao.
+- A navegacao mobile e tratada por `AppBottomNav` nas paginas principais.
+- O endpoint `api/index.js` existe apenas como compatibilidade e responde `410` com mensagem de API legada desativada.
+- Para novas implementacoes, o caminho preferencial continua sendo: `features` para dominio, `shared` para reuso e `core` para infraestrutura.

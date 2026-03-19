@@ -1,375 +1,47 @@
 # Lenovo Assets Systems
 
-Sistema web de gestão operacional de falhas técnicas para as linhas de produção **Run In** e **AVT** da Lenovo Indaiatuba, SP. Desenvolvido do zero com React 18 + Vite 5 + Supabase, em produção desde 03/03/2026.
+Sistema web de gestao operacional da Lenovo Indaiatuba para abertura, acompanhamento e conclusao de falhas tecnicas em setores `Runin` e `AVT`, com dashboard de KPI, painel administrativo, integracao com SIGA, assistente de IA e historico de novidades do produto.
 
----
+## Objetivo do sistema
 
-## Visão Geral
+O produto centraliza a rotina operacional que antes ficava dispersa entre papel, memoria operacional e planilhas. Hoje o sistema cobre:
 
-Antes do sistema, o controle de falhas era feito em papel e planilhas Excel — sem histórico estruturado, sem visibilidade em tempo real e sem rastreabilidade de quem resolveu o quê e quando.
+- abertura de chamados por setor, trave e ponto
+- visualizacao e tratamento de falhas em aberto
+- marcacao e acompanhamento de pontos inoperantes
+- fluxo SIGA para chamados externos
+- indicadores operacionais e exportacao de relatorios
+- administracao de usuarios
+- consulta assistida por IA com a Lei.A
+- comunicacao de evolucoes do sistema via Lenovo News
 
-O Lenovo Assets Systems centraliza todo esse fluxo:
-
-- Técnicos registram falhas digitalmente em segundos
-- Gestores acompanham KPIs em tempo real no dashboard
-- Histórico completo por ponto, trave, setor e período
-- Integração com o sistema SIGA rastreada internamente
-- Presença em tempo real da equipe pela seção **Suporte**
-- Exportação de relatórios em PDF e Excel
-- Assistente de IA integrada (**Lei.A**) para consultas e registros via chat
-
----
-
-## Stack
+## Stack atual
 
 | Camada | Tecnologia |
 |---|---|
 | Frontend | React 18 + Vite 5 |
-| Roteamento | React Router 6 |
-| Estilização | Tailwind CSS |
-| Gráficos | Recharts |
-| Backend | Supabase (PostgreSQL + Auth + RLS + Edge Functions) |
-| IA | Google Gemini 2.5 Flash-Lite (via Edge Function proxy) |
-| Exportação PDF | jsPDF + html-to-image + jspdf-autotable |
-| Exportação Excel | SheetJS (XLSX) |
-| Deploy | Vercel + GitHub (CI/CD automático) |
+| Roteamento | React Router DOM 6 |
+| Estilos | Tailwind CSS |
+| Graficos | Recharts |
+| Backend | Supabase (Postgres + Auth + Realtime + Edge Functions) |
+| IA | Google Gemini 2.5 Flash via Edge Function proxy |
+| PDF | jsPDF + html-to-image |
+| Excel | SheetJS (`xlsx`) |
+| Deploy | Vercel |
 
----
+## Como rodar localmente
 
-## Estrutura de Pastas
+### 1. Instalar dependencias
 
-```
-sistema-de-gestao/
-├── public/
-│   └── version.json              # Controle de versão para o sistema de novidades
-│
-├── src/
-│   ├── app/
-│   │   └── router/               # Definição de rotas (AppRouter.jsx)
-│   │
-│   ├── core/                     # Infraestrutura base da aplicação
-│   │   ├── api/
-│   │   │   ├── supabaseClient.js # Instância global do Supabase
-│   │   │   └── supabaseSecure.js # Queries seguras com sanitização e timezone
-│   │   ├── auth/
-│   │   │   ├── authService.js    # Login, logout, troca de senha
-│   │   │   └── session.js        # Gerenciamento de sessão local
-│   │   ├── theme/
-│   │   │   └── theme.jsx         # Provider de tema claro/escuro
-│   │   └── validation/
-│   │       └── validation.js     # Sanitização e validação de inputs
-│   │
-│   ├── components/
-│   │   └── SupportMenuItem.jsx   # Item expansível "Suporte" com online/offline
-│   │
-│   ├── features/                 # Domínios da aplicação
-│   │   ├── admin/                # Painel administrativo
-│   │   │   ├── components/
-│   │   │   ├── hooks/
-│   │   │   ├── pages/
-│   │   │   └── services/
-│   │   ├── ai-assistant/         # Lei.A — Assistente de IA
-│   │   │   ├── components/
-│   │   │   │   ├── LeiaWidget.jsx    # Widget flutuante completo
-│   │   │   │   ├── LeiaBubble.jsx    # Botão circular pulsante
-│   │   │   │   ├── LeiaChatPanel.jsx # Painel de chat
-│   │   │   │   └── LeiaMessage.jsx   # Componente de mensagem
-│   │   │   ├── constants/
-│   │   │   │   └── aiSystemPrompt.js # System prompt com personalidade da Lei.A
-│   │   │   ├── hooks/
-│   │   │   │   └── useAIAssistant.js # Lógica completa do chat + tool calling
-│   │   │   ├── pages/
-│   │   │   │   └── AIAssistantPage.jsx
-│   │   │   └── services/
-│   │   │       ├── aiService.js  # Chamada à Edge Function gemini-proxy
-│   │   │       └── aiTools.js    # Declarações das tools do Gemini
-│   │   ├── auth/                 # Login, logout, troca de senha
-│   │   ├── dashboard/            # Dashboard KPI
-│   │   ├── failures/             # Registro e gestão de falhas
-│   │   ├── home/                 # Página inicial e Fale Conosco
-│   │   ├── monitoring/           # Monitor TV
-│   │   └── news/                 # Sistema de novidades
-│   │       ├── components/
-│   │       │   ├── LenovoNewsLogo.jsx # Identidade visual do arquivo de novidades
-│   │       │   ├── NewsDetailModal.jsx # Modal com detalhes completos da atualização
-│   │       │   └── NewsPopup.jsx # Popup automático de novidades
-│   │       ├── constants/
-│   │       │   ├── newsData.js   # Dados das versões/novidades (cadastro manual)
-│   │       │   └── newsMeta.js   # Meta visual, formatação e ordenação do arquivo
-│   │       ├── hooks/
-│   │           └── useNews.js    # Controle de visto/não visto por usuário
-│   │       └── pages/
-│   │           └── NewsArchivePage.jsx # Página com histórico completo de novidades
-│   │
-│   └── shared/                   # Recursos compartilhados entre features
-│       ├── components/           # Componentes reutilizáveis
-│       ├── constants/
-│       │   ├── setores.js        # Lista de setores (LISTA_SETORES)
-│       │   └── falhasComuns.js   # Falhas pré-cadastradas (FALHAS_COMUNS)
-│       ├── hooks/                # Hooks globais reutilizáveis
-│       └── styles/               # Estilos globais
-│
-│   └── hooks/
-│       └── useOnlineUsers.js     # Presence compartilhado da equipe online
-│
-├── supabase/
-│   ├── DB_CANONICAL_SETUP.sql    # Script único de setup do banco
-│   ├── MIGRATION_AUTH.sql        # Migração para Supabase Auth
-│   ├── RLS_POLICIES.sql          # Políticas de Row Level Security
-│   └── functions/
-│       ├── _shared/
-│       │   └── cors.ts           # Headers CORS compartilhados
-│       ├── admin-users-create/   # Criação de usuários (service_role)
-│       ├── admin-users-delete/   # Exclusão de usuários (service_role)
-│       ├── admin-users-list/     # Listagem de usuários (service_role)
-│       ├── gemini-proxy/         # Proxy seguro para a API do Gemini
-│       ├── user-clear-password-flag/ # Limpeza de flag de troca de senha
-│       └── user-mark-news-seen/  # Persistência de leitura do popup de novidades
-│
-├── scripts/                      # Scripts auxiliares de desenvolvimento
-├── .env.example                  # Modelo de variáveis de ambiente
-├── vite.config.js
-├── tailwind.config.js
-└── package.json
+```bash
+npm install
 ```
 
----
+### 2. Configurar variaveis de ambiente
 
-## Módulos Principais
+Use `.env.example` como base.
 
-### Falhas
-Núcleo do sistema. Gerencia todo o ciclo de vida de uma falha operacional.
-
-- Abertura por `setor`, `trave`, `ponto` e tipo de falha
-- Conclusão total ou parcial com solução registrada
-- Histórico completo por ponto
-- Tratamento de pontos inoperantes (motivo, observação, responsável)
-- Encaminhamento para o SIGA com rastreamento de status (AGUARDANDO → FINALIZADO)
-
-### Dashboard KPI
-Painel gerencial com 4 abas:
-
-- **Executivo** — visão geral de pendentes, concluídas e volume por setor
-- **Operação** — destaques operacionais por setor, top falhas e aging de pendências
-- **SIGA** — acompanhamento de chamados enviados ao sistema elétrico
-- **Histórico** — consulta histórica com filtros por período
-
-Exportação PDF em modo executivo (resumido) ou completo por seções.
-
-### Admin
-Painel restrito para perfis `admin` e `master`:
-
-- Criação, listagem e exclusão de usuários via Edge Functions
-- Pareto de falhas por tipo e setor
-- Histórico geral paginado (lotes de 30 itens)
-- Exportação Excel do histórico completo
-- Importação de falhas concluídas via planilha Excel/CSV
-- Detecção de duplicidade na importação por `setor + trave + ponto + falha`
-
-### Lei.A — Assistente de IA
-Agente de IA integrado ao sistema como widget flutuante persistente.
-
-**Como funciona:**
-1. Usuário envia mensagem no chat
-2. Frontend chama a Edge Function `gemini-proxy` com o token JWT da sessão
-3. A Edge Function valida a autenticação e repassa ao Gemini com a chave de API segura
-4. O Gemini decide se precisa consultar dados (tool calling)
-5. Se sim, executa a query no Supabase e retorna o resultado ao Gemini
-6. Gemini formula a resposta em linguagem natural
-7. Resposta aparece no chat
-
-**Tools disponíveis:**
-
-| Tool | Descrição |
-|---|---|
-| `query_registros_falhas` | Falhas abertas/concluídas com filtros |
-| `query_avisos` | Avisos ativos do sistema |
-| `query_dashboard_kpis` | Métricas agregadas por período |
-| `query_historico_concluidas` | Histórico de falhas concluídas |
-| `query_pontos_inoperantes` | Pontos inoperantes por setor |
-| `query_falhas_siga` | Chamados no SIGA por status |
-| `query_falhas_por_ponto` | Histórico de um ponto específico |
-| `query_setores_disponiveis` | Lista todos os setores |
-| `query_resumo_setor` | Resumo completo de um setor |
-| `solicitar_insercao_falha` | Prepara inserção com confirmação |
-| `executar_insercao_falha` | Executa após CONFIRMAR |
-| `solicitar_atualizacao_falha` | Prepara atualização com confirmação |
-| `executar_atualizacao_falha` | Executa após CONFIRMAR |
-| `gerar_relatorio_pdf` | Gera e baixa relatório PDF |
-| `gerar_relatorio_excel` | Gera e baixa planilha Excel |
-
-**Personalidade:**
-A Lei.A tem identidade própria — nome feminino, tom descontraído, saudações adaptadas ao horário do usuário, usa o nome de quem está logado e conhece o sistema por dentro.
-
-**Contexto em tempo real:**
-- Ao iniciar uma nova conversa, a Lei.A pode receber o contexto atual de usuários online
-- Isso ajuda em perguntas sobre disponibilidade da equipe sem alterar o fluxo principal do chat
-
-### Suporte em Tempo Real
-Seção integrada à navegação desktop e mobile para leitura rápida de disponibilidade da equipe.
-
-- Item **Suporte** expansível dentro do próprio menu
-- Lista de usuários online via Supabase Realtime Presence
-- Separação entre **Online** e **Offline**
-- Destaque do próprio usuário com a label **Você**
-- Mesmo comportamento visual e funcional no desktop e no menu hambúrguer mobile
-
-### Sistema de Novidades
-Mecanismo de comunicação com os usuários integrado ao dashboard:
-
-- Seção **Lenovo News** na página inicial com cards das versões mais recentes
-- Botão **Visualizar todas** levando para a rota `/novidades`
-- Página de arquivo com todas as atualizações cadastradas, exibindo as mais recentes primeiro
-- Popup automático ao logar quando há versão não vista pelo usuário
-- Polling a cada 5 minutos em `/public/version.json` — novidades chegam ao vivo sem recarregar
-- Histórico de versões consultável
-- Controle persistido por usuário em `public.usuarios.news_seen_version`
-
-**Para publicar uma novidade:**
-1. Editar `src/features/news/constants/newsData.js`
-2. Atualizar `NEWS_VERSION_LATEST`
-3. Adicionar entrada no início do array `NEWS_DATA`
-4. Atualizar `public/version.json` com a mesma versão
-5. Garantir que a coluna `news_seen_version` exista em `public.usuarios`
-6. Fazer deploy da Edge Function `user-mark-news-seen`
-7. Fazer deploy — o popup aparece automaticamente para os usuários que ainda não viram aquela versão
-
-**Comportamento atual:**
-- O Dashboard mostra somente as 2 novidades mais recentes
-- A página `/novidades` mostra todas as entradas cadastradas no arquivo histórico
-- A ordenação do arquivo prioriza as novidades mais recentes no topo
-- O popup de novidade aparece apenas uma vez por conta e não depende do navegador
-
----
-
-## Autenticação
-
-Supabase Auth com email derivado do username:
-
-- Login digitado: `mavila`
-- Email interno: `mavila@lenovo.app`
-
-O perfil operacional fica em `public.usuarios`:
-
-| Campo | Descrição |
-|---|---|
-| `username` | Nome de usuário |
-| `role` | Perfil de acesso |
-| `auth_user_id` | FK para `auth.users` |
-| `force_password_change` | Flag de troca obrigatória no primeiro login |
-| `setor_fixo` | Setor travado para perfil `runin_kiosk` |
-| `news_seen_version` | Última versão de novidade já visualizada pelo usuário |
-
-### Perfis de Acesso
-
-| Perfil | Permissões |
-|---|---|
-| `master` | Acesso total, incluindo exclusão de usuários |
-| `admin` | Acesso total exceto configurações de sistema |
-| `tecnico` | Registra e fecha falhas |
-| `colaborador` | Visualização apenas |
-| `runin_kiosk` | Restrito ao `setor_fixo`, acessa apenas `/abrir-chamado` |
-
----
-
-## Segurança
-
-O sistema tem segurança em múltiplas camadas:
-
-### Row Level Security (RLS)
-Políticas implementadas diretamente no PostgreSQL — mesmo com a `anon_key` exposta, nenhum dado é acessível sem sessão autenticada válida:
-
-- `registros_falhas` — SELECT/INSERT/UPDATE apenas para autenticados. **DELETE bloqueado permanentemente** via `USING (false)`
-- `usuarios` — cada usuário vê apenas o próprio perfil. Admin/Master veem todos
-- `avisos` — SELECT para todos autenticados, INSERT apenas para admin/master
-
-### Edge Function Proxy (Gemini)
-A chave da API do Gemini **não fica no bundle do frontend**. Ela é guardada como secret no Supabase e acessada exclusivamente pela Edge Function `gemini-proxy`, que valida o JWT antes de qualquer chamada.
-
-### Variáveis de Ambiente
-- `VITE_SUPABASE_ANON_KEY` — pública por design (segurança real é o RLS)
-- `GEMINI_API_KEY` — secret exclusivo do Supabase, nunca no frontend
-- `.env` nunca commitado (verificado no histórico do Git)
-
-### Outras Medidas
-- Sanitização de inputs antes de gravar no banco
-- Rate limiting de 2s entre mensagens na Lei.A
-- Operações privilegiadas (criar/deletar usuários) apenas via Edge Functions com `service_role`
-- Rotas protegidas com verificação de sessão real no Supabase
-
----
-
-## Banco de Dados
-
-### Tabelas Principais
-
-**`public.registros_falhas`**
-
-| Campo | Descrição |
-|---|---|
-| `usuario` | Quem registrou |
-| `setor` | Setor da falha |
-| `trave` | Trave (apenas Run In) |
-| `ponto` | Ponto com defeito |
-| `falha` | Tipo(s) de falha |
-| `solucao` | Solução aplicada |
-| `data` | Data de abertura |
-| `status` | Aberto / Concluído |
-| `resolvido_em` | Timestamp de conclusão |
-| `resolvido_por` | Quem resolveu |
-| `ponto_inoperante` | Flag de inoperância |
-| `inoperante_motivo` | Motivo da inoperância |
-| `inoperante_por` | Quem marcou como inoperante |
-| `inoperante_em` | Timestamp de inoperância |
-| `siga_enviado` | Flag de envio ao SIGA |
-| `siga_status` | AGUARDANDO / FINALIZADO |
-| `siga_enviado_em` | Timestamp de envio |
-| `siga_codigo_chamado` | Código do chamado SIGA |
-| `siga_data_abertura` | Data de abertura no SIGA |
-| `siga_finalizado_em` | Timestamp de finalização no SIGA |
-
-### Funções SQL Auxiliares (RLS)
-- `public.is_admin_or_master()` — verifica se o usuário é admin ou master
-- `public.is_runin_kiosk()` — verifica se o usuário é kiosk
-- `public.current_user_setor_fixo()` — retorna o setor fixo do usuário atual
-
----
-
-## Edge Functions
-
-| Função | Descrição |
-|---|---|
-| `admin-users-create` | Cria usuário no Supabase Auth + perfil em `public.usuarios` |
-| `admin-users-list` | Lista todos os usuários com perfil completo |
-| `admin-users-delete` | Remove usuário do Auth e da tabela de perfis |
-| `user-clear-password-flag` | Limpa a flag `force_password_change` após troca |
-| `user-mark-news-seen` | Salva a última versão de novidade já vista pelo usuário |
-| `gemini-proxy` | Proxy autenticado para a API do Gemini |
-
----
-
-## Rotas
-
-| Rota | Descrição | Acesso |
-|---|---|---|
-| `/` | Redirect para dashboard ou login | — |
-| `/dashboard` | Dashboard KPI + Novidades | Todos |
-| `/novidades` | Arquivo completo de novidades do sistema | Todos |
-| `/home` | Página inicial | Todos |
-| `/fale-conosco` | Canal de contato | Todos |
-| `/abrir-chamado` | Registro de falhas | Todos |
-| `/registrar` | Formulário de registro | Todos |
-| `/visualizar` | Visualização de falhas | Todos |
-| `/monitor-tv` | Painel de monitoramento | Todos |
-| `/alterar-senha` | Troca de senha | Todos |
-| `/admin` | Painel administrativo | Admin / Master |
-| `/admin/cockpit` | Cockpit gerencial | Admin / Master |
-
----
-
-## Variáveis de Ambiente
-
-Crie `.env` ou `.env.local` na raiz baseado no `.env.example`:
+Variaveis do frontend:
 
 ```env
 VITE_SUPABASE_URL=https://SEU_PROJECT_REF.supabase.co
@@ -377,74 +49,333 @@ VITE_SUPABASE_ANON_KEY=SEU_ANON_KEY
 PROJECT_CONTEXT_SUMMARY="RESUMO_TECNICO_PRIVADO_DO_PROJETO"
 ```
 
-> ⚠️ `.env` e `.env.local` **nunca** devem ser commitados.
+Segredo da IA no Supabase Edge Functions:
 
-### Vercel
-Configure em `Project Settings > Environment Variables`:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `PROJECT_CONTEXT_SUMMARY`
-
-### Supabase Secrets (Edge Functions)
 ```bash
-supabase secrets set GEMINI_API_KEY=SuaChaveAqui
-supabase secrets set SERVICE_ROLE_KEY=SuaServiceRoleKey
+supabase secrets set GEMINI_API_KEY=SUA_GEMINI_API_KEY
 ```
 
-Ou pelo Dashboard: `Supabase → Edge Functions → Manage secrets`
-
----
-
-## Importação de Concluídos
-
-Disponível em `Admin > Histórico Geral > Falhas Concluídas`.
-
-**Colunas aceitas na planilha:**
-
-| Coluna aceita | Descrição |
-|---|---|
-| `Setor` ou `Run In` | Setor da falha |
-| `Trave` | Trave (Run In) |
-| `Ponto` | Ponto numérico ou `Ponto X` |
-| `Falha` ou `Tipo de Falha` | Tipo de ocorrência |
-| `Descricao` | Descrição adicional |
-| `Dia` ou `Data de Conclusao` | Data de conclusão |
-| `Finalizado` ou `Finalizado por` | Responsável |
-| `Criado por` | Quem registrou |
-
-**Comportamento:**
-- Normaliza ponto numérico para `Ponto X`
-- Ignora duplicatas por `setor + trave + ponto + falha`
-- Importa diretamente como `CONCLUIDO`
-
----
-
-## Desenvolvimento
+### 3. Subir ambiente de desenvolvimento
 
 ```bash
-# Instalar dependências
-npm install
-
-# Rodar localmente
 npm run dev
-
-# Build de produção
-npm run build
-
-# Deploy de Edge Function
-npx supabase functions deploy gemini-proxy --no-verify-jwt
-npx supabase functions deploy admin-users-create
-npx supabase functions deploy admin-users-list
-npx supabase functions deploy admin-users-delete
-npx supabase functions deploy user-clear-password-flag
-npx supabase functions deploy user-mark-news-seen
 ```
 
----
+### 4. Gerar build de producao
 
-## Desenvolvido por
+```bash
+npm run build
+```
 
-**Matheus Avila** — Lenovo Indaiatuba, SP  
-Início: 03/03/2026 | Em produção: sim
+## Estrutura real do projeto
 
-Desenvolvido com auxílio de **Claude (Anthropic)** para arquitetura e decisões técnicas, e **Codex (OpenAI)** para implementação no código.
+```text
+sistema-de-gestao/
+├── public/
+│   └── version.json
+├── docs/
+│   └── SEGURANCA.md
+├── scripts/
+│   ├── lint.mjs
+│   └── migrate-users-to-auth.js
+├── src/
+│   ├── app/
+│   │   └── router/
+│   ├── components/
+│   │   └── SupportMenuItem.jsx
+│   ├── core/
+│   │   ├── api/
+│   │   ├── auth/
+│   │   ├── theme/
+│   │   └── validation/
+│   ├── features/
+│   │   ├── admin/
+│   │   ├── ai-assistant/
+│   │   ├── auth/
+│   │   ├── dashboard/
+│   │   ├── failures/
+│   │   ├── home/
+│   │   ├── monitoring/
+│   │   └── news/
+│   ├── hooks/
+│   │   └── useOnlineUsers.js
+│   ├── shared/
+│   │   ├── components/
+│   │   ├── constants/
+│   │   ├── hooks/
+│   │   └── styles/
+│   ├── App.jsx
+│   └── main.jsx
+├── supabase/
+│   ├── DB_CANONICAL_SETUP.sql
+│   ├── MIGRATION_AUTH.sql
+│   ├── RLS_POLICIES.sql
+│   └── functions/
+├── tests/
+├── api/
+│   └── index.js
+├── ARCHITECTURE.md
+└── README.md
+```
+
+## Mapa funcional por pasta
+
+### `src/app/router/`
+Define as rotas da aplicacao e os layouts protegidos por sessao e role.
+
+### `src/core/`
+Camada transversal da aplicacao.
+
+- `api/supabaseClient.js`: cliente base do Supabase
+- `api/supabaseSecure.js`: operacoes principais de leitura e escrita, com validacao e regras operacionais
+- `auth/session.js`: sessao local e helpers de role
+- `theme/theme.jsx`: provider de tema global
+- `validation/validation.js`: sanitizacao e validacao de entradas
+
+### `src/features/`
+Camada principal de dominio, organizada por feature.
+
+#### `auth`
+- login com Supabase Auth
+- mapeamento `username -> email lenovo.app`
+- troca obrigatoria de senha no primeiro acesso
+- logout
+
+#### `dashboard`
+- cockpit principal de KPI
+- filtros por periodo
+- metricas agregadas
+- exportacao de relatorio PDF em dois fluxos
+- historico, SIGA, aging e pontos inoperantes
+
+#### `failures`
+- abertura de chamado
+- entrada kiosk para `runin_kiosk`
+- visualizacao de falhas em aberto
+- conclusao total ou parcial
+- pontos inoperantes
+- envio e finalizacao via SIGA
+- historico recente por ponto
+- leitura operacional por setor e trave
+
+#### `admin`
+- gestao de usuarios
+- importacao e exportacao de historico
+- abas de indicadores, usuarios, estatisticas e historico
+- cockpit administrativo rapido
+- Edge Functions para criacao, listagem e remocao de usuarios
+
+#### `ai-assistant`
+- Lei.A como pagina dedicada e widget flutuante
+- consulta de falhas, pontos inoperantes, avisos, KPIs e historico
+- tool calling via Gemini proxy
+- respostas orientadas ao contexto operacional da planta
+
+#### `home`
+- feed de avisos
+- publicacao de aviso por `master`
+- atalhos rapidos por setor
+
+#### `monitoring`
+- tela de TV/monitor operacional em tempo real
+- consolidacao de alertas por setor
+- destaque para paradas criticas
+
+#### `news`
+- cards de novidades no dashboard
+- popup automatico por usuario
+- pagina de arquivo em `/novidades`
+- historico manual de releases em `newsData.js`
+
+### `src/shared/`
+Recursos reutilizaveis entre features.
+
+- `components/layout/AppBottomNav.jsx`: navegacao mobile
+- `components/filters/DateRangePicker.jsx`: filtro de datas reutilizavel
+- `constants/setores.js`: lista mestra de setores
+- `constants/falhasComuns.js`: insumos/falhas padrao
+- `hooks/usePersistentTheme.js`: persistencia de tema por tela
+- `hooks/useBodyScrollLock.js`: trava de scroll para overlays e menus
+- `styles/global.css`: estilos globais do projeto
+
+### `src/components/SupportMenuItem.jsx`
+Componente compartilhado da secao `Suporte`, embutido na navegacao, com usuarios online e offline em tempo real.
+
+### `src/hooks/useOnlineUsers.js`
+Hook compartilhado de presence usando Supabase Realtime.
+
+### `supabase/`
+Fonte de verdade do backend gerenciado.
+
+- `DB_CANONICAL_SETUP.sql`: base canônica do banco
+- `MIGRATION_AUTH.sql`: migracao para Supabase Auth
+- `RLS_POLICIES.sql`: politicas de acesso
+- `functions/`: Edge Functions ativas do sistema
+
+## Rotas ativas
+
+| Rota | Funcao |
+|---|---|
+| `/` | Login |
+| `/dashboard` | Pagina principal apos login |
+| `/home` | Feed de avisos |
+| `/fale-conosco` | Pagina de contato |
+| `/registrar` | Registro manual de falhas |
+| `/visualizar` | Tratamento e monitoramento de falhas |
+| `/monitor-tv` | Painel TV operacional |
+| `/assistente` | Pagina dedicada da Lei.A |
+| `/novidades` | Arquivo completo de novidades |
+| `/abrir-chamado` | Entrada principal de abertura, inclusive kiosk |
+| `/alterar-senha` | Troca de senha |
+| `/admin` | Painel administrativo |
+| `/admin/cockpit` | Cockpit admin resumido |
+
+## Regras de acesso
+
+Perfis suportados hoje:
+
+- `master`
+- `admin`
+- `tecnico`
+- `colaborador`
+- `runin_kiosk`
+
+Comportamento geral:
+
+- `master`: acesso total, inclusive remocao de usuarios
+- `admin`: acesso amplo ao painel admin, sem privilegios de `master`
+- `tecnico`: operacao de falhas e consulta do sistema
+- `colaborador`: abertura de chamado e uso operacional restrito
+- `runin_kiosk`: fluxo travado para o setor fixo no kiosk
+
+## Banco e entidades principais
+
+Tabela operacional principal:
+
+- `public.registros_falhas`
+
+Campos de negocio relevantes:
+
+- `setor`, `trave`, `ponto`, `falha`, `status`, `data`
+- `solucao`, `resolvido_em`, `resolvido_por`
+- `ponto_inoperante`, `inoperante_motivo`, `inoperante_observacao`, `inoperante_por`, `inoperante_em`
+- `siga_enviado`, `siga_status`, `siga_enviado_em`, `siga_codigo_chamado`, `siga_data_abertura`, `siga_finalizado_em`
+
+Outras tabelas usadas no app:
+
+- `public.usuarios`
+- `public.avisos`
+- `public.historico_concluidas`
+
+## Edge Functions ativas
+
+| Function | Funcao |
+|---|---|
+| `admin-users-create` | Criacao de usuario |
+| `admin-users-list` | Listagem administrativa de usuarios |
+| `admin-users-delete` | Exclusao de usuario |
+| `gemini-proxy` | Proxy autenticado para Gemini |
+| `user-clear-password-flag` | Limpeza da flag de troca obrigatoria de senha |
+| `user-mark-news-seen` | Persistencia da leitura de novidades |
+
+## Lei.A
+
+A Lei.A e a assistente oficial do sistema.
+
+Hoje ela consegue:
+
+- consultar falhas abertas e concluidas
+- consultar pontos inoperantes em aberto
+- consultar avisos
+- resumir KPIs do dashboard
+- consultar historico concluido
+
+Fluxo atual:
+
+1. o usuario escreve no chat
+2. o frontend monta o contexto e envia para a Edge Function `gemini-proxy`
+3. a Edge valida a autenticacao pelo JWT do usuario
+4. o Gemini decide se chama tool
+5. o frontend executa a tool de leitura correspondente
+6. o resultado volta ao modelo
+7. a resposta final aparece no widget ou na pagina da Lei.A
+
+Observacao importante:
+- o modelo atual configurado no proxy e `gemini-2.5-flash`
+
+## Dashboard e relatorios
+
+O dashboard combina datasets do Supabase para montar metricas como:
+
+- total geral
+- pendentes e concluidas
+- chamados inseridos no sistema
+- distribuicao por setor
+- top falhas
+- aging
+- pontos com historico
+- leitura SIGA
+- pontos inoperantes em aberto e concluidos
+
+Fluxos de PDF:
+
+- fluxo executivo com `jsPDF + html-to-image`
+- fluxo HTML/impressao para relatorio completo
+
+## Lenovo News
+
+O sistema de novidades funciona assim:
+
+- o dashboard mostra as 2 novidades mais recentes
+- o popup aparece quando existe versao nova para o usuario
+- a pagina `/novidades` mostra o historico completo
+- o controle de leitura fica salvo em `usuarios.news_seen_version`
+- a versao publica em uso fica em `public/version.json`
+
+No estado atual:
+
+- versao mais recente cadastrada: `1.5.0`
+
+## Suporte em tempo real
+
+A navegacao possui a secao `Suporte`, que mostra:
+
+- usuarios online
+- usuarios offline
+- destaque para o usuario atual
+- sincronizacao por Supabase Presence
+
+Essa secao aparece no desktop e no mobile.
+
+## Scripts auxiliares
+
+| Script | Funcao |
+|---|---|
+| `npm run dev` | desenvolvimento |
+| `npm run build` | build de producao |
+| `npm run lint` | lint do frontend |
+| `node scripts/lint.mjs` | guardrails de migracao/seguranca |
+| `node scripts/migrate-users-to-auth.js` | migracao de usuarios para Supabase Auth |
+
+## Testes atuais
+
+A pasta `tests/` contem cobertura pontual para:
+
+- metricas de dashboard
+- utilitarios de falhas
+- validacao de inputs
+
+Nao e uma suite completa do sistema inteiro, mas cobre partes importantes da logica utilitaria ativa.
+
+## Observacoes importantes para manutencao
+
+- A camada principal de dados do projeto e `src/core/api/supabaseSecure.js`
+- A lista mestra de setores fica em `src/shared/constants/setores.js`
+- A lista mestra de falhas comuns fica em `src/shared/constants/falhasComuns.js`
+- O roteamento real do sistema esta em `src/app/router/AppRouter.jsx`
+- O endpoint `api/index.js` existe apenas como compatibilidade e retorna API legada desativada
+
+## Documentos relacionados
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [docs/SEGURANCA.md](./docs/SEGURANCA.md)
