@@ -4,11 +4,17 @@ import { getSessionUser } from '../core/auth/session';
 import { listarUsuarios } from '../core/api/supabaseSecure';
 
 const CHANNEL_NAME = 'sistema_online';
+const RECONNECT_DELAY_MS = 1200;
+const PRESENCE_HEALTHCHECK_MS = 15000;
 
 const sharedState = {
   currentUserKey: '',
+  currentUser: null,
   refCount: 0,
   channel: null,
+  reconnectTimeout: null,
+  healthcheckInterval: null,
+  subscriptionStatus: 'closed',
   allUsers: [],
   onlineUsers: [],
   listeners: new Set(),
@@ -49,6 +55,20 @@ function getCurrentSnapshot() {
 function notifyListeners() {
   const snapshot = getCurrentSnapshot();
   sharedState.listeners.forEach((listener) => listener(snapshot));
+}
+
+function clearReconnectTimeout() {
+  if (sharedState.reconnectTimeout) {
+    window.clearTimeout(sharedState.reconnectTimeout);
+    sharedState.reconnectTimeout = null;
+  }
+}
+
+function clearHealthcheckInterval() {
+  if (sharedState.healthcheckInterval) {
+    window.clearInterval(sharedState.healthcheckInterval);
+    sharedState.healthcheckInterval = null;
+  }
 }
 
 function compareOnlineUsers(a, b, currentUserId) {
@@ -113,7 +133,10 @@ async function loadAllUsers() {
   }
 }
 
-function stopSharedPresence() {
+function stopSharedPresence({ preserveUsers = false } = {}) {
+  clearReconnectTimeout();
+  clearHealthcheckInterval();
+
   if (sharedState.channel) {
     try {
       sharedState.channel.untrack();
@@ -130,25 +153,56 @@ function stopSharedPresence() {
 
   sharedState.channel = null;
   sharedState.currentUserKey = '';
-  sharedState.allUsers = [];
+  sharedState.currentUser = null;
+  sharedState.subscriptionStatus = 'closed';
+  if (!preserveUsers) {
+    sharedState.allUsers = [];
+  }
   sharedState.onlineUsers = [];
   sharedState.presenceUnavailable = false;
   notifyListeners();
 }
 
-function startSharedPresence(currentUser) {
+async function trackCurrentUser(channel, currentUser) {
+  await channel.track({
+    id: currentUser?.id ?? null,
+    nome: normalizeName(currentUser?.username),
+    role: normalizeRole(currentUser?.role),
+    auth_user_id: normalizeAuthUserId(currentUser?.auth_user_id),
+    joined_at: new Date().toISOString(),
+  });
+}
+
+function syncPresenceSnapshot(channel, currentUser) {
+  sharedState.onlineUsers = mapPresenceUsers(channel.presenceState(), currentUser?.id ?? null);
+  sharedState.presenceUnavailable = false;
+  notifyListeners();
+}
+
+function scheduleReconnect(currentUser, delayMs = RECONNECT_DELAY_MS) {
+  if (!currentUser || sharedState.refCount === 0 || sharedState.reconnectTimeout) return;
+
+  sharedState.reconnectTimeout = window.setTimeout(() => {
+    sharedState.reconnectTimeout = null;
+    startSharedPresence(currentUser, { force: true });
+  }, delayMs);
+}
+
+function startSharedPresence(currentUser, options = {}) {
+  const { force = false } = options;
   const nextUserKey = String(currentUser?.id || currentUser?.username || '');
   if (!nextUserKey) {
     stopSharedPresence();
     return;
   }
 
-  if (sharedState.channel && sharedState.currentUserKey === nextUserKey) {
+  if (!force && sharedState.channel && sharedState.currentUserKey === nextUserKey && sharedState.subscriptionStatus === 'SUBSCRIBED') {
     return;
   }
 
-  stopSharedPresence();
+  stopSharedPresence({ preserveUsers: true });
   sharedState.currentUserKey = nextUserKey;
+  sharedState.currentUser = currentUser;
   sharedState.presenceUnavailable = false;
 
   const channel = supabase.channel(CHANNEL_NAME, {
@@ -160,14 +214,14 @@ function startSharedPresence(currentUser) {
   });
 
   sharedState.channel = channel;
+  sharedState.subscriptionStatus = 'joining';
   loadAllUsers();
   notifyListeners();
 
   channel
     .on('presence', { event: 'sync' }, () => {
       try {
-        sharedState.onlineUsers = mapPresenceUsers(channel.presenceState(), currentUser?.id ?? null);
-        sharedState.presenceUnavailable = false;
+        syncPresenceSnapshot(channel, currentUser);
       } catch {
         sharedState.onlineUsers = [];
         sharedState.presenceUnavailable = true;
@@ -176,31 +230,56 @@ function startSharedPresence(currentUser) {
     })
     .subscribe(async (status) => {
       if (channel !== sharedState.channel) return;
+      sharedState.subscriptionStatus = status;
 
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         sharedState.onlineUsers = [];
         sharedState.presenceUnavailable = true;
         notifyListeners();
+        scheduleReconnect(currentUser);
         return;
       }
 
       if (status !== 'SUBSCRIBED') return;
 
       try {
-        await channel.track({
-          id: currentUser?.id ?? null,
-          nome: normalizeName(currentUser?.username),
-          role: normalizeRole(currentUser?.role),
-          auth_user_id: normalizeAuthUserId(currentUser?.auth_user_id),
-          joined_at: new Date().toISOString(),
-        });
+        clearReconnectTimeout();
+        await trackCurrentUser(channel, currentUser);
+        syncPresenceSnapshot(channel, currentUser);
       } catch {
         if (channel !== sharedState.channel) return;
         sharedState.onlineUsers = [];
         sharedState.presenceUnavailable = true;
         notifyListeners();
+        scheduleReconnect(currentUser);
       }
     });
+
+  clearHealthcheckInterval();
+  sharedState.healthcheckInterval = window.setInterval(async () => {
+    if (sharedState.channel !== channel || sharedState.refCount === 0) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+
+    if (sharedState.subscriptionStatus !== 'SUBSCRIBED') {
+      scheduleReconnect(currentUser, 0);
+      return;
+    }
+
+    try {
+      const state = channel.presenceState();
+      const hasCurrentUser = Object.values(state || {})
+        .flat()
+        .some((meta) => String(meta?.id ?? '') === String(currentUser?.id ?? ''));
+
+      if (!hasCurrentUser) {
+        await trackCurrentUser(channel, currentUser);
+      }
+
+      syncPresenceSnapshot(channel, currentUser);
+    } catch {
+      scheduleReconnect(currentUser, 0);
+    }
+  }, PRESENCE_HEALTHCHECK_MS);
 }
 
 export function useOnlineUsers() {
@@ -218,7 +297,17 @@ export function useOnlineUsers() {
     setSnapshot(getCurrentSnapshot());
     startSharedPresence(currentUser);
 
+    const retryVisibilitySync = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      startSharedPresence(currentUser, { force: sharedState.subscriptionStatus !== 'SUBSCRIBED' });
+    };
+
+    window.addEventListener('focus', retryVisibilitySync);
+    document.addEventListener('visibilitychange', retryVisibilitySync);
+
     return () => {
+      window.removeEventListener('focus', retryVisibilitySync);
+      document.removeEventListener('visibilitychange', retryVisibilitySync);
       sharedState.listeners.delete(setSnapshot);
       sharedState.refCount = Math.max(0, sharedState.refCount - 1);
 

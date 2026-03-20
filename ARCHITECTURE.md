@@ -618,7 +618,7 @@ Motivo arquitetural:
 
 - todos os usuarios autenticados precisam se ver em suporte/chat
 - isso nao deve abrir a leitura ampla de `public.usuarios` para telas de gestao
-- por isso o chat usa uma view dedicada e minima para presence e conversa
+- por isso o chat usa uma view dedicada e minima para presence e conversa, separada do fluxo administrativo
 
 ## Chat interno
 

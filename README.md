@@ -294,6 +294,7 @@ Outras tabelas usadas no app:
 Camada segura complementar:
 
 - `public.usuarios_chat_visiveis`: view usada por `Suporte` e `LeChat` para listar usuarios visiveis no presence/chat sem abrir a tabela `usuarios` de forma ampla para toda a interface
+- essa view expõe apenas os campos minimos necessarios ao suporte/chat e nao substitui o fluxo administrativo de gestao de equipe
 
 ## Edge Functions ativas
 

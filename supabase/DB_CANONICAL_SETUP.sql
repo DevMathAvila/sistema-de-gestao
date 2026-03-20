@@ -240,8 +240,7 @@ to authenticated
 using (public.is_admin_or_master());
 
 drop view if exists public.usuarios_chat_visiveis;
-create view public.usuarios_chat_visiveis
-with (security_invoker = true) as
+create view public.usuarios_chat_visiveis as
 select
   id,
   username,

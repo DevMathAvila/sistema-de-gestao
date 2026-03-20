@@ -36,8 +36,7 @@ CREATE POLICY "usuarios_select_admin_all"
 
 -- View segura para suporte/chat: expoe somente os campos minimos para online/offline
 drop view if exists public.usuarios_chat_visiveis;
-create view public.usuarios_chat_visiveis
-with (security_invoker = true) as
+create view public.usuarios_chat_visiveis as
 select
   id,
   username,
