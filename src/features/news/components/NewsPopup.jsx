@@ -14,7 +14,6 @@ export default function NewsPopup({ userId }) {
   const { hasUnread, latestNews, markAsRead, seenVersion, loading } = useNews(userId);
   const [visible, setVisible] = useState(false);
   const [dismissedVersion, setDismissedVersion] = useState(null);
-  const [autoPersistedVersion, setAutoPersistedVersion] = useState(null);
 
   const hasContent = useMemo(() => Boolean(latestNews?.title && latestNews?.summary), [latestNews]);
   const latestVersion = String(latestNews?.version || '').trim();
@@ -36,14 +35,17 @@ export default function NewsPopup({ userId }) {
     }
   }, [latestVersion, seenVersion, userId]);
 
-  useEffect(() => {
-    if (!visible || !latestVersion || autoPersistedVersion === latestVersion) return;
+  const closeAndMarkAsRead = async (version = latestVersion) => {
+    if (!version) {
+      setVisible(false);
+      return;
+    }
 
-    if (userId) displayedVersionsByUser.set(userId, latestVersion);
-    setDismissedVersion(latestVersion);
-    setAutoPersistedVersion(latestVersion);
-    markAsRead(latestVersion);
-  }, [autoPersistedVersion, latestVersion, markAsRead, userId, visible]);
+    if (userId) displayedVersionsByUser.set(userId, version);
+    setDismissedVersion(version);
+    setVisible(false);
+    await markAsRead(version);
+  };
 
   useEffect(() => {
     const checkRemoteVersion = async () => {
@@ -75,14 +77,18 @@ export default function NewsPopup({ userId }) {
         type="button"
         aria-label="Fechar popup de novidades"
         className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-        onClick={() => setVisible(false)}
+        onClick={() => {
+          closeAndMarkAsRead();
+        }}
       />
       <div className={`relative w-[calc(100vw-32px)] max-w-md rounded-[2rem] border p-5 shadow-[0_30px_90px_rgba(15,23,42,0.35)] sm:p-6 ${
         isDark ? 'border-white/10 bg-[#070707] text-white' : 'border-slate-200 bg-white text-slate-900'
       }`}>
         <button
           type="button"
-          onClick={() => setVisible(false)}
+          onClick={() => {
+            closeAndMarkAsRead();
+          }}
           className={`absolute right-4 top-4 rounded-xl p-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
         >
           <X size={16} />
@@ -103,9 +109,7 @@ export default function NewsPopup({ userId }) {
           <button
             type="button"
             onClick={async () => {
-              await markAsRead(latestVersion);
-              setDismissedVersion(latestVersion);
-              setVisible(false);
+              await closeAndMarkAsRead(latestVersion);
               if (location.pathname === '/dashboard') {
                 document.getElementById('lenovo-news-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 return;
@@ -119,9 +123,7 @@ export default function NewsPopup({ userId }) {
           <button
             type="button"
             onClick={async () => {
-              await markAsRead(latestVersion);
-              setDismissedVersion(latestVersion);
-              setVisible(false);
+              await closeAndMarkAsRead(latestVersion);
             }}
             className={`min-h-11 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest ${isDark ? 'bg-white/5 text-slate-200 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >

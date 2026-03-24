@@ -5,9 +5,48 @@
 // 3. Atualize public/version.json com a mesma versao
 // 4. Faca o deploy - o popup aparecera automaticamente para todos os usuarios logados
 
-export const NEWS_VERSION_LATEST = '1.6.1';
+export const NEWS_VERSION_LATEST = '1.7.0';
 
 export const NEWS_DATA = [
+  {
+    version: '1.7.0',
+    date: '2026-03-24',
+    title: 'Célula Híbrida integrada ao sistema operacional',
+    type: 'feature',
+    summary: 'O sistema agora reconhece oficialmente a nova Célula Híbrida, com setores próprios de Runin e AVT, layouts especiais de pontos e leitura normal em dashboard, histórico, Lei.A e relatórios.',
+    items: [
+      'Novo setor Runin Hibrido com 10 traves e 8 pontos por trave',
+      'Novos setores AVT Hibrida 01 e AVT Hibrida 02 com 15 e 18 pontos',
+      'Abrir Chamados e Visualizar Falhas agora tratam a geometria especial da Hibrida',
+      'Dashboard, histórico, KPI, monitoramento e PDFs passam a ler a Hibrida como setor oficial',
+    ],
+    details: `
+A nova **Célula Híbrida** foi incorporada ao Lenovo Assets Systems como parte oficial da operacao, sem precisar de fluxo paralelo fora do sistema.
+
+**O que entrou:**
+- O sistema agora reconhece o setor **Runin Hibrido**, com **10 traves** e **8 pontos por trave**.
+- Tambem foram adicionados os setores **AVT Hibrida 01** e **AVT Hibrida 02**, com **15** e **18 pontos** respectivamente.
+
+**Como isso funciona na pratica:**
+- Em **Abrir Chamados**, a tela agora monta automaticamente o layout correto conforme o setor escolhido.
+- Em **Visualizar Falhas**, a leitura dos pontos segue a mesma geometria real da Célula Híbrida.
+- Os mesmos tipos de falha ja usados no restante da operacao continuam disponiveis normalmente.
+
+**Onde isso aparece:**
+- Registro de falhas
+- Visualizacao e tratamento de falhas
+- Historico por ponto
+- Dashboard KPI
+- Relatorios em PDF
+- Monitoramento operacional
+- Lei.A
+
+**Por que essa atualizacao existe:**
+- Para evitar controle paralelo fora do sistema.
+- Para manter a nova celula com a mesma rastreabilidade operacional dos demais setores.
+- Para garantir que a Hibrida entre nos indicadores e historicos como parte real da fabrica, sem excecoes manuais espalhadas.
+    `,
+  },
   {
     version: '1.6.1',
     date: '2026-03-19',
