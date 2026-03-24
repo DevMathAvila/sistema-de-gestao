@@ -111,8 +111,8 @@ export default function RegistrarFalhaPage() {
 
             {setorEhAvt && (
               <div className={`${styles.card} rounded-[2rem] border border-blue-500/20 bg-blue-500/5 p-5 sm:p-6`}>
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-500">Modo AVT</p>
-                <p className={`mt-2 text-sm ${styles.subtext}`}>Selecione os pontos e as falhas. Nao existe selecao de trave para AVT.</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-500">Setor de Trave Unica</p>
+                <p className={`mt-2 text-sm ${styles.subtext}`}>Selecione os pontos e as falhas. Este setor utiliza uma trave logica unica.</p>
               </div>
             )}
 

@@ -14,7 +14,7 @@ import {
   sanitizePontosArray,
   LIMITS,
 } from '../validation/validation';
-import { TOTAL_PONTOS_AVT, isTraveInteiraLabel } from '../../features/failures/constants/failureConstants';
+import { getTotalPontosBySetor, isAvtSetor, isTraveInteiraLabel } from '../../features/failures/constants/failureConstants';
 
 const BRAZIL_TIME_ZONE = 'America/Sao_Paulo';
 
@@ -150,9 +150,6 @@ function inferRuninSetorFromUsername(username) {
   return `Runin ${String(runinNum).padStart(2, '0')}`;
 }
 
-function isAvtSetor(value) {
-  return /^AVT(\s|$)/i.test(String(value || '').trim());
-}
 function isConcludedRecord(item) {
   const status = normalizeStatus(item?.status);
   return status.includes('conclu');
@@ -625,7 +622,7 @@ export async function inserirRegistrosFalha(setor, trave, pontos, falhas) {
 
   const username = sessionUser?.username || 'Tecnico';
   const traveNum = Number(trave);
-  const totalPontos = isAvtSetor(setorAlvo) ? TOTAL_PONTOS_AVT : 15;
+  const totalPontos = getTotalPontosBySetor(setorAlvo);
   const listaPontos = [...Array(totalPontos)].map((_, i) => i + 1);
   const todosPontos = listaPontos.length === pontosSanit.length;
   const inserts = todosPontos
@@ -1094,7 +1091,6 @@ export async function salvarDadosSigaAguardando({ id, diaAbertura, codigoChamado
     return { error: withSigaSchemaHint({ message: err?.message || 'Erro ao salvar dados SIGA.' }) };
   }
 }
-
 
 
 

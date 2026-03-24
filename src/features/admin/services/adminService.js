@@ -190,6 +190,15 @@ function normalizeSetor(value) {
   const avtMatch = normalized.match(/^avt\s*(\d{1,2})$/);
   if (avtMatch) return `AVT ${String(Number(avtMatch[1])).padStart(2, '0')}`;
 
+  if (normalized === 'runin hibrido' || normalized === 'run in hibrido' || normalized === 'runinhibrido') {
+    return 'Runin Hibrido';
+  }
+
+  const avtHibridaMatch = normalized.match(/^avt\s*hibrida\s*(\d{1,2})$/)
+    || normalized.match(/^avthibrida\s*(\d{1,2})$/)
+    || normalized.match(/^hibrida\s*avt\s*(\d{1,2})$/);
+  if (avtHibridaMatch) return `AVT Hibrida ${String(Number(avtHibridaMatch[1])).padStart(2, '0')}`;
+
   return raw;
 }
 

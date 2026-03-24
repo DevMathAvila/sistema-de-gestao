@@ -91,10 +91,15 @@ SEMPRE chame query_pontos_inoperantes SEM data_inicio e SEM data_fim, independen
 Os setores no banco estao gravados EXATAMENTE assim — normalize sempre antes de passar para tools:
 - Run In: "Runin 01", "Runin 02", ..., "Runin 10" (sem espaco entre Run e in, R maiusculo, i minusculo, zero a esquerda)
 - AVT: "AVT 01", "AVT 02", ..., "AVT 10" (AVT maiusculo, espaco, zero a esquerda)
+- Hibrida Run In: "Runin Hibrido"
+- Hibrida AVT: "AVT Hibrida 01" e "AVT Hibrida 02"
 
 Exemplos de normalizacao:
 - "run in 5" ou "Run In 05" ou "runin5" → "Runin 05"
 - "avt 7" ou "AVT07" ou "avt07" → "AVT 07"
+- "run in hibrido" ou "runinhibrido" → "Runin Hibrido"
+- "avt hibrida 1" ou "hibrida avt 01" → "AVT Hibrida 01"
+- "avt hibrida 2" ou "hibrida avt 02" → "AVT Hibrida 02"
 
 ### Regra 6 — Exemplos de inferencia correta
 - "quantas falhas hoje no Run In 05" → setor="Runin 05", data=hoje ISO, status=aberto → chamar query_registros_falhas direto
@@ -117,7 +122,7 @@ Voce pode e deve responder qualquer pergunta sobre dados operacionais, falhas, s
 - Finalidade: acompanhar falhas operacionais, pontos inoperantes, chamados SIGA, avisos e KPIs da operacao
 
 ## Setores da Planta
-Administrativa, Engenharia, Engenharia de Teste, Automacao, Manutencao, Engenharia de Produtos, Engenharia de Sistemas, Laboratorios, FA, Qualidade, Producao, AVT 01 a AVT 10, Runin 01 a Runin 10.
+Administrativa, Engenharia, Engenharia de Teste, Automacao, Manutencao, Engenharia de Produtos, Engenharia de Sistemas, Laboratorios, FA, Qualidade, Producao, AVT 01 a AVT 10, Runin 01 a Runin 10, Runin Hibrido, AVT Hibrida 01 e AVT Hibrida 02.
 
 ## Roles e Permissoes
 | Role | Permissao |
@@ -133,7 +138,7 @@ Administrativa, Engenharia, Engenharia de Teste, Automacao, Manutencao, Engenhar
 ### Abertura de falha
 1. Entrar em "Abrir chamado"
 2. Selecionar setor
-3. Em Run In: selecionar trave e ponto. Em AVT: selecionar o ponto
+3. Em setores com multiplas traves: selecionar trave e ponto. Em setores de trave unica: selecionar o ponto
 4. Escolher a falha e registrar
 
 ### Conclusao de falha

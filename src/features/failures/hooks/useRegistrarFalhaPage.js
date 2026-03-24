@@ -4,7 +4,7 @@ import { getSessionUser, isAdminUser } from '../../../core/auth/session';
 import { FALHAS_COMUNS } from '../../../shared/constants/falhasComuns';
 import { LISTA_SETORES } from '../../../shared/constants/setores';
 import { usePersistentTheme } from '../../../shared/hooks/usePersistentTheme';
-import { getPontosBySetor, getTravesBySetor, isAvtSetor, isTraveInteiraLabel } from '../constants/failureConstants';
+import { getPontosBySetor, getTravesBySetor, isSingleTraveFailureSetor, isTraveInteiraLabel } from '../constants/failureConstants';
 import { createFalhaRegistro, fetchChamadosAbertosPorSetor } from '../services/failuresService';
 import { getFailureTheme } from '../styles/failureTheme';
 
@@ -32,7 +32,7 @@ export function useRegistrarFalhaPage() {
 
   const pontos = useMemo(() => getPontosBySetor(setor), [setor]);
   const traves = useMemo(() => getTravesBySetor(setor), [setor]);
-  const setorEhAvt = useMemo(() => isAvtSetor(setor), [setor]);
+  const setorEhTraveUnica = useMemo(() => isSingleTraveFailureSetor(setor), [setor]);
 
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -41,10 +41,10 @@ export function useRegistrarFalhaPage() {
   const isAdmin = isAdminUser(getSessionUser() || { role: 'colaborador' });
 
   const getInitialFormData = useCallback(() => ({
-    trave: setorEhAvt ? 1 : '',
+    trave: setorEhTraveUnica ? 1 : '',
     pontos: [],
     falhas: [],
-  }), [setorEhAvt]);
+  }), [setorEhTraveUnica]);
 
   const carregarChamadosAbertos = useCallback(async () => {
     try {
@@ -56,13 +56,13 @@ export function useRegistrarFalhaPage() {
   }, [setor]);
 
   useEffect(() => {
-    if (setorEhAvt) {
+    if (setorEhTraveUnica) {
       setFormData((prev) => ({
         ...prev,
-        trave: setorEhAvt ? 1 : prev.trave,
+        trave: setorEhTraveUnica ? 1 : prev.trave,
       }));
     }
-  }, [setorEhAvt]);
+  }, [setorEhTraveUnica]);
 
   useEffect(() => {
     carregarChamadosAbertos();
@@ -160,7 +160,7 @@ export function useRegistrarFalhaPage() {
 
   return {
     setor,
-    setorEhAvt,
+    setorEhAvt: setorEhTraveUnica,
     loading,
     isSuccess,
     chamadosAbertos,

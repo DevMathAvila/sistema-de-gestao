@@ -49,7 +49,8 @@ check (
   role <> 'runin_kiosk'
   or setor_fixo in (
     'Runin 01', 'Runin 02', 'Runin 03', 'Runin 04', 'Runin 05',
-    'Runin 06', 'Runin 07', 'Runin 08', 'Runin 09', 'Runin 10'
+    'Runin 06', 'Runin 07', 'Runin 08', 'Runin 09', 'Runin 10',
+    'Runin Hibrido'
   )
 );
 

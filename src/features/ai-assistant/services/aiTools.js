@@ -7,7 +7,7 @@ export const AI_TOOL_DECLARATIONS = [
       properties: {
         setor: {
           type: 'STRING',
-          description: 'Nome exato do setor conforme banco: "Runin 01" a "Runin 10" ou "AVT 01" a "AVT 10". Normalize qualquer variacao do usuario para esse formato antes de passar.',
+          description: 'Nome exato do setor conforme banco: "Runin 01" a "Runin 10", "AVT 01" a "AVT 10", "Runin Hibrido", "AVT Hibrida 01" ou "AVT Hibrida 02". Normalize qualquer variacao do usuario para esse formato antes de passar.',
         },
         status: {
           type: 'STRING',
@@ -36,7 +36,7 @@ export const AI_TOOL_DECLARATIONS = [
       properties: {
         setor: {
           type: 'STRING',
-          description: 'Filtro opcional por setor. Formato exato: "Runin 01" a "Runin 10" ou "AVT 01" a "AVT 10". Se nao informado, retorna todos os setores.',
+          description: 'Filtro opcional por setor. Formato exato: "Runin 01" a "Runin 10", "AVT 01" a "AVT 10", "Runin Hibrido", "AVT Hibrida 01" ou "AVT Hibrida 02". Se nao informado, retorna todos os setores.',
         },
         limit: {
           type: 'NUMBER',

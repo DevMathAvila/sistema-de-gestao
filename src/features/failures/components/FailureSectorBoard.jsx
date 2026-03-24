@@ -4,7 +4,7 @@ import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import Hash from 'lucide-react/dist/esm/icons/hash';
 import Wrench from 'lucide-react/dist/esm/icons/wrench';
 import Zap from 'lucide-react/dist/esm/icons/zap';
-import { isAvtSetor, isTraveInteiraLabel } from '../constants/failureConstants';
+import { isSingleTraveFailureSetor, isTraveInteiraLabel } from '../constants/failureConstants';
 import { normalizeText, traveTemParada } from '../services/failuresService';
 
 export default function FailureSectorBoard({
@@ -34,7 +34,7 @@ export default function FailureSectorBoard({
     <div className="space-y-4">
       {setors.map((setor) => {
         const falhasDoSetor = falhasPorSetor[setor] || [];
-        const setorEhAvt = isAvtSetor(setor);
+        const setorEhAvt = isSingleTraveFailureSetor(setor);
         const numTravesAfetadas = new Set(falhasDoSetor.map((f) => String(f.trave))).size;
         const setorTemParadaCritica = traveTemParada(falhasDoSetor);
         const setorTemFalha = setorEhAvt ? falhasDoSetor.length > 0 : numTravesAfetadas > 0;
@@ -211,7 +211,7 @@ export default function FailureSectorBoard({
                         </div>
                         <div className="flex-1 flex items-center justify-between px-3 py-1">
                           <span className={`flex items-center gap-2 text-[10px] font-black uppercase italic tracking-[0.12em] ${avtTitleClass}`}>
-                            Pontos AVT
+                            Pontos do Setor
                           </span>
                           {hasFalhas && (
                             <span className={`px-3 py-1.5 ${status.color} ${status.textColor} text-[8px] font-black rounded-full shadow-lg ring-1 ring-white/10`}>

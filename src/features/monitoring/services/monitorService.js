@@ -1,5 +1,6 @@
 import { supabase } from '../../../core/api/supabaseClient';
 import { isTraveInteiraLabel } from '../../failures/constants/failureConstants';
+import { LISTA_SETORES } from '../../../shared/constants/setores';
 
 function normalizeText(text) {
   return String(text || '').replace(/\s|-|_/g, '').toLowerCase().trim();
@@ -14,8 +15,7 @@ export async function fetchOpenFailures() {
 }
 
 export function buildMonitorPanel(falhas) {
-  const setores = ['Runin 01', 'Runin 02', 'Runin 03', 'Runin 04', 'Runin 05', 'Runin 06', 'Runin 07', 'Runin 08', 'Runin 09', 'Runin 10', 'AVT'];
-  return setores
+  return LISTA_SETORES
     .map((nome) => {
       const chamados = falhas.filter((f) => normalizeText(f.setor) === normalizeText(nome));
       const resumoFalhas = {};
