@@ -5,9 +5,45 @@
 // 3. Atualize public/version.json com a mesma versao
 // 4. Faca o deploy - o popup aparecera automaticamente para todos os usuarios logados
 
-export const NEWS_VERSION_LATEST = '1.7.0';
+export const NEWS_VERSION_LATEST = '1.7.1';
 
 export const NEWS_DATA = [
+  {
+    version: '1.7.1',
+    date: '2026-03-25',
+    title: 'Painel SIGA agora permite reativar falhas para novo destino',
+    type: 'improvement',
+    summary: 'Falhas que passaram pela SIGA agora podem ser reativadas diretamente no painel, voltando ao fluxo ativo para nova decisao operacional sem precisar de ajuste paralelo.',
+    items: [
+      'Nova acao de reativar falha dentro do painel da SIGA',
+      'Disponivel tanto para itens aguardando quanto para itens ja finalizados',
+      'Falha volta ao fluxo ativo para decidir novamente entre SIGA, ponto inoperante ou finalizacao normal',
+      'Aviso de novidade agora aparece como notificacao sutil no canto superior direito',
+    ],
+    details: `
+O modulo da **SIGA** recebeu uma melhoria importante para dar mais flexibilidade no tratamento de chamados que precisam voltar ao fluxo operacional.
+
+**O que mudou:**
+- Agora existe uma acao de **Reativar falha** diretamente dentro do painel da SIGA.
+- Essa opcao aparece tanto para chamados que estao **aguardando** quanto para chamados ja **finalizados** na SIGA.
+
+**Como funciona na pratica:**
+- Ao reativar, a falha volta a ser tratada como uma falha ativa no sistema.
+- Depois disso, a equipe pode decidir novamente qual sera o proximo destino do ponto:
+  - enviar outra vez para SIGA
+  - marcar como ponto inoperante
+  - concluir normalmente
+
+**Por que essa melhoria existe:**
+- Para corrigir situacoes em que um chamado foi para a SIGA antes da decisao final estar madura.
+- Para evitar controle manual paralelo quando o ponto precisa voltar ao fluxo de manutencao.
+- Para dar mais autonomia operacional sem quebrar o historico geral do sistema.
+
+**Ajuste visual junto dessa entrega:**
+- O aviso de novidades deixou de abrir no centro da tela.
+- Agora ele aparece de forma mais sutil, como uma notificacao no canto superior direito.
+    `,
+  },
   {
     version: '1.7.0',
     date: '2026-03-24',

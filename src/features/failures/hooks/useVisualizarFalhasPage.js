@@ -22,6 +22,7 @@ import {
   getTraveWorkItems,
   normalizeText,
   reativarInoperante,
+  reativarSiga,
   splitFalhas,
   traveTemParada,
   salvarRascunhoSiga,
@@ -85,6 +86,7 @@ export function useVisualizarFalhasPage() {
   const [sigaDrafts, setSigaDrafts] = useState({});
   const [sigaSubmittingId, setSigaSubmittingId] = useState(null);
   const [sigaSavingId, setSigaSavingId] = useState(null);
+  const [sigaReactivatingId, setSigaReactivatingId] = useState(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [mostrarHistoricoCompleto, setMostrarHistoricoCompleto] = useState(false);
   const [inoperantePresets, setInoperantePresets] = useState(INOPERANTE_PRESETS_DEFAULT);
@@ -631,6 +633,23 @@ export function useVisualizarFalhasPage() {
     }
   }, [sigaDrafts]);
 
+  const reactivateSigaItem = useCallback(async (item) => {
+    if (!item?.id) return;
+
+    setSigaReactivatingId(item.id);
+    try {
+      await reativarSiga({ id: item.id });
+      await loadSigaDeskData();
+      await buscarFalhas();
+      notifyKpiRefresh();
+      setAbaFalhas('abertas');
+    } catch (err) {
+      alert(err?.message || 'Erro ao reativar falha da SIGA');
+    } finally {
+      setSigaReactivatingId(null);
+    }
+  }, [buscarFalhas, loadSigaDeskData]);
+
   const irParaTraveRecorrente = useCallback((setor, trave) => {
     setSetorAberto(setor);
     setTraveAberta(Number(trave));
@@ -689,6 +708,8 @@ export function useVisualizarFalhasPage() {
     finalizeSigaItem,
     sigaSubmittingId,
     sigaSavingId,
+    sigaReactivatingId,
+    reactivateSigaItem,
     irParaTraveRecorrente,
     mobileMenuOpen,
     setMobileMenuOpen,
@@ -729,5 +750,4 @@ export function useVisualizarFalhasPage() {
     formatDateTime,
   };
 }
-
 

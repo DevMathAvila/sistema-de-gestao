@@ -1,5 +1,6 @@
 import React from 'react';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Save from 'lucide-react/dist/esm/icons/save';
 import SendHorizontal from 'lucide-react/dist/esm/icons/send-horizontal';
 
@@ -9,8 +10,10 @@ export default function SigaFailureCard({
   onDraftChange,
   onSave,
   onFinalize,
+  onReactivate,
   isSubmitting,
   isSaving,
+  isReactivating,
   theme,
   isFinalizado = false,
 }) {
@@ -30,6 +33,18 @@ export default function SigaFailureCard({
           <p>Dia abertura: {item.siga_data_abertura || '-'}</p>
           <p>Finalizado em: {item.siga_finalizado_em || item.resolvido_em || '-'}</p>
         </div>
+        <button
+          type="button"
+          onClick={() => onReactivate(item)}
+          disabled={isReactivating}
+          className={`mt-4 h-11 w-full rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 ${
+            theme === 'dark'
+              ? 'bg-amber-500/15 border border-amber-400/30 text-amber-200 hover:bg-amber-500/25'
+              : 'bg-amber-100 border border-amber-300 text-amber-900 hover:bg-amber-200'
+          }`}
+        >
+          <RotateCcw size={14} /> {isReactivating ? 'REATIVANDO...' : 'REATIVAR FALHA'}
+        </button>
       </article>
     );
   }
@@ -81,7 +96,7 @@ export default function SigaFailureCard({
           <button
             type="button"
             onClick={() => onSave(item)}
-            disabled={isSaving || isSubmitting}
+            disabled={isSaving || isSubmitting || isReactivating}
             className={`h-11 w-full rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 ${
               theme === 'dark'
                 ? 'bg-white/10 border border-white/20 hover:bg-white/20 text-white'
@@ -93,12 +108,24 @@ export default function SigaFailureCard({
           <button
             type="button"
             onClick={() => onFinalize(item)}
-            disabled={isSubmitting || isSaving}
+            disabled={isSubmitting || isSaving || isReactivating}
             className="h-11 w-full rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <SendHorizontal size={14} /> {isSubmitting ? 'FINALIZANDO...' : 'FINALIZAR'}
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => onReactivate(item)}
+          disabled={isSaving || isSubmitting || isReactivating}
+          className={`mt-2 h-11 w-full rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 ${
+            theme === 'dark'
+              ? 'bg-amber-500/15 border border-amber-400/30 text-amber-200 hover:bg-amber-500/25'
+              : 'bg-amber-100 border border-amber-300 text-amber-900 hover:bg-amber-200'
+          }`}
+        >
+          <RotateCcw size={14} /> {isReactivating ? 'REATIVANDO...' : 'REATIVAR FALHA'}
+        </button>
       </div>
     </article>
   );

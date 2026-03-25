@@ -344,8 +344,10 @@ export default function VisualizarFalhasPage() {
         updateDraft={vm.updateSigaDraft}
         saveSigaItem={vm.saveSigaItem}
         finalizeSigaItem={vm.finalizeSigaItem}
+        reactivateSigaItem={vm.reactivateSigaItem}
         submittingId={vm.sigaSubmittingId}
         savingId={vm.sigaSavingId}
+        reactivatingId={vm.sigaReactivatingId}
         loading={vm.sigaLoading}
       />
 

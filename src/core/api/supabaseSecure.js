@@ -1092,6 +1092,42 @@ export async function salvarDadosSigaAguardando({ id, diaAbertura, codigoChamado
   }
 }
 
+export async function reativarFalhaDaSiga(id) {
+  if (id == null || id === '') return { error: { message: 'ID obrigatorio.' } };
+
+  const sessionUser = getStoredSessionUser();
+  if (!sessionUser || isRestrictedMaintenanceRole(sessionUser.role)) {
+    return { error: { message: 'Nao autorizado.' } };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('registros_falhas')
+      .update({
+        status: 'ABERTO',
+        solucao: null,
+        resolvido_por: null,
+        resolvido_em: null,
+        ponto_inoperante: false,
+        inoperante_motivo: null,
+        inoperante_observacao: null,
+        inoperante_por: null,
+        inoperante_em: null,
+        siga_enviado: false,
+        siga_status: null,
+        siga_enviado_em: null,
+        siga_codigo_chamado: null,
+        siga_data_abertura: null,
+        siga_finalizado_em: null,
+      })
+      .eq('id', id)
+      .eq('siga_enviado', true);
+
+    return { error: withSigaSchemaHint(error) };
+  } catch (err) {
+    return { error: withSigaSchemaHint({ message: err?.message || 'Erro ao reativar falha da SIGA.' }) };
+  }
+}
 
 
 

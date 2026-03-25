@@ -5,6 +5,7 @@ import { usePersistentTheme } from '@/shared/hooks/usePersistentTheme';
 import { compareVersions, useNews } from '../hooks/useNews';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
+const AUTO_CLOSE_MS = 5 * 1000;
 const displayedVersionsByUser = new Map();
 
 export default function NewsPopup({ userId }) {
@@ -25,6 +26,14 @@ export default function NewsPopup({ userId }) {
     const timer = window.setTimeout(() => setVisible(true), 1400);
     return () => window.clearTimeout(timer);
   }, [dismissedVersion, displayedVersion, hasContent, hasUnread, latestVersion, loading]);
+
+  useEffect(() => {
+    if (!visible || !latestVersion) return undefined;
+    const timer = window.setTimeout(() => {
+      closeAndMarkAsRead(latestVersion);
+    }, AUTO_CLOSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [latestVersion, visible]);
 
   useEffect(() => {
     if (!latestVersion) return;
@@ -72,40 +81,35 @@ export default function NewsPopup({ userId }) {
   if (!visible || !hasContent) return null;
 
   return (
-    <div className="fixed inset-0 z-[9997] flex items-center justify-center px-4">
-      <button
-        type="button"
-        aria-label="Fechar popup de novidades"
-        className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-        onClick={() => {
-          closeAndMarkAsRead();
-        }}
-      />
-      <div className={`relative w-[calc(100vw-32px)] max-w-md rounded-[2rem] border p-5 shadow-[0_30px_90px_rgba(15,23,42,0.35)] sm:p-6 ${
+    <div className="fixed right-3 top-3 z-[9997] w-[calc(100vw-24px)] max-w-sm sm:right-5 sm:top-5 sm:w-full">
+      <div className={`relative overflow-hidden rounded-[1.75rem] border p-4 shadow-[0_24px_60px_rgba(15,23,42,0.24)] sm:p-5 ${
         isDark ? 'border-white/10 bg-[#070707] text-white' : 'border-slate-200 bg-white text-slate-900'
       }`}>
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-red-500 via-rose-500 to-orange-400" />
         <button
           type="button"
           onClick={() => {
             closeAndMarkAsRead();
           }}
-          className={`absolute right-4 top-4 rounded-xl p-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+          className={`absolute right-3 top-3 rounded-xl p-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
         >
           <X size={16} />
         </button>
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 via-rose-500 to-orange-400 text-white">
-            <PartyPopper size={20} />
+        <div className="flex items-start gap-3 pr-8">
+          <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 via-rose-500 to-orange-400 text-white shadow-lg shadow-red-500/20">
+            <PartyPopper size={18} />
           </div>
-          <p className="text-sm font-black uppercase tracking-[0.18em] text-red-500">Opa, surgiu novidade!</p>
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-red-500">Nova atualizacao</p>
+            <h3 className="mt-1 text-lg font-black leading-tight">{latestNews.title}</h3>
+          </div>
         </div>
 
-        <h3 className="mt-5 text-2xl font-black leading-tight">{latestNews.title}</h3>
         <p className={`mt-3 text-sm leading-6 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
           {latestNews.summary}
         </p>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={async () => {
@@ -116,18 +120,18 @@ export default function NewsPopup({ userId }) {
               }
               navigate('/novidades');
             }}
-            className="min-h-11 rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-red-700"
+            className="min-h-10 rounded-xl bg-red-600 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white hover:bg-red-700"
           >
-            Ver novidades
+            Ver mais
           </button>
           <button
             type="button"
             onClick={async () => {
               await closeAndMarkAsRead(latestVersion);
             }}
-            className={`min-h-11 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest ${isDark ? 'bg-white/5 text-slate-200 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`min-h-10 rounded-xl px-4 py-2 text-[11px] font-black uppercase tracking-widest ${isDark ? 'bg-white/5 text-slate-200 hover:bg-white/10' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >
-            Agora nao
+            Ver depois
           </button>
         </div>
       </div>

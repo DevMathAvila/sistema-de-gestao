@@ -10,6 +10,7 @@ import {
   marcarFalhasComoInoperantes,
   marcarFalhasParaSiga,
   atualizarFalhaInoperante,
+  reativarFalhaDaSiga,
   reativarFalhasInoperantes,
   salvarDadosSigaAguardando,
 } from '../../../core/api/supabaseSecure.js';
@@ -126,6 +127,12 @@ export async function concluirSiga({ id, diaAbertura, codigoChamado }) {
 export async function salvarRascunhoSiga({ id, diaAbertura, codigoChamado }) {
   const { error } = await salvarDadosSigaAguardando({ id, diaAbertura, codigoChamado });
   if (error) throw error;
+}
+
+export async function reativarSiga({ id }) {
+  const { error } = await reativarFalhaDaSiga(id);
+  if (error) throw error;
+  resetOpenFailuresCache();
 }
 
 export async function fetchHistoricoPonto({ setor, trave, ponto, limite = 5 }) {
